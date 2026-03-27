@@ -1,0 +1,39 @@
+name: Fetch Chlorophyll Data
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # every day at 06:00 UTC (08:00 Norwegian time)
+  workflow_dispatch:      # also allows manual run from GitHub website
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install copernicusmarine pandas xarray h5py netCDF4
+
+      - name: Login to CMEMS
+        env:
+          CMEMS_USERNAME: ${{ secrets.CMEMS_USERNAME }}
+          CMEMS_PASSWORD: ${{ secrets.CMEMS_PASSWORD }}
+        run: copernicusmarine login --username "$CMEMS_USERNAME" --password "$CMEMS_PASSWORD" --overwrite-configuration-file
+
+      - name: Run script
+        run: python cmems_norway_chlorophyll.py
+
+      - name: Commit and push CSV
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add chlorophyll.csv
+          git diff --staged --quiet || git commit -m "Update chlorophyll data $(date -u '+%Y-%m-%d')"
+          git push
