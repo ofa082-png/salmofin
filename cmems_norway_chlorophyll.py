@@ -9,10 +9,10 @@ from datetime import datetime, timedelta, timezone
 
 DATASET_ID = "cmems_mod_nws_bgc-chl_anfc_7km-3D_P1D-m"
 
-MIN_LON = 4.0
-MAX_LON = 13.0
-MIN_LAT = 57.5
-MAX_LAT = 65.0
+MIN_LON   = 4.0
+MAX_LON   = 13.0
+MIN_LAT   = 57.5
+MAX_LAT   = 65.0
 MIN_DEPTH = 0.0
 MAX_DEPTH = 1.0
 DAYS_BACK = 7
@@ -30,7 +30,6 @@ end_str   = end_date.strftime("%Y-%m-%dT00:00:00")
 tmp_dir = tempfile.mkdtemp()
 
 copernicusmarine.subset(
-    copernicusmarine.subset(
     dataset_id        = DATASET_ID,
     minimum_longitude = MIN_LON,
     maximum_longitude = MAX_LON,
@@ -70,20 +69,18 @@ def label_region(lat, lon):
         return "Southern Norway / Skagerrak"
     elif lat < 62.0:
         return "Western Norway"
-    elif lat < 65.0:
-        return "Mid Norway"
     else:
-        return "Northern Norway"
+        return "Mid Norway"
 
 df["Region"] = df.apply(lambda r: label_region(r["Latitude"], r["Longitude"]), axis=1)
 
 # ── Save to CSV ───────────────────────────────────────────────────────────────
 
-output_path = os.path.join(os.path.dirname(__file__), "chlorophyll.csv")
+output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chlorophyll.csv")
 
 df[["Date", "Latitude", "Longitude", "Chlorophyll_mgm3", "Region"]].to_csv(
     output_path, index=False
 )
 
 print(f"Saved {len(df):,} rows to {output_path}")
-print(f"Date range: {df['Date'].min()} → {df['Date'].max()}")
+print(f"Date range: {df['Date'].min()} -> {df['Date'].max()}")
