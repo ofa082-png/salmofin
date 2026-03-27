@@ -25,7 +25,7 @@ jobs:
         env:
           CMEMS_USERNAME: ${{ secrets.CMEMS_USERNAME }}
           CMEMS_PASSWORD: ${{ secrets.CMEMS_PASSWORD }}
-        run: copernicusmarine login --username "$CMEMS_USERNAME" --password "$CMEMS_PASSWORD" --overwrite-configuration-file
+        run: copernicusmarine login --username "$CMEMS_USERNAME" --password "$CMEMS_PASSWORD" --configuration-file-directory /tmp/cmems
 
       - name: Run script
         run: python cmems_norway_chlorophyll.py
