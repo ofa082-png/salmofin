@@ -3,7 +3,7 @@ name: Fetch Chlorophyll Data
 on:
   schedule:
     - cron: '0 6 * * *'  # every day at 06:00 UTC (08:00 Norwegian time)
-  workflow_dispatch:      # also allows manual run from GitHub website
+  workflow_dispatch:      # allows manual run from GitHub website
 
 jobs:
   fetch:
@@ -21,13 +21,10 @@ jobs:
       - name: Install dependencies
         run: pip install copernicusmarine pandas xarray h5py netCDF4
 
-      - name: Login to CMEMS
+      - name: Run script
         env:
           CMEMS_USERNAME: ${{ secrets.CMEMS_USERNAME }}
           CMEMS_PASSWORD: ${{ secrets.CMEMS_PASSWORD }}
-        run: copernicusmarine login --username "$CMEMS_USERNAME" --password "$CMEMS_PASSWORD" --configuration-file-directory /tmp/cmems
-
-      - name: Run script
         run: python cmems_norway_chlorophyll.py
 
       - name: Commit and push CSV
