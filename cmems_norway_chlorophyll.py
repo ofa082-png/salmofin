@@ -30,6 +30,7 @@ end_str   = end_date.strftime("%Y-%m-%dT00:00:00")
 tmp_dir = tempfile.mkdtemp()
 
 copernicusmarine.subset(
+    copernicusmarine.subset(
     dataset_id        = DATASET_ID,
     minimum_longitude = MIN_LON,
     maximum_longitude = MAX_LON,
@@ -41,6 +42,8 @@ copernicusmarine.subset(
     end_datetime      = end_str,
     variables         = ["chl"],
     output_directory  = tmp_dir,
+    username          = os.environ.get("CMEMS_USERNAME"),
+    password          = os.environ.get("CMEMS_PASSWORD"),
 )
 
 # ── Load and convert ──────────────────────────────────────────────────────────
