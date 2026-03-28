@@ -1,4 +1,4 @@
-name: Fetch Chlorophyll Data
+name: Fetch Salmofin Data
 
 on:
   schedule:
@@ -19,18 +19,24 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install copernicusmarine pandas xarray h5py netCDF4
+        run: pip install copernicusmarine pandas xarray h5py netCDF4 requests
 
-      - name: Run script
+      - name: Run chlorophyll script
         env:
           CMEMS_USERNAME: ${{ secrets.CMEMS_USERNAME }}
           CMEMS_PASSWORD: ${{ secrets.CMEMS_PASSWORD }}
         run: python cmems_norway_chlorophyll.py
 
-      - name: Commit and push CSV
+      - name: Run disease zones script
+        env:
+          BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
+          BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
+        run: python barentswatch_disease_zones.py
+
+      - name: Commit and push CSVs
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add chlorophyll.csv
-          git diff --staged --quiet || git commit -m "Update chlorophyll data $(date -u '+%Y-%m-%d')"
+          git add chlorophyll.csv disease_zones.csv
+          git diff --staged --quiet || git commit -m "Update data $(date -u '+%Y-%m-%d')"
           git push
