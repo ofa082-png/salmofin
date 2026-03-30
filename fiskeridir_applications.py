@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 # ── Settings ──────────────────────────────────────────────────────────────────
 
-BASE_URL   = "https://api.fiskeridir.no/pub-aqua/api"
+BASE_URL = "https://api.fiskeridir.no/aqua-portal-api-public"
 START_DATE = "2020-01-01T00:00:00.000Z"  # pull all applications since 2020
 
 # ── No auth needed — public API ───────────────────────────────────────────────
