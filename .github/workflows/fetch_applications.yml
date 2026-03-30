@@ -1,0 +1,33 @@
+name: Fetch Aquaculture Applications
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'  # every Monday at 07:00 UTC
+  workflow_dispatch:      # also manual trigger
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests pandas
+
+      - name: Run applications script
+        run: python fiskeridir_applications.py
+
+      - name: Commit and push CSV
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add applications.csv
+          git diff --staged --quiet || git commit -m "Update applications data $(date -u '+%Y-%m-%d')"
+          git push
