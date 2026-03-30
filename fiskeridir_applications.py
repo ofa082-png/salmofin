@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 # ── Settings ──────────────────────────────────────────────────────────────────
 BASE_URL = "https://api.fiskeridir.no/aqua-portal-api-public"
-START_DATE = "2020-01-01T00:00:00.000Z"  # pull all applications since 2020
+START_DATE = "2024-01-01T00:00:00.000Z"  # pull all applications since 2020
 
 # ── No auth needed — public API ───────────────────────────────────────────────
 
@@ -67,7 +67,7 @@ eval_rows = []
 
 for app_no in df_apps["ApplicationNo"].dropna().unique():
     resp = requests.get(
-        f"{BASE_URL}/v1/evaluation/{app_no}",
+      f"{BASE_URL}/api/v1/evaluation/{app_no}",
         headers=headers
     )
     if resp.status_code == 200:
