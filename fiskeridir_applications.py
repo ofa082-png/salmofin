@@ -4,8 +4,7 @@ import os
 from datetime import datetime, timezone
 
 # ── Settings ──────────────────────────────────────────────────────────────────
-
-BASE_URL   = BASE_URL = "https://api.fiskeridir.no/aqua-portal-api-public/api"
+BASE_URL = "https://api.fiskeridir.no/aqua-portal-api-public"
 START_DATE = "2020-01-01T00:00:00.000Z"  # pull all applications since 2020
 
 # ── No auth needed — public API ───────────────────────────────────────────────
@@ -38,7 +37,7 @@ def fetch_all_pages(url, params={}):
 
 print("Fetching applications...")
 applications = fetch_all_pages(
-    f"{BASE_URL}/api/v1/applications",
+   f"{BASE_URL}/api/v1/applications",
     params={"createdAfter": START_DATE, "sort": "created,asc"}
 )
 print(f"Total applications: {len(applications):,}")
