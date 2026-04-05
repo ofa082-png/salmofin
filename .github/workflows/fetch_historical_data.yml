@@ -1,0 +1,38 @@
+name: Fetch Historical Data (Manual)
+
+on:
+  workflow_dispatch:  # manual only — run a few times a year
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests pandas metocean-api
+
+      - name: Run capacity history script
+        env:
+          BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
+          BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
+        run: python barentswatch_capacity_history.py
+
+      - name: Run wave history script
+        run: python nora3_wave_history.py
+
+      - name: Commit and push CSVs
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add capacity_history.csv wave_history.csv
+          git diff --staged --quiet || git commit -m "Update historical data $(date -u '+%Y-%m-%d')"
+          git push
