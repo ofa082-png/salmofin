@@ -1,237 +1,237 @@
 LocalityNumber,LocalityName,Disease,ZoneType,ZoneName,Forsknr,Suspected,Confirmed,IsOutbreakSite,ZoneFrom,ZoneTo,FetchedDate
-10086,Rekeviki,ISA,Protection,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-09
-10086,Rekeviki,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-09
-10232,Mannbruholmen,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-10232,Mannbruholmen,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-10262,Lille Kvitholmen,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-09
-10281,Store Kvalfjord,ISA,Surveillance,FOR-2024-06-18-1045,FOR-2024-06-18-1045,False,False,True,2025-03-28T00:00:00+01:00,,2026-04-09
-10300,Hillersvik,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-09
-10398,Seiskjæra,ISA,Surveillance,FOR-2025-06-06-982,FOR-2025-06-06-982,False,False,True,2025-08-23T00:00:00+02:00,,2026-04-09
-10409,Kjelneset,ISA,Protection,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,True,True,2025-12-09T00:00:00+01:00,,2026-04-09
-10409,Kjelneset,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,True,True,2025-12-09T00:00:00+01:00,,2026-04-09
-10504,Vedvika,ISA,Surveillance,FOR-2025-06-12-1010,FOR-2025-06-12-1010,False,False,True,2026-01-27T00:00:00+01:00,,2026-04-09
-10505,Dragnes,ISA,Surveillance,FOR-2025-06-30-1391,FOR-2025-06-30-1391,False,False,True,2025-10-16T00:00:00+02:00,,2026-04-09
-10505,Dragnes,ISA,Surveillance,FOR-2024-06-07-927,FOR-2024-06-07-927,False,False,True,2024-09-23T00:00:00+02:00,,2026-04-09
-10560,Kårvik,ISA,Surveillance,FOR-2025-11-20-2312,FOR-2025-11-20-2312,False,False,True,2026-01-08T00:00:00+01:00,,2026-04-09
-10757,Dåvøya,ISA,Protection,FOR-2025-10-31-2158,FOR-2025-10-31-2158,False,True,True,2025-10-31T00:00:00+01:00,,2026-04-09
-10757,Dåvøya,ISA,Surveillance,FOR-2025-10-31-2158,FOR-2025-10-31-2158,False,True,True,2025-10-31T00:00:00+01:00,,2026-04-09
-10759,Karanes,ISA,Protection,FOR-2025-10-31-2158,FOR-2025-10-31-2158,False,False,True,2025-10-31T00:00:00+01:00,,2026-04-09
-10759,Karanes,ISA,Surveillance,FOR-2025-10-31-2158,FOR-2025-10-31-2158,False,False,True,2025-10-31T00:00:00+01:00,,2026-04-09
-10768,Indre Kårvik I,ISA,Surveillance,FOR-2025-11-20-2312,FOR-2025-11-20-2312,False,False,True,2026-01-08T00:00:00+01:00,,2026-04-09
-10769,Indre Kårvik II,ISA,Surveillance,FOR-2025-11-20-2312,FOR-2025-11-20-2312,False,False,True,2026-01-08T00:00:00+01:00,,2026-04-09
-10790,Olderfjord,ISA,Surveillance,FOR-2025-03-13-432,FOR-2025-03-13-432,False,False,True,2025-08-25T00:00:00+02:00,,2026-04-09
-10839,Store Kufjord,ISA,Surveillance,FOR-2024-06-18-1045,FOR-2024-06-18-1045,False,False,True,2025-03-28T00:00:00+01:00,,2026-04-09
-10840,Lille Kufjord,ISA,Surveillance,FOR-2024-06-18-1045,FOR-2024-06-18-1045,False,False,True,2025-03-28T00:00:00+01:00,,2026-04-09
-11230,Børøya Slaktemerd,ISA,Surveillance,FOR-2024-06-07-927,FOR-2024-06-07-927,False,False,True,2024-09-23T00:00:00+02:00,,2026-04-09
-11251,Hysjorda,ISA,Surveillance,FOR-2025-06-12-1010,FOR-2025-06-12-1010,False,False,True,2026-01-27T00:00:00+01:00,,2026-04-09
-11252,Vindhammeren,ISA,Surveillance,FOR-2025-06-12-1010,FOR-2025-06-12-1010,False,False,True,2026-01-27T00:00:00+01:00,,2026-04-09
-11405,Innerbrokløysa,ISA,Protection,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,True,True,2025-08-11T00:00:00+02:00,,2026-04-09
-11405,Innerbrokløysa,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,True,True,2025-06-27T00:00:00+02:00,,2026-04-09
-11410,Litleøya,ISA,Protection,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-08-11T00:00:00+02:00,,2026-04-09
-11410,Litleøya,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-09
-11413,Sandan Sø,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-09
-11433,Finnvika S,ISA,Protection,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,False,True,2025-06-25T00:00:00+02:00,,2026-04-09
-11433,Finnvika S,ISA,Surveillance,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,False,True,2025-06-25T00:00:00+02:00,,2026-04-09
-11454,Buøyflæet,ISA,Surveillance,FOR-2022-12-22-2465,FOR-2022-12-22-2465,False,False,True,2024-10-29T00:00:00+01:00,,2026-04-09
-11459,Grøningen,ISA,Surveillance,FOR-2022-12-22-2465,FOR-2022-12-22-2465,False,False,True,2024-10-29T00:00:00+01:00,,2026-04-09
-11511,Hattasteinen,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-09
-11513,Andal,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-09
-11559,Grimsholmen,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-09
-11574,Breivik S,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-09
-11644,Duesund,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-09
-11667,Gardskråneset,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-09
-11741,Ternholmen Nø,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-09
-11743,Ivarsholmen  Ø,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-09
-11744,Ivarsholmen V,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-09
-11758,Sauøy,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-09
-11763,Knappen,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-09
-11913,Kjeahola,ISA,Surveillance,FOR-2023-04-03-479,FOR-2023-04-03-479,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-09
-11913,Kjeahola,ISA,Surveillance,FOR-2023-07-10-1266,FOR-2023-07-10-1266,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-09
-12370,Måøydraga,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-09
-12371,Kalvøya,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-09
-12380,Langøya Kvaløya,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-12385,Lyngvær Ø II,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-12385,Lyngvær Ø II,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-12394,Ørnøya,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-12406,Rauodden,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-09
-12407,Flesa,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-09
-12435,Grøttingsøy,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-12449,Tennøya,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-12449,Tennøya,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-12624,Feøyvika,ISA,Protection,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-09
-12624,Feøyvika,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-09
-12625,Bjørgan,ISA,Protection,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,True,True,2025-12-12T00:00:00+01:00,,2026-04-09
-12625,Bjørgan,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,True,True,2025-12-12T00:00:00+01:00,,2026-04-09
-12633,Lyrnesset,ISA,Surveillance,FOR-2023-10-20-1674,FOR-2023-10-20-1674,False,False,True,2024-07-08T00:00:00+02:00,,2026-04-09
-12633,Lyrnesset,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-09
-12678,Vedøya,ISA,Protection,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-09
-12678,Vedøya,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-09
-12712,Slokkholmen Ø,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-09
-12714,Gjerdinga,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-09
-12730,Båfjorden,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-09
-13035,Sauaneset I,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-09
-13204,Storøy Ø,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-09
-13225,Kilaneset,ISA,Surveillance,FOR-2023-07-10-1266,FOR-2023-07-10-1266,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-09
-13566,Storskrebukti,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-09
-13581,Ramstadholmen,ISA,Protection,FOR-2026-03-17-416,FOR-2026-03-17-416,False,False,True,2026-03-17T00:00:00+01:00,,2026-04-09
-13581,Ramstadholmen,ISA,Surveillance,FOR-2026-03-17-416,FOR-2026-03-17-416,False,False,True,2026-03-17T00:00:00+01:00,,2026-04-09
-13594,Trolløya Sv,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-09
-13595,Kuneset,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-09
-13699,Leirvika,ISA,Protection,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-09
-13699,Leirvika,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-09
-13704,Vikane,ISA,Protection,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-09
-13704,Vikane,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-09
-13782,Helgeneshamn,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-09
-13936,Sørvika,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-09
-14041,Edøya,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-09
-14042,Kattholmen,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-14136,Hestholmen Ø,ISA,Surveillance,FOR-2022-12-22-2465,FOR-2022-12-22-2465,False,False,True,2024-10-29T00:00:00+01:00,,2026-04-09
-14435,Ljøsøy N,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-09
-14495,Nordeimsøyna,ISA,Surveillance,FOR-2023-04-03-479,FOR-2023-04-03-479,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-09
-14678,Uvåg,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-09
-14679,Hellfjorden,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-09
-16497,Langevågen,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-09
-16516,Kåregrunnane Ø,ISA,Surveillance,FOR-2022-12-22-2465,FOR-2022-12-22-2465,False,False,True,2024-10-29T00:00:00+01:00,,2026-04-09
-17077,Trettevik,ISA,Protection,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,True,True,2025-06-25T00:00:00+02:00,,2026-04-09
-17077,Trettevik,ISA,Surveillance,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,True,True,2025-06-25T00:00:00+02:00,,2026-04-09
-18595,Ytterhavna,ISA,Protection,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-08-11T00:00:00+02:00,,2026-04-09
-18595,Ytterhavna,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-09
-18755,Klungset,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-09
-19355,Låva,ISA,Surveillance,FOR-2023-04-03-479,FOR-2023-04-03-479,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-09
-19356,Kvalrosskjæret,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-09
-19635,Skatleia,ISA,Surveillance,FOR-2025-06-12-1010,FOR-2025-06-12-1010,False,False,True,2026-01-27T00:00:00+01:00,,2026-04-09
-19655,Ospeneset,ISA,Protection,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,True,True,2025-12-24T00:00:00+01:00,,2026-04-09
-19655,Ospeneset,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,True,True,2025-12-24T00:00:00+01:00,,2026-04-09
-19977,Jektholmen,ISA,Surveillance,FOR-2023-09-28-1600,FOR-2023-09-28-1600,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-09
-20115,Skjerholmen N,ISA,Surveillance,FOR-2023-08-18-1335,FOR-2023-08-18-1335,False,False,True,2024-07-28T00:00:00+02:00,,2026-04-09
-20536,Bonstranda,ISA,Protection,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-09
-20536,Bonstranda,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-09
-20559,Langskjæra,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-20595,Kyrholmen S,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-09
-20776,Storoksen,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-09
-20797,Urdvika,ISA,Protection,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-09
-20797,Urdvika,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-09
-21415,Dyrholmen,ISA,Surveillance,FOR-2023-04-03-479,FOR-2023-04-03-479,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-09
-21495,Risværgalten,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-09
-21676,Kråkholmen,ISA,Protection,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-09
-21676,Kråkholmen,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-09
-22435,Stretarneset,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-09
-22776,Indrepollen,ISA,Surveillance,FOR-2024-06-18-1044,FOR-2024-06-18-1044,False,False,True,2024-11-01T00:00:00+01:00,,2026-04-09
-23016,Djupvika,ISA,Protection,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-09
-23016,Djupvika,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-09
-24435,Fluarholmen Ø,ISA,Surveillance,FOR-2022-12-22-2465,FOR-2022-12-22-2465,False,False,True,2024-10-29T00:00:00+01:00,,2026-04-09
-24535,Storholmen,ISA,Surveillance,FOR-2025-03-13-432,FOR-2025-03-13-432,False,False,True,2025-08-25T00:00:00+02:00,,2026-04-09
-24695,Årnes,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-09
-24735,Gulholmen,ISA,Surveillance,FOR-2024-06-18-1044,FOR-2024-06-18-1044,False,False,True,2024-11-01T00:00:00+01:00,,2026-04-09
-25235,Humulen,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-09
-25315,Skogsøya,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-25835,Flatøyflu,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-09
-26295,Langøy,ISA,Protection,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-09
-26295,Langøy,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-09
-26535,Jamnungen,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-26775,Fjølværet Ø,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-26835,Pålskjæra,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-27176,Jennskarbotn,ISA,Surveillance,FOR-2025-06-12-1010,FOR-2025-06-12-1010,False,False,True,2026-01-27T00:00:00+01:00,,2026-04-09
-28636,Rataren,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-28636,Rataren,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-29016,Båfjordstranda,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-09
-29276,Rongøy,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-09
-29336,Trælsøyosen,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-09
-29356,Smineset N,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-09
-29876,Flotaren,ISA,Surveillance,FOR-2023-10-20-1674,FOR-2023-10-20-1674,False,False,True,2024-07-08T00:00:00+02:00,,2026-04-09
-29876,Flotaren,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-09
-30036,Jørstadskjera,ISA,Surveillance,FOR-2023-04-03-479,FOR-2023-04-03-479,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-09
-30137,Edøya II,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-09
-30196,Ådnekvamme,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-09
-30297,Krabbholmen,ISA,Surveillance,FOR-2023-09-28-1600,FOR-2023-09-28-1600,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-09
-30757,Skog,ISA,Surveillance,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,False,True,2025-06-25T00:00:00+02:00,,2026-04-09
-30837,Torangskjeret,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-09
-30997,Skrubbholmen,ISA,Protection,FOR-2026-03-17-416,FOR-2026-03-17-416,False,False,True,2026-03-17T00:00:00+01:00,,2026-04-09
-30997,Skrubbholmen,ISA,Surveillance,FOR-2026-03-17-416,FOR-2026-03-17-416,False,False,True,2026-03-17T00:00:00+01:00,,2026-04-09
-31038,Buarøy,ISA,Surveillance,FOR-2023-08-18-1335,FOR-2023-08-18-1335,False,False,True,2024-07-28T00:00:00+02:00,,2026-04-09
-31157,Fiksneset,ISA,Surveillance,FOR-2023-08-18-1335,FOR-2023-08-18-1335,False,False,True,2024-07-28T00:00:00+02:00,,2026-04-09
-31338,Storskjeret,ISA,Surveillance,FOR-2025-06-05-949,FOR-2025-06-05-949,False,False,True,2025-11-12T00:00:00+01:00,,2026-04-09
-31357,Geitryggen,ISA,Protection,FOR-2026-03-17-416,FOR-2026-03-17-416,False,True,True,2026-03-17T00:00:00+01:00,,2026-04-09
-31357,Geitryggen,ISA,Surveillance,FOR-2026-03-17-416,FOR-2026-03-17-416,False,True,True,2026-03-17T00:00:00+01:00,,2026-04-09
-31398,Finnvik,ISA,Surveillance,FOR-2025-11-20-2312,FOR-2025-11-20-2312,False,False,True,2026-01-08T00:00:00+01:00,,2026-04-09
-31557,Valøyan,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,True,True,2026-03-31T00:00:00+02:00,,2026-04-09
-31557,Valøyan,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,True,True,2026-03-31T00:00:00+02:00,,2026-04-09
-31877,Barøya,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-09
-31958,Ratvika,ISA,Surveillance,FOR-2023-09-28-1600,FOR-2023-09-28-1600,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-09
-31997,Kårvik I,ISA,Surveillance,FOR-2025-11-20-2312,FOR-2025-11-20-2312,False,False,True,2026-01-08T00:00:00+01:00,,2026-04-09
-32497,Daljorda,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-09
-32677,Espnestaren,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-09
-32697,Steilo,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-09
-33117,Djupvik,ISA,Protection,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-08-11T00:00:00+02:00,,2026-04-09
-33117,Djupvik,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-09
-33158,Kjærsundet V,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-09
-33477,Reinsnesøya,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-09
-33557,Langskjæra II,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-33737,Olausskjæret,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-33737,Olausskjæret,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-34137,Skårliodden,ISA,Protection,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,False,True,2025-06-25T00:00:00+02:00,,2026-04-09
-34137,Skårliodden,ISA,Surveillance,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,False,True,2025-06-25T00:00:00+02:00,,2026-04-09
-34277,Mikkelsøya,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-09
-34637,Langholmen N,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-09
-34657,Laberget,ISA,Protection,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-09
-34657,Laberget,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-09
-34817,Eime,ISA,Surveillance,FOR-2022-12-22-2465,FOR-2022-12-22-2465,False,False,True,2024-10-29T00:00:00+01:00,,2026-04-09
-34837,Dolmøy,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-09
-34857,Salatskjæra,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-35157,Rongøyna II,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-09
-35177,Rongøyna III,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-09
-35237,Durmålsvika,ISA,Surveillance,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,False,True,2025-06-25T00:00:00+02:00,,2026-04-09
-35377,Kveitskjeret,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-35377,Kveitskjeret,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-35437,Skarvøya,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-09
-35477,Makrellskjæret,ISA,Surveillance,FOR-2023-10-20-1674,FOR-2023-10-20-1674,False,False,True,2024-07-08T00:00:00+02:00,,2026-04-09
-35477,Makrellskjæret,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-09
-35557,Flatøyflu II,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-09
-35577,Flatøyflu III,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-09
-35677,Brottøy,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-09
-36118,Bremnesøya,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-09
-36257,Mjønes,ISA,Surveillance,FOR-2025-10-31-2158,FOR-2025-10-31-2158,False,False,True,2025-10-31T00:00:00+01:00,,2026-04-09
-36597,Oksskardvika,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-09
-36877,Munkskjæra,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-36877,Munkskjæra,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-37197,Ruggstein,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-37197,Ruggstein,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-37357,Brensholmen,ISA,Surveillance,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,False,True,2025-06-25T00:00:00+02:00,,2026-04-09
-37417,Kallholmen,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-37417,Kallholmen,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-37437,Fagerholmen,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-09
-38457,Trollsøy,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-09
-38477,Solskjeløya,ISA,Surveillance,FOR-2025-06-05-949,FOR-2025-06-05-949,False,False,True,2025-11-12T00:00:00+01:00,,2026-04-09
-38537,Synstøy-Bremøya,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-38597,Langøy Sør,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-38697,Takflua,ISA,Surveillance,FOR-2023-09-28-1600,FOR-2023-09-28-1600,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-09
-38737,Flatøysundet,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-09
-38777,Hallarvik,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-09
-38797,Oløya N,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-38837,Brakstadsundet,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-09
-38837,Brakstadsundet,ISA,Surveillance,FOR-2026-03-17-416,FOR-2026-03-17-416,False,False,True,2026-03-17T00:00:00+01:00,,2026-04-09
-39537,Gyltneset,ISA,Protection,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,True,True,2025-12-09T00:00:00+01:00,,2026-04-09
-39537,Gyltneset,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,True,True,2025-12-09T00:00:00+01:00,,2026-04-09
-39957,Flatøyan,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-40037,Smedholmen,ISA,Surveillance,FOR-2023-04-03-479,FOR-2023-04-03-479,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-09
-45010,Holand,ISA,Protection,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,True,True,2025-08-11T00:00:00+02:00,,2026-04-09
-45010,Holand,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,True,True,2025-06-27T00:00:00+02:00,,2026-04-09
-45032,Ytterflesa,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-09
-45038,Hundaneset,ISA,Surveillance,FOR-2023-07-10-1266,FOR-2023-07-10-1266,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-09
-45061,Flatskjæret II,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-09
-45088,Liereid,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-09
-45095,Havsteinsundet,ISA,Protection,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-09
-45095,Havsteinsundet,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-09
-45117,Knubben,ISA,Surveillance,FOR-2023-10-20-1674,FOR-2023-10-20-1674,False,False,True,2024-07-08T00:00:00+02:00,,2026-04-09
-45117,Knubben,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-09
-45185,Laukøya,ISA,Protection,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-09
-45185,Laukøya,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-09
-45195,Lamholmen,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-09
-45219,Sigerfjorden,ISA,Protection,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-08-11T00:00:00+02:00,,2026-04-09
-45219,Sigerfjorden,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-09
-45238,Krutøya,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-09
-45244,Hingsskjæret,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-45244,Hingsskjæret,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-45252,Hoholmen,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-09
-45280,Klovningan,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-09
-45283,Kvannholman,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-09
+10086,Rekeviki,ISA,Protection,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-10
+10086,Rekeviki,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-10
+10232,Mannbruholmen,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+10232,Mannbruholmen,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+10262,Lille Kvitholmen,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-10
+10281,Store Kvalfjord,ISA,Surveillance,FOR-2024-06-18-1045,FOR-2024-06-18-1045,False,False,True,2025-03-28T00:00:00+01:00,,2026-04-10
+10300,Hillersvik,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-10
+10398,Seiskjæra,ISA,Surveillance,FOR-2025-06-06-982,FOR-2025-06-06-982,False,False,True,2025-08-23T00:00:00+02:00,,2026-04-10
+10409,Kjelneset,ISA,Protection,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,True,True,2025-12-09T00:00:00+01:00,,2026-04-10
+10409,Kjelneset,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,True,True,2025-12-09T00:00:00+01:00,,2026-04-10
+10504,Vedvika,ISA,Surveillance,FOR-2025-06-12-1010,FOR-2025-06-12-1010,False,False,True,2026-01-27T00:00:00+01:00,,2026-04-10
+10505,Dragnes,ISA,Surveillance,FOR-2025-06-30-1391,FOR-2025-06-30-1391,False,False,True,2025-10-16T00:00:00+02:00,,2026-04-10
+10505,Dragnes,ISA,Surveillance,FOR-2024-06-07-927,FOR-2024-06-07-927,False,False,True,2024-09-23T00:00:00+02:00,,2026-04-10
+10560,Kårvik,ISA,Surveillance,FOR-2025-11-20-2312,FOR-2025-11-20-2312,False,False,True,2026-01-08T00:00:00+01:00,,2026-04-10
+10757,Dåvøya,ISA,Protection,FOR-2025-10-31-2158,FOR-2025-10-31-2158,False,True,True,2025-10-31T00:00:00+01:00,,2026-04-10
+10757,Dåvøya,ISA,Surveillance,FOR-2025-10-31-2158,FOR-2025-10-31-2158,False,True,True,2025-10-31T00:00:00+01:00,,2026-04-10
+10759,Karanes,ISA,Protection,FOR-2025-10-31-2158,FOR-2025-10-31-2158,False,False,True,2025-10-31T00:00:00+01:00,,2026-04-10
+10759,Karanes,ISA,Surveillance,FOR-2025-10-31-2158,FOR-2025-10-31-2158,False,False,True,2025-10-31T00:00:00+01:00,,2026-04-10
+10768,Indre Kårvik I,ISA,Surveillance,FOR-2025-11-20-2312,FOR-2025-11-20-2312,False,False,True,2026-01-08T00:00:00+01:00,,2026-04-10
+10769,Indre Kårvik II,ISA,Surveillance,FOR-2025-11-20-2312,FOR-2025-11-20-2312,False,False,True,2026-01-08T00:00:00+01:00,,2026-04-10
+10790,Olderfjord,ISA,Surveillance,FOR-2025-03-13-432,FOR-2025-03-13-432,False,False,True,2025-08-25T00:00:00+02:00,,2026-04-10
+10839,Store Kufjord,ISA,Surveillance,FOR-2024-06-18-1045,FOR-2024-06-18-1045,False,False,True,2025-03-28T00:00:00+01:00,,2026-04-10
+10840,Lille Kufjord,ISA,Surveillance,FOR-2024-06-18-1045,FOR-2024-06-18-1045,False,False,True,2025-03-28T00:00:00+01:00,,2026-04-10
+11230,Børøya Slaktemerd,ISA,Surveillance,FOR-2024-06-07-927,FOR-2024-06-07-927,False,False,True,2024-09-23T00:00:00+02:00,,2026-04-10
+11251,Hysjorda,ISA,Surveillance,FOR-2025-06-12-1010,FOR-2025-06-12-1010,False,False,True,2026-01-27T00:00:00+01:00,,2026-04-10
+11252,Vindhammeren,ISA,Surveillance,FOR-2025-06-12-1010,FOR-2025-06-12-1010,False,False,True,2026-01-27T00:00:00+01:00,,2026-04-10
+11405,Innerbrokløysa,ISA,Protection,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,True,True,2025-08-11T00:00:00+02:00,,2026-04-10
+11405,Innerbrokløysa,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,True,True,2025-06-27T00:00:00+02:00,,2026-04-10
+11410,Litleøya,ISA,Protection,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-08-11T00:00:00+02:00,,2026-04-10
+11410,Litleøya,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-10
+11413,Sandan Sø,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-10
+11433,Finnvika S,ISA,Protection,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,False,True,2025-06-25T00:00:00+02:00,,2026-04-10
+11433,Finnvika S,ISA,Surveillance,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,False,True,2025-06-25T00:00:00+02:00,,2026-04-10
+11454,Buøyflæet,ISA,Surveillance,FOR-2022-12-22-2465,FOR-2022-12-22-2465,False,False,True,2024-10-29T00:00:00+01:00,,2026-04-10
+11459,Grøningen,ISA,Surveillance,FOR-2022-12-22-2465,FOR-2022-12-22-2465,False,False,True,2024-10-29T00:00:00+01:00,,2026-04-10
+11511,Hattasteinen,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-10
+11513,Andal,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-10
+11559,Grimsholmen,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-10
+11574,Breivik S,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-10
+11644,Duesund,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-10
+11667,Gardskråneset,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-10
+11741,Ternholmen Nø,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-10
+11743,Ivarsholmen  Ø,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-10
+11744,Ivarsholmen V,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-10
+11758,Sauøy,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-10
+11763,Knappen,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-10
+11913,Kjeahola,ISA,Surveillance,FOR-2023-04-03-479,FOR-2023-04-03-479,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-10
+11913,Kjeahola,ISA,Surveillance,FOR-2023-07-10-1266,FOR-2023-07-10-1266,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-10
+12370,Måøydraga,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-10
+12371,Kalvøya,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-10
+12380,Langøya Kvaløya,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+12385,Lyngvær Ø II,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+12385,Lyngvær Ø II,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+12394,Ørnøya,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+12406,Rauodden,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-10
+12407,Flesa,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-10
+12435,Grøttingsøy,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+12449,Tennøya,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+12449,Tennøya,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+12624,Feøyvika,ISA,Protection,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-10
+12624,Feøyvika,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-10
+12625,Bjørgan,ISA,Protection,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,True,True,2025-12-12T00:00:00+01:00,,2026-04-10
+12625,Bjørgan,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,True,True,2025-12-12T00:00:00+01:00,,2026-04-10
+12633,Lyrnesset,ISA,Surveillance,FOR-2023-10-20-1674,FOR-2023-10-20-1674,False,False,True,2024-07-08T00:00:00+02:00,,2026-04-10
+12633,Lyrnesset,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-10
+12678,Vedøya,ISA,Protection,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-10
+12678,Vedøya,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-10
+12712,Slokkholmen Ø,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-10
+12714,Gjerdinga,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-10
+12730,Båfjorden,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-10
+13035,Sauaneset I,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-10
+13204,Storøy Ø,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-10
+13225,Kilaneset,ISA,Surveillance,FOR-2023-07-10-1266,FOR-2023-07-10-1266,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-10
+13566,Storskrebukti,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-10
+13581,Ramstadholmen,ISA,Protection,FOR-2026-03-17-416,FOR-2026-03-17-416,False,False,True,2026-03-17T00:00:00+01:00,,2026-04-10
+13581,Ramstadholmen,ISA,Surveillance,FOR-2026-03-17-416,FOR-2026-03-17-416,False,False,True,2026-03-17T00:00:00+01:00,,2026-04-10
+13594,Trolløya Sv,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-10
+13595,Kuneset,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-10
+13699,Leirvika,ISA,Protection,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-10
+13699,Leirvika,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-10
+13704,Vikane,ISA,Protection,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-10
+13704,Vikane,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-10
+13782,Helgeneshamn,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-10
+13936,Sørvika,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-10
+14041,Edøya,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-10
+14042,Kattholmen,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+14136,Hestholmen Ø,ISA,Surveillance,FOR-2022-12-22-2465,FOR-2022-12-22-2465,False,False,True,2024-10-29T00:00:00+01:00,,2026-04-10
+14435,Ljøsøy N,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-10
+14495,Nordeimsøyna,ISA,Surveillance,FOR-2023-04-03-479,FOR-2023-04-03-479,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-10
+14678,Uvåg,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-10
+14679,Hellfjorden,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-10
+16497,Langevågen,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-10
+16516,Kåregrunnane Ø,ISA,Surveillance,FOR-2022-12-22-2465,FOR-2022-12-22-2465,False,False,True,2024-10-29T00:00:00+01:00,,2026-04-10
+17077,Trettevik,ISA,Protection,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,True,True,2025-06-25T00:00:00+02:00,,2026-04-10
+17077,Trettevik,ISA,Surveillance,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,True,True,2025-06-25T00:00:00+02:00,,2026-04-10
+18595,Ytterhavna,ISA,Protection,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-08-11T00:00:00+02:00,,2026-04-10
+18595,Ytterhavna,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-10
+18755,Klungset,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-10
+19355,Låva,ISA,Surveillance,FOR-2023-04-03-479,FOR-2023-04-03-479,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-10
+19356,Kvalrosskjæret,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-10
+19635,Skatleia,ISA,Surveillance,FOR-2025-06-12-1010,FOR-2025-06-12-1010,False,False,True,2026-01-27T00:00:00+01:00,,2026-04-10
+19655,Ospeneset,ISA,Protection,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,True,True,2025-12-24T00:00:00+01:00,,2026-04-10
+19655,Ospeneset,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,True,True,2025-12-24T00:00:00+01:00,,2026-04-10
+19977,Jektholmen,ISA,Surveillance,FOR-2023-09-28-1600,FOR-2023-09-28-1600,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-10
+20115,Skjerholmen N,ISA,Surveillance,FOR-2023-08-18-1335,FOR-2023-08-18-1335,False,False,True,2024-07-28T00:00:00+02:00,,2026-04-10
+20536,Bonstranda,ISA,Protection,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-10
+20536,Bonstranda,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-10
+20559,Langskjæra,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+20595,Kyrholmen S,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-10
+20776,Storoksen,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-10
+20797,Urdvika,ISA,Protection,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-10
+20797,Urdvika,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-10
+21415,Dyrholmen,ISA,Surveillance,FOR-2023-04-03-479,FOR-2023-04-03-479,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-10
+21495,Risværgalten,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-10
+21676,Kråkholmen,ISA,Protection,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-10
+21676,Kråkholmen,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-10
+22435,Stretarneset,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-10
+22776,Indrepollen,ISA,Surveillance,FOR-2024-06-18-1044,FOR-2024-06-18-1044,False,False,True,2024-11-01T00:00:00+01:00,,2026-04-10
+23016,Djupvika,ISA,Protection,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-10
+23016,Djupvika,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-10
+24435,Fluarholmen Ø,ISA,Surveillance,FOR-2022-12-22-2465,FOR-2022-12-22-2465,False,False,True,2024-10-29T00:00:00+01:00,,2026-04-10
+24535,Storholmen,ISA,Surveillance,FOR-2025-03-13-432,FOR-2025-03-13-432,False,False,True,2025-08-25T00:00:00+02:00,,2026-04-10
+24695,Årnes,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-10
+24735,Gulholmen,ISA,Surveillance,FOR-2024-06-18-1044,FOR-2024-06-18-1044,False,False,True,2024-11-01T00:00:00+01:00,,2026-04-10
+25235,Humulen,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-10
+25315,Skogsøya,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+25835,Flatøyflu,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-10
+26295,Langøy,ISA,Protection,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-10
+26295,Langøy,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-10
+26535,Jamnungen,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+26775,Fjølværet Ø,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+26835,Pålskjæra,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+27176,Jennskarbotn,ISA,Surveillance,FOR-2025-06-12-1010,FOR-2025-06-12-1010,False,False,True,2026-01-27T00:00:00+01:00,,2026-04-10
+28636,Rataren,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+28636,Rataren,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+29016,Båfjordstranda,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-10
+29276,Rongøy,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-10
+29336,Trælsøyosen,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-10
+29356,Smineset N,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-10
+29876,Flotaren,ISA,Surveillance,FOR-2023-10-20-1674,FOR-2023-10-20-1674,False,False,True,2024-07-08T00:00:00+02:00,,2026-04-10
+29876,Flotaren,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-10
+30036,Jørstadskjera,ISA,Surveillance,FOR-2023-04-03-479,FOR-2023-04-03-479,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-10
+30137,Edøya II,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-10
+30196,Ådnekvamme,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-10
+30297,Krabbholmen,ISA,Surveillance,FOR-2023-09-28-1600,FOR-2023-09-28-1600,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-10
+30757,Skog,ISA,Surveillance,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,False,True,2025-06-25T00:00:00+02:00,,2026-04-10
+30837,Torangskjeret,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-10
+30997,Skrubbholmen,ISA,Protection,FOR-2026-03-17-416,FOR-2026-03-17-416,False,False,True,2026-03-17T00:00:00+01:00,,2026-04-10
+30997,Skrubbholmen,ISA,Surveillance,FOR-2026-03-17-416,FOR-2026-03-17-416,False,False,True,2026-03-17T00:00:00+01:00,,2026-04-10
+31038,Buarøy,ISA,Surveillance,FOR-2023-08-18-1335,FOR-2023-08-18-1335,False,False,True,2024-07-28T00:00:00+02:00,,2026-04-10
+31157,Fiksneset,ISA,Surveillance,FOR-2023-08-18-1335,FOR-2023-08-18-1335,False,False,True,2024-07-28T00:00:00+02:00,,2026-04-10
+31338,Storskjeret,ISA,Surveillance,FOR-2025-06-05-949,FOR-2025-06-05-949,False,False,True,2025-11-12T00:00:00+01:00,,2026-04-10
+31357,Geitryggen,ISA,Protection,FOR-2026-03-17-416,FOR-2026-03-17-416,False,True,True,2026-03-17T00:00:00+01:00,,2026-04-10
+31357,Geitryggen,ISA,Surveillance,FOR-2026-03-17-416,FOR-2026-03-17-416,False,True,True,2026-03-17T00:00:00+01:00,,2026-04-10
+31398,Finnvik,ISA,Surveillance,FOR-2025-11-20-2312,FOR-2025-11-20-2312,False,False,True,2026-01-08T00:00:00+01:00,,2026-04-10
+31557,Valøyan,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,True,True,2026-03-31T00:00:00+02:00,,2026-04-10
+31557,Valøyan,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,True,True,2026-03-31T00:00:00+02:00,,2026-04-10
+31877,Barøya,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-10
+31958,Ratvika,ISA,Surveillance,FOR-2023-09-28-1600,FOR-2023-09-28-1600,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-10
+31997,Kårvik I,ISA,Surveillance,FOR-2025-11-20-2312,FOR-2025-11-20-2312,False,False,True,2026-01-08T00:00:00+01:00,,2026-04-10
+32497,Daljorda,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-10
+32677,Espnestaren,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-10
+32697,Steilo,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-10
+33117,Djupvik,ISA,Protection,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-08-11T00:00:00+02:00,,2026-04-10
+33117,Djupvik,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-10
+33158,Kjærsundet V,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-10
+33477,Reinsnesøya,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-10
+33557,Langskjæra II,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+33737,Olausskjæret,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+33737,Olausskjæret,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+34137,Skårliodden,ISA,Protection,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,False,True,2025-06-25T00:00:00+02:00,,2026-04-10
+34137,Skårliodden,ISA,Surveillance,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,False,True,2025-06-25T00:00:00+02:00,,2026-04-10
+34277,Mikkelsøya,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-10
+34637,Langholmen N,ISA,Surveillance,FOR-2025-06-11-999,FOR-2025-06-11-999,False,False,True,2025-10-24T00:00:00+02:00,,2026-04-10
+34657,Laberget,ISA,Protection,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-10
+34657,Laberget,ISA,Surveillance,FOR-2025-12-24-2915,FOR-2025-12-24-2915,False,False,True,2025-12-24T00:00:00+01:00,,2026-04-10
+34817,Eime,ISA,Surveillance,FOR-2022-12-22-2465,FOR-2022-12-22-2465,False,False,True,2024-10-29T00:00:00+01:00,,2026-04-10
+34837,Dolmøy,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-10
+34857,Salatskjæra,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+35157,Rongøyna II,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-10
+35177,Rongøyna III,ISA,Surveillance,FOR-2024-07-05-1576,FOR-2024-07-05-1576,False,False,True,2025-03-11T00:00:00+01:00,,2026-04-10
+35237,Durmålsvika,ISA,Surveillance,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,False,True,2025-06-25T00:00:00+02:00,,2026-04-10
+35377,Kveitskjeret,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+35377,Kveitskjeret,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+35437,Skarvøya,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-10
+35477,Makrellskjæret,ISA,Surveillance,FOR-2023-10-20-1674,FOR-2023-10-20-1674,False,False,True,2024-07-08T00:00:00+02:00,,2026-04-10
+35477,Makrellskjæret,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-10
+35557,Flatøyflu II,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-10
+35577,Flatøyflu III,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-10
+35677,Brottøy,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-10
+36118,Bremnesøya,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-10
+36257,Mjønes,ISA,Surveillance,FOR-2025-10-31-2158,FOR-2025-10-31-2158,False,False,True,2025-10-31T00:00:00+01:00,,2026-04-10
+36597,Oksskardvika,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-10
+36877,Munkskjæra,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+36877,Munkskjæra,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+37197,Ruggstein,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+37197,Ruggstein,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+37357,Brensholmen,ISA,Surveillance,FOR-2025-06-25-1306,FOR-2025-06-25-1306,False,False,True,2025-06-25T00:00:00+02:00,,2026-04-10
+37417,Kallholmen,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+37417,Kallholmen,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+37437,Fagerholmen,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-10
+38457,Trollsøy,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-10
+38477,Solskjeløya,ISA,Surveillance,FOR-2025-06-05-949,FOR-2025-06-05-949,False,False,True,2025-11-12T00:00:00+01:00,,2026-04-10
+38537,Synstøy-Bremøya,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+38597,Langøy Sør,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+38697,Takflua,ISA,Surveillance,FOR-2023-09-28-1600,FOR-2023-09-28-1600,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-10
+38737,Flatøysundet,ISA,Surveillance,FOR-2023-08-10-1316,FOR-2023-08-10-1316,False,False,True,2024-08-28T00:00:00+02:00,,2026-04-10
+38777,Hallarvik,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-10
+38797,Oløya N,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+38837,Brakstadsundet,ISA,Surveillance,FOR-2026-03-17-416,FOR-2026-03-17-416,False,False,True,2026-03-17T00:00:00+01:00,,2026-04-10
+38837,Brakstadsundet,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,False,True,2025-12-09T00:00:00+01:00,,2026-04-10
+39537,Gyltneset,ISA,Protection,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,True,True,2025-12-09T00:00:00+01:00,,2026-04-10
+39537,Gyltneset,ISA,Surveillance,FOR-2025-10-16-2053,FOR-2025-10-16-2053,False,True,True,2025-12-09T00:00:00+01:00,,2026-04-10
+39957,Flatøyan,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+40037,Smedholmen,ISA,Surveillance,FOR-2023-04-03-479,FOR-2023-04-03-479,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-10
+45010,Holand,ISA,Protection,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,True,True,2025-08-11T00:00:00+02:00,,2026-04-10
+45010,Holand,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,True,True,2025-06-27T00:00:00+02:00,,2026-04-10
+45032,Ytterflesa,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-10
+45038,Hundaneset,ISA,Surveillance,FOR-2023-07-10-1266,FOR-2023-07-10-1266,False,False,True,2024-06-05T00:00:00+02:00,,2026-04-10
+45061,Flatskjæret II,ISA,Surveillance,FOR-2025-06-27-1351,FOR-2025-06-27-1351,False,False,True,2025-11-20T00:00:00+01:00,,2026-04-10
+45088,Liereid,ISA,Surveillance,FOR-2024-05-23-819,FOR-2024-05-23-819,False,False,True,2024-11-02T00:00:00+01:00,,2026-04-10
+45095,Havsteinsundet,ISA,Protection,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-10
+45095,Havsteinsundet,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-10
+45117,Knubben,ISA,Surveillance,FOR-2023-10-20-1674,FOR-2023-10-20-1674,False,False,True,2024-07-08T00:00:00+02:00,,2026-04-10
+45117,Knubben,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-10
+45185,Laukøya,ISA,Protection,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-10
+45185,Laukøya,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-10
+45195,Lamholmen,ISA,Surveillance,FOR-2025-12-12-2578,FOR-2025-12-12-2578,False,False,True,2025-12-12T00:00:00+01:00,,2026-04-10
+45219,Sigerfjorden,ISA,Protection,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-08-11T00:00:00+02:00,,2026-04-10
+45219,Sigerfjorden,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-10
+45238,Krutøya,ISA,Surveillance,FOR-2022-05-24-911,FOR-2022-05-24-911,False,False,True,2025-08-21T00:00:00+02:00,,2026-04-10
+45244,Hingsskjæret,ISA,Protection,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+45244,Hingsskjæret,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+45252,Hoholmen,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-10
+45280,Klovningan,ISA,Surveillance,Avventer publisering i Lovdata,Avventer publisering i Lovdata,False,False,True,2026-03-31T00:00:00+02:00,,2026-04-10
+45283,Kvannholman,ISA,Surveillance,FOR-2025-06-27-1350,FOR-2025-06-27-1350,False,False,True,2025-06-27T00:00:00+02:00,,2026-04-10
