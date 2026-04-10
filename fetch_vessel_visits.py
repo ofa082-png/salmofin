@@ -4,15 +4,15 @@ import requests
 import os
 
 # ── Config ────────────────────────────────────────────────────────────────
-FISKERIDIR_URL = "https://api.fiskeridir.no/pub-aqua/api/v1/sites"
-BW_TOKEN_URL   = "https://id.barentswatch.no/connect/token"
-BW_API_URL     = "https://www.barentswatch.no/bwapi"
-SUPABASE_URL   = os.environ["SUPABASE_URL"]
-SUPABASE_KEY   = os.environ["SUPABASE_KEY"]
-BW_CLIENT_ID   = os.environ["BW_CLIENT_ID"]
+FISKERIDIR_URL   = "https://api.fiskeridir.no/pub-aqua/api/v1/sites"
+BW_TOKEN_URL     = "https://id.barentswatch.no/connect/token"
+BW_API_URL       = "https://www.barentswatch.no/bwapi"
+SUPABASE_URL     = os.environ["SUPABASE_URL"]
+SUPABASE_KEY     = os.environ["SUPABASE_KEY"]
+BW_CLIENT_ID     = os.environ["BW_CLIENT_ID"]
 BW_CLIENT_SECRET = os.environ["BW_CLIENT_SECRET"]
-YEAR           = 2026
-MAX_CONCURRENT = 20
+YEAR             = 2026
+MAX_CONCURRENT   = 20
 
 # ── Step 1: Get Barentswatch token ────────────────────────────────────────
 def get_bw_token():
@@ -58,20 +58,20 @@ async def fetch_locality(session, locality_no, token, semaphore):
                 for week in data:
                     for visit in (week.get("vesselVisits") or []):
                         rows.append({
-                            "locality_no":                       week.get("localityNo"),
-                            "year":                              week.get("year"),
-                            "week":                              week.get("week"),
-                            "week_is_analyzed":                  week.get("weekIsAnalyzed"),
-                            "analysis_based_on_surface_area":    week.get("anlysisBasedOnSurfaceArea"),
-                            "mmsi":                              visit.get("mmsi"),
-                            "vessel_name":                       visit.get("vesselName"),
-                            "start_time":                        visit.get("startTime"),
-                            "stop_time":                         visit.get("stopTime"),
-                            "ship_type":                         visit.get("shipType"),
-                            "is_wellboat":                       visit.get("isWellboat"),
-                            "ship_register_vessel_type":         visit.get("shipRegisterVesselType"),
-                            "ship_register_vessel_type_name_no": visit.get("shipRegisterVesselTypeNameNo"),
-                            "ship_register_vessel_type_name_en": visit.get("shipRegisterVesselTypeNameEn"),
+                            "localityNo":                   week.get("localityNo"),
+                            "year":                         week.get("year"),
+                            "week":                         week.get("week"),
+                            "weekIsAnalyzed":               week.get("weekIsAnalyzed"),
+                            "anlysisBasedOnSurfaceArea":    week.get("anlysisBasedOnSurfaceArea"),
+                            "mmsi":                         visit.get("mmsi"),
+                            "vesselName":                   visit.get("vesselName"),
+                            "startTime":                    visit.get("startTime"),
+                            "stopTime":                     visit.get("stopTime"),
+                            "shipType":                     visit.get("shipType"),
+                            "isWellboat":                   visit.get("isWellboat"),
+                            "shipRegisterVesselType":       visit.get("shipRegisterVesselType"),
+                            "shipRegisterVesselTypeNameNo": visit.get("shipRegisterVesselTypeNameNo"),
+                            "shipRegisterVesselTypeNameEn": visit.get("shipRegisterVesselTypeNameEn"),
                         })
                 return rows
         except Exception as e:
@@ -103,8 +103,8 @@ def upsert_to_supabase(rows):
 # ── Main ──────────────────────────────────────────────────────────────────
 async def main():
     print(f"Starting vessel visit fetch for {YEAR}...")
-    token      = get_bw_token()
-    localities = get_localities()
+    token       = get_bw_token()
+    localities  = get_localities()
     loc_numbers = [loc["siteNr"] for loc in localities if loc.get("siteNr")]
     print(f"Fetching vessel visits for {len(loc_numbers)} localities...")
 
