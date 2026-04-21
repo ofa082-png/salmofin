@@ -42,7 +42,7 @@ def fetch_treatments(token: str) -> pd.DataFrame:
     print("Fetching treatments CSV from Barentswatch...")
     resp = requests.get(API_URL, headers={"Authorization": f"Bearer {token}"})
     resp.raise_for_status()
-    df = pd.read_csv(io.StringIO(resp.text), encoding="utf-8", low_memory=False)
+    df = pd.read_csv(io.BytesIO(resp.content), encoding="latin-1", low_memory=False)
     print(f"  Fetched {len(df):,} rows")
     print(f"  Raw columns: {list(df.columns)}")
     return df
@@ -54,7 +54,9 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
         df.columns
         .str.strip()
         .str.lower()
+        .str.replace("\ufeff", "", regex=False)
         .str.replace("å", "aa", regex=False)
+        .str.replace("Å", "aa", regex=False)
         .str.replace("ø", "o", regex=False)
         .str.replace("æ", "ae", regex=False)
         .str.replace(" ", "_", regex=False)
