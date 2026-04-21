@@ -42,37 +42,45 @@ def fetch_treatments(token: str) -> pd.DataFrame:
     print("Fetching treatments CSV from Barentswatch...")
     resp = requests.get(API_URL, headers={"Authorization": f"Bearer {token}"})
     resp.raise_for_status()
-    df = pd.read_csv(io.BytesIO(resp.content), encoding="latin-1", low_memory=False)
+    # The API returns UTF-8 with BOM - decode manually to handle it cleanly
+    content = resp.content.decode("utf-8-sig")
+    df = pd.read_csv(io.StringIO(content), low_memory=False)
     print(f"  Fetched {len(df):,} rows")
     print(f"  Raw columns: {list(df.columns)}")
     return df
 
 
-def clean(df: pd.DataFrame) -> pd.DataFrame:
-    # Normalize column names: lowercase, strip spaces, replace special chars
-    df.columns = (
-        df.columns
-        .str.strip()
-        .str.lower()
-        .str.replace("\ufeff", "", regex=False)
-        .str.replace("å", "aa", regex=False)
-        .str.replace("Å", "aa", regex=False)
-        .str.replace("ø", "o", regex=False)
-        .str.replace("æ", "ae", regex=False)
-        .str.replace(" ", "_", regex=False)
-        .str.replace("-", "_", regex=False)
-    )
-    print(f"  Normalized columns: {list(df.columns)}")
-
-    # Rename specific columns to match our target schema
+def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    # Map raw Norwegian column names to clean snake_case
     rename_map = {
-        "aar": "aar",           # år → aar (already normalized above)
-        "type_behandling": "type_behandling",
-        "produksjonsomraadeid": "produksjonsomraade_id",
-        "antall_merder": "antall_merder",
-        "artsid": "arts_id",
+        "Uke": "uke",
+        "År": "aar",
+        "Lokalitetsnummer": "lokalitetsnummer",
+        "Lokalitetsnavn": "lokalitetsnavn",
+        "Tiltak": "tiltak",
+        "Type behandling": "type_behandling",
+        "Virkestoff": "virkestoff",
+        "ArtsId": "arts_id",
+        "Rensefisk": "rensefisk",
+        "Antall": "antall",
+        "Omfang": "omfang",
+        "Kommunenummer": "kommunenummer",
+        "Kommune": "kommune",
+        "Fylkesnummer": "fylkesnummer",
+        "Fylke": "fylke",
+        "Lat": "lat",
+        "Lon": "lon",
+        "ProduksjonsområdeId": "produksjonsomraade_id",
+        "Produksjonsområde": "produksjonsomraade",
+        "Antall merder": "antall_merder",
     }
     df = df.rename(columns=rename_map)
+    print(f"  Normalized columns: {list(df.columns)}")
+    return df
+
+
+def clean(df: pd.DataFrame) -> pd.DataFrame:
+    df = normalize_columns(df)
 
     # Add AarUke
     df["aaruke"] = df["aar"].astype(str) + "-" + df["uke"].astype(str)
@@ -94,6 +102,7 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
 
+    print(f"  Final shape: {df.shape}")
     return df
 
 
