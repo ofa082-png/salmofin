@@ -133,7 +133,12 @@ def insert_to_supabase(df: pd.DataFrame) -> None:
     total = len(df)
     inserted = 0
 
-    records = df.where(pd.notnull(df), None).to_dict(orient="records")
+    import math
+    df = df.replace([float("inf"), float("-inf")], None)
+    df = df.where(pd.notnull(df), None)
+    records = df.to_dict(orient="records")
+    # Replace any remaining nan/inf that slipped through
+    records = [{k: (None if isinstance(v, float) and (math.isnan(v) or math.isinf(v)) else v) for k, v in row.items()} for row in records]
 
     for i in range(0, total, batch_size):
         batch = records[i:i + batch_size]
