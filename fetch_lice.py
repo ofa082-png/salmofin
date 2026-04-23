@@ -2,7 +2,7 @@
 fetch_lice.py
 -------------
 Fetches 2026 salmon lice data from Barentswatch bulk CSV endpoint,
-adds sequential index per Lokalitetsnummer (continuing from historical),
+adds sequential index per Lokalitetsnummer,
 then truncates and reloads Supabase table.
 
 Environment variables required:
@@ -26,6 +26,14 @@ SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 BW_CLIENT_ID = os.environ["BW_CLIENT_ID"]
 BW_CLIENT_SECRET = os.environ["BW_CLIENT_SECRET"]
 TABLE = "lice"
+
+KEEP_COLS = [
+    "Uke", "År", "Lokalitetsnummer",
+    "Voksne_hunnlus", "Lus_i_bevegelige_stadier", "Fastsittende_lus",
+    "Trolig_uten_fisk", "Har_telt_lakselus",
+    "Lusegrense_uke", "Over_lusegrense_uke", "Sjotemperatur",
+    "ProduksjonsomraadeId", "Index"
+]
 
 
 def get_token() -> str:
@@ -58,45 +66,31 @@ def fetch_lice(token: str) -> pd.DataFrame:
 
 
 def clean(df: pd.DataFrame) -> pd.DataFrame:
-    # Explicit rename — fix special chars for Supabase compatibility
+    # Rename columns
     rename_map = {
         "År": "År",
         "Uke": "Uke",
         "Lokalitetsnummer": "Lokalitetsnummer",
-        "Lokalitetsnavn": "Lokalitetsnavn",
         "Voksne hunnlus": "Voksne_hunnlus",
         "Lus i bevegelige stadier": "Lus_i_bevegelige_stadier",
         "Fastsittende lus": "Fastsittende_lus",
         "Trolig uten fisk": "Trolig_uten_fisk",
         "Har telt lakselus": "Har_telt_lakselus",
-        "Kommunenummer": "Kommunenummer",
-        "Kommune": "Kommune",
-        "Fylkesnummer": "Fylkesnummer",
-        "Fylke": "Fylke",
-        "Lat": "Lat",
-        "Lon": "Lon",
         "Lusegrense uke": "Lusegrense_uke",
         "Over lusegrense uke": "Over_lusegrense_uke",
         "Sjøtemperatur": "Sjotemperatur",
         "ProduksjonsområdeId": "ProduksjonsomraadeId",
-        "Produksjonsområde": "Produksjonsomraade",
     }
     df = df.rename(columns=rename_map)
-    print(f"  Renamed columns: {list(df.columns)}")
 
-    # Add AarUke
-    df["AarUke"] = df["År"].astype(str) + "-" + df["Uke"].astype(str).str.zfill(2)
-
-    # Sort by Lokalitetsnummer then AarUke for correct indexing
+    # Sort and add index per locality
     df = df.sort_values(["Lokalitetsnummer", "År", "Uke"]).reset_index(drop=True)
-
-    # Add sequential index per locality (1-based)
     df["Index"] = df.groupby("Lokalitetsnummer").cumcount() + 1
 
-    # Fix numeric columns — handle comma decimals
+    # Fix numeric columns
     numeric_cols = [
         "Voksne_hunnlus", "Lus_i_bevegelige_stadier", "Fastsittende_lus",
-        "Lusegrense_uke", "Sjotemperatur", "Lat", "Lon"
+        "Lusegrense_uke", "Sjotemperatur"
     ]
     for col in numeric_cols:
         if col in df.columns:
@@ -106,9 +100,16 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
             )
 
     # Fix integer columns
-    for col in ["Lokalitetsnummer", "År", "Uke", "Kommunenummer", "Fylkesnummer", "ProduksjonsomraadeId"]:
+    for col in ["Lokalitetsnummer", "År", "Uke", "ProduksjonsomraadeId"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+
+    # Keep only needed columns
+    cols = [c for c in KEEP_COLS if c in df.columns]
+    missing = [c for c in KEEP_COLS if c not in df.columns]
+    if missing:
+        print(f"  WARNING - columns not found: {missing}")
+    df = df[cols]
 
     print(f"  Final shape: {df.shape}")
     return df
