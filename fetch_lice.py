@@ -86,7 +86,7 @@ def get_max_index_per_locality(headers: dict) -> dict:
     offset = 0
     batch_size = 1000
     while True:
-        query_url = f"{url}?select=Lokalitetsnummer,Index&%C3%85r=lt.{CURRENT_YEAR}&limit={batch_size}&offset={offset}"
+        query_url = f"{url}?select=Lokalitetsnummer,%C3%85r,Index&%C3%85r=lt.{CURRENT_YEAR}&limit={batch_size}&offset={offset}"
         resp = requests.get(query_url, headers=headers)
         resp.raise_for_status()
         batch = resp.json()
@@ -102,6 +102,8 @@ def get_max_index_per_locality(headers: dict) -> dict:
         return {}
 
     df = pd.DataFrame(all_rows)
+    # Filter to only historical years in pandas
+    df = df[df["År"] < CURRENT_YEAR] if "År" in df.columns else df
     max_index = df.groupby("Lokalitetsnummer")["Index"].max().to_dict()
     print(f"  Found max index for {len(max_index):,} localities.")
     return max_index
@@ -126,7 +128,7 @@ def clean_and_index(df: pd.DataFrame, max_index: dict) -> pd.DataFrame:
         group["Index"] = range(start, start + len(group))
         return group
 
-    df = df.groupby("Lokalitetsnummer", group_keys=False).apply(assign_index)
+    df = df.groupby("Lokalitetsnummer", group_keys=False).apply(assign_index).reset_index()
 
     # Fix numeric columns
     for col in ["Voksne_hunnlus", "Lus_i_bevegelige_stadier", "Fastsittende_lus",
