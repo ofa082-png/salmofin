@@ -1,9 +1,9 @@
 """
 fetch_lice.py
 -------------
-Fetches 2026 salmon lice data from Barentswatch bulk CSV endpoint,
-adds sequential index per Lokalitetsnummer,
-then truncates and reloads Supabase table.
+Daily script — fetches current year lice data from Barentswatch,
+continues Index from historical data already in Supabase,
+deletes current year rows and reinserts fresh data.
 
 Environment variables required:
     BW_CLIENT_ID      - Barentswatch client ID
@@ -17,8 +17,8 @@ import io
 import math
 import requests
 import pandas as pd
+from datetime import datetime
 
-# --- Config ---
 TOKEN_URL = "https://id.barentswatch.no/connect/token"
 API_URL = "https://www.barentswatch.no/bwapi/v1/geodata/download/fishhealth"
 SUPABASE_URL = os.environ["SUPABASE_URL"]
@@ -26,6 +26,7 @@ SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 BW_CLIENT_ID = os.environ["BW_CLIENT_ID"]
 BW_CLIENT_SECRET = os.environ["BW_CLIENT_SECRET"]
 TABLE = "lice"
+CURRENT_YEAR = datetime.now().year
 
 KEEP_COLS = [
     "Uke", "År", "Lokalitetsnummer",
@@ -48,24 +49,57 @@ def get_token() -> str:
 
 
 def fetch_lice(token: str) -> pd.DataFrame:
-    print("Fetching lice CSV from Barentswatch...")
+    print(f"Fetching {CURRENT_YEAR} lice data from Barentswatch...")
     resp = requests.get(API_URL, params={
         "reporttype": "lice",
         "filetype": "csv",
-        "fromyear": "2026",
+        "fromyear": str(CURRENT_YEAR),
         "fromweek": "1",
-        "toyear": "2026",
+        "toyear": str(CURRENT_YEAR),
         "toweek": "53"
     }, headers={"Authorization": f"Bearer {token}"})
     resp.raise_for_status()
     content = resp.content.decode("utf-8-sig")
     df = pd.read_csv(io.StringIO(content), low_memory=False)
     print(f"  Fetched {len(df):,} rows")
-    print(f"  Raw columns: {list(df.columns)}")
     return df
 
 
-def clean(df: pd.DataFrame) -> pd.DataFrame:
+def get_max_index_per_locality(headers: dict) -> dict:
+    """Get max Index per locality from historical data (År < current year)."""
+    print("Fetching max historical index per locality from Supabase...")
+    url = f"{SUPABASE_URL}/rest/v1/{TABLE}"
+    
+    all_rows = []
+    offset = 0
+    batch_size = 1000
+    while True:
+        resp = requests.get(url, headers=headers, params={
+            "select": "Lokalitetsnummer,Index",
+            "År": f"lt.{CURRENT_YEAR}",
+            "limit": batch_size,
+            "offset": offset
+        })
+        resp.raise_for_status()
+        batch = resp.json()
+        if not batch:
+            break
+        all_rows.extend(batch)
+        offset += batch_size
+        if len(batch) < batch_size:
+            break
+
+    if not all_rows:
+        print("  No historical data found — index will start at 1 for all localities.")
+        return {}
+
+    df = pd.DataFrame(all_rows)
+    max_index = df.groupby("Lokalitetsnummer")["Index"].max().to_dict()
+    print(f"  Found max index for {len(max_index):,} localities.")
+    return max_index
+
+
+def clean_and_index(df: pd.DataFrame, max_index: dict) -> pd.DataFrame:
     # Rename columns
     rename_map = {
         "År": "År",
@@ -83,16 +117,21 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
     }
     df = df.rename(columns=rename_map)
 
-    # Sort and add index per locality
+    # Sort for correct indexing
     df = df.sort_values(["Lokalitetsnummer", "År", "Uke"]).reset_index(drop=True)
-    df["Index"] = df.groupby("Lokalitetsnummer").cumcount() + 1
+
+    # Assign index continuing from historical max
+    def assign_index(group):
+        lok = group["Lokalitetsnummer"].iloc[0]
+        start = max_index.get(lok, 0) + 1
+        group["Index"] = range(start, start + len(group))
+        return group
+
+    df = df.groupby("Lokalitetsnummer", group_keys=False).apply(assign_index)
 
     # Fix numeric columns
-    numeric_cols = [
-        "Voksne_hunnlus", "Lus_i_bevegelige_stadier", "Fastsittende_lus",
-        "Lusegrense_uke", "Sjotemperatur"
-    ]
-    for col in numeric_cols:
+    for col in ["Voksne_hunnlus", "Lus_i_bevegelige_stadier", "Fastsittende_lus",
+                "Lusegrense_uke", "Sjotemperatur"]:
         if col in df.columns:
             df[col] = pd.to_numeric(
                 df[col].astype(str).str.replace(",", ".", regex=False).str.strip(),
@@ -106,37 +145,26 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
 
     # Keep only needed columns
     cols = [c for c in KEEP_COLS if c in df.columns]
-    missing = [c for c in KEEP_COLS if c not in df.columns]
-    if missing:
-        print(f"  WARNING - columns not found: {missing}")
     df = df[cols]
 
     print(f"  Final shape: {df.shape}")
+    print(f"  Index range: {df['Index'].min()} - {df['Index'].max()}")
     return df
 
 
-def truncate_table(headers: dict) -> None:
-    print(f"Truncating table '{TABLE}'...")
+def delete_current_year(headers: dict) -> None:
+    print(f"Deleting {CURRENT_YEAR} rows from Supabase...")
     resp = requests.delete(
         f"{SUPABASE_URL}/rest/v1/{TABLE}",
         headers={**headers, "Prefer": "return=minimal"},
-        params={"Lokalitetsnummer": "gte.0"}
+        params={"År": f"eq.{CURRENT_YEAR}"}
     )
     if resp.status_code not in (200, 204):
-        raise Exception(f"Truncate failed: {resp.status_code} {resp.text}")
-    print("  Table truncated.")
+        raise Exception(f"Delete failed: {resp.status_code} {resp.text}")
+    print(f"  Deleted.")
 
 
-def insert_to_supabase(df: pd.DataFrame) -> None:
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal"
-    }
-
-    truncate_table(headers)
-
+def insert_to_supabase(df: pd.DataFrame, headers: dict) -> None:
     url = f"{SUPABASE_URL}/rest/v1/{TABLE}"
     batch_size = 1000
     total = len(df)
@@ -151,6 +179,7 @@ def insert_to_supabase(df: pd.DataFrame) -> None:
         for row in records
     ]
 
+    print(f"Inserting {total:,} rows...")
     for i in range(0, total, batch_size):
         batch = records[i:i + batch_size]
         resp = requests.post(url, json=batch, headers=headers)
@@ -160,11 +189,20 @@ def insert_to_supabase(df: pd.DataFrame) -> None:
             inserted += len(batch)
             print(f"  Inserted {inserted:,}/{total:,}")
 
-    print(f"Done. {inserted:,} rows inserted to Supabase table '{TABLE}'")
+    print(f"Done. {inserted:,} rows inserted.")
 
 
 if __name__ == "__main__":
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+    }
+
     token = get_token()
     df = fetch_lice(token)
-    df = clean(df)
-    insert_to_supabase(df)
+    max_index = get_max_index_per_locality(headers)
+    df = clean_and_index(df, max_index)
+    delete_current_year(headers)
+    insert_to_supabase(df, headers)
