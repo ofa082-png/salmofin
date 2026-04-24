@@ -86,12 +86,8 @@ def get_max_index_per_locality(headers: dict) -> dict:
     offset = 0
     batch_size = 1000
     while True:
-        resp = requests.get(url, headers=headers, params={
-            "select": "Lokalitetsnummer,Index",
-            "%C3%85r": f"lt.{CURRENT_YEAR}",  # URL encoded 'År'
-            "limit": batch_size,
-            "offset": offset
-        })
+        query_url = f"{url}?select=Lokalitetsnummer,Index&%C3%85r=lt.{CURRENT_YEAR}&limit={batch_size}&offset={offset}"
+        resp = requests.get(query_url, headers=headers)
         resp.raise_for_status()
         batch = resp.json()
         if not batch:
@@ -160,10 +156,10 @@ def clean_and_index(df: pd.DataFrame, max_index: dict) -> pd.DataFrame:
 
 def delete_current_year(headers: dict) -> None:
     print(f"Deleting {CURRENT_YEAR} rows from Supabase...")
+    delete_url = f"{SUPABASE_URL}/rest/v1/{TABLE}?%C3%85r=eq.{CURRENT_YEAR}"
     resp = requests.delete(
-        f"{SUPABASE_URL}/rest/v1/{TABLE}",
-        headers={**headers, "Prefer": "return=minimal"},
-        params={"%C3%85r": f"eq.{CURRENT_YEAR}"}  # URL encoded 'År'
+        delete_url,
+        headers={**headers, "Prefer": "return=minimal"}
     )
     if resp.status_code not in (200, 204):
         raise Exception(f"Delete failed: {resp.status_code} {resp.text}")
