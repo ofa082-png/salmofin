@@ -120,15 +120,13 @@ def clean_and_index(df: pd.DataFrame, max_index: dict) -> pd.DataFrame:
     # Sort for correct indexing
     df = df.sort_values(["Lokalitetsnummer", "År", "Uke"]).reset_index(drop=True)
 
-    # Assign index continuing from historical max
-    def assign_index(group):
-        lok = group.name  # group.name is the groupby key (Lokalitetsnummer)
-        start = int(max_index.get(lok, 0)) + 1
-        group = group.copy()
-        group["Index"] = range(start, start + len(group))
-        return group
-
-    df = df.groupby("Lokalitetsnummer", group_keys=False).apply(assign_index).reset_index()
+    # Assign index continuing from historical max using cumcount
+    df["Index"] = df.groupby("Lokalitetsnummer").cumcount() + 1
+    # Add offset from historical max per locality
+    df["Index"] = df.apply(
+        lambda r: r["Index"] + int(max_index.get(r["Lokalitetsnummer"], 0)),
+        axis=1
+    )
 
     # Fix numeric columns
     for col in ["Voksne_hunnlus", "Lus_i_bevegelige_stadier", "Fastsittende_lus",
