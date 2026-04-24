@@ -4,12 +4,6 @@ fetch_lice.py
 Daily script — fetches current year lice data from Barentswatch,
 continues Index from historical data already in Supabase,
 deletes current year rows and reinserts fresh data.
-
-Environment variables required:
-    BW_CLIENT_ID      - Barentswatch client ID
-    BW_CLIENT_SECRET  - Barentswatch client secret
-    SUPABASE_URL      - Supabase project URL
-    SUPABASE_KEY      - Supabase service role key
 """
 
 import os
@@ -35,6 +29,22 @@ KEEP_COLS = [
     "Lusegrense_uke", "Over_lusegrense_uke", "Sjotemperatur",
     "ProduksjonsomraadeId", "Index"
 ]
+
+# Column name mapping — source → target
+RENAME_MAP = {
+    "År": "År",
+    "Uke": "Uke",
+    "Lokalitetsnummer": "Lokalitetsnummer",
+    "Voksne hunnlus": "Voksne_hunnlus",
+    "Lus i bevegelige stadier": "Lus_i_bevegelige_stadier",
+    "Fastsittende lus": "Fastsittende_lus",
+    "Trolig uten fisk": "Trolig_uten_fisk",
+    "Har telt lakselus": "Har_telt_lakselus",
+    "Lusegrense uke": "Lusegrense_uke",
+    "Over lusegrense uke": "Over_lusegrense_uke",
+    "Sjøtemperatur": "Sjotemperatur",
+    "ProduksjonsområdeId": "ProduksjonsomraadeId",
+}
 
 
 def get_token() -> str:
@@ -62,21 +72,23 @@ def fetch_lice(token: str) -> pd.DataFrame:
     content = resp.content.decode("utf-8-sig")
     df = pd.read_csv(io.StringIO(content), low_memory=False)
     print(f"  Fetched {len(df):,} rows")
+    print(f"  Raw columns: {list(df.columns)}")
     return df
 
 
 def get_max_index_per_locality(headers: dict) -> dict:
     """Get max Index per locality from historical data (År < current year)."""
     print("Fetching max historical index per locality from Supabase...")
+    # Use URL encoding for Norwegian character in column name
     url = f"{SUPABASE_URL}/rest/v1/{TABLE}"
-    
+
     all_rows = []
     offset = 0
     batch_size = 1000
     while True:
         resp = requests.get(url, headers=headers, params={
             "select": "Lokalitetsnummer,Index",
-            "År": f"lt.{CURRENT_YEAR}",
+            "%C3%85r": f"lt.{CURRENT_YEAR}",  # URL encoded 'År'
             "limit": batch_size,
             "offset": offset
         })
@@ -90,7 +102,7 @@ def get_max_index_per_locality(headers: dict) -> dict:
             break
 
     if not all_rows:
-        print("  No historical data found — index will start at 1 for all localities.")
+        print("  No historical data found — index will start at 1.")
         return {}
 
     df = pd.DataFrame(all_rows)
@@ -100,22 +112,12 @@ def get_max_index_per_locality(headers: dict) -> dict:
 
 
 def clean_and_index(df: pd.DataFrame, max_index: dict) -> pd.DataFrame:
-    # Rename columns
-    rename_map = {
-        "År": "År",
-        "Uke": "Uke",
-        "Lokalitetsnummer": "Lokalitetsnummer",
-        "Voksne hunnlus": "Voksne_hunnlus",
-        "Lus i bevegelige stadier": "Lus_i_bevegelige_stadier",
-        "Fastsittende lus": "Fastsittende_lus",
-        "Trolig uten fisk": "Trolig_uten_fisk",
-        "Har telt lakselus": "Har_telt_lakselus",
-        "Lusegrense uke": "Lusegrense_uke",
-        "Over lusegrense uke": "Over_lusegrense_uke",
-        "Sjøtemperatur": "Sjotemperatur",
-        "ProduksjonsområdeId": "ProduksjonsomraadeId",
-    }
-    df = df.rename(columns=rename_map)
+    # Normalize column names first to handle any encoding issues
+    df.columns = df.columns.str.strip()
+    print(f"  Columns after strip: {list(df.columns)}")
+
+    df = df.rename(columns=RENAME_MAP)
+    print(f"  Columns after rename: {list(df.columns)}")
 
     # Sort for correct indexing
     df = df.sort_values(["Lokalitetsnummer", "År", "Uke"]).reset_index(drop=True)
@@ -123,7 +125,8 @@ def clean_and_index(df: pd.DataFrame, max_index: dict) -> pd.DataFrame:
     # Assign index continuing from historical max
     def assign_index(group):
         lok = group["Lokalitetsnummer"].iloc[0]
-        start = max_index.get(lok, 0) + 1
+        start = int(max_index.get(lok, 0)) + 1
+        group = group.copy()
         group["Index"] = range(start, start + len(group))
         return group
 
@@ -145,6 +148,9 @@ def clean_and_index(df: pd.DataFrame, max_index: dict) -> pd.DataFrame:
 
     # Keep only needed columns
     cols = [c for c in KEEP_COLS if c in df.columns]
+    missing = [c for c in KEEP_COLS if c not in df.columns]
+    if missing:
+        print(f"  WARNING - columns not found: {missing}")
     df = df[cols]
 
     print(f"  Final shape: {df.shape}")
@@ -157,11 +163,11 @@ def delete_current_year(headers: dict) -> None:
     resp = requests.delete(
         f"{SUPABASE_URL}/rest/v1/{TABLE}",
         headers={**headers, "Prefer": "return=minimal"},
-        params={"År": f"eq.{CURRENT_YEAR}"}
+        params={"%C3%85r": f"eq.{CURRENT_YEAR}"}  # URL encoded 'År'
     )
     if resp.status_code not in (200, 204):
         raise Exception(f"Delete failed: {resp.status_code} {resp.text}")
-    print(f"  Deleted.")
+    print("  Deleted.")
 
 
 def insert_to_supabase(df: pd.DataFrame, headers: dict) -> None:
