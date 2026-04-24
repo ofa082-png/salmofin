@@ -82,33 +82,44 @@ def get_max_index_per_locality(headers: dict) -> dict:
     # Use URL encoding for Norwegian character in column name
     url = f"{SUPABASE_URL}/rest/v1/{TABLE}"
 
-    all_rows = []
-    offset = 0
-    batch_size = 1000
-    while True:
-        query_url = f"{url}?select=Lokalitetsnummer,%C3%85r,Index&%C3%85r=lt.{CURRENT_YEAR}&limit={batch_size}&offset={offset}"
-        resp = requests.get(query_url, headers=headers)
-        resp.raise_for_status()
-        batch = resp.json()
-        if not batch:
-            break
-        all_rows.extend(batch)
-        offset += batch_size
-        if len(batch) < batch_size:
-            break
+    # Use Supabase aggregation to get max Index per locality directly
+    # This avoids paginating through all 783k rows
+    query_url = f"{url}?select=Lokalitetsnummer,Index.max()&%C3%85r=lt.{CURRENT_YEAR}&limit=10000"
+    resp = requests.get(query_url, headers=headers)
+    
+    if resp.status_code != 200:
+        print(f"  Aggregation query failed ({resp.status_code}), falling back to pagination...")
+        # Fallback: paginate through all rows
+        all_rows = []
+        offset = 0
+        batch_size = 1000
+        while True:
+            q = f"{url}?select=Lokalitetsnummer,Index&%C3%85r=lt.{CURRENT_YEAR}&limit={batch_size}&offset={offset}"
+            r = requests.get(q, headers=headers)
+            r.raise_for_status()
+            batch = r.json()
+            if not batch:
+                break
+            all_rows.extend(batch)
+            offset += batch_size
+            if len(batch) < batch_size:
+                break
+        if not all_rows:
+            print("  No historical data found — index will start at 1.")
+            return {}
+        df = pd.DataFrame(all_rows)
+        max_index = df.groupby("Lokalitetsnummer")["Index"].max().to_dict()
+    else:
+        rows = resp.json()
+        if not rows:
+            print("  No historical data found — index will start at 1.")
+            return {}
+        df = pd.DataFrame(rows)
+        print(f"  Aggregation response columns: {list(df.columns)}")
+        # Column might be named 'max' or 'Index'
+        index_col = [c for c in df.columns if c != "Lokalitetsnummer"][0]
+        max_index = df.set_index("Lokalitetsnummer")[index_col].to_dict()
 
-    if not all_rows:
-        print("  No historical data found — index will start at 1.")
-        return {}
-
-    df = pd.DataFrame(all_rows)
-    print(f"  Total rows fetched from Supabase: {len(df):,}")
-    print(f"  Supabase response columns: {list(df.columns)}")
-    # Filter to only historical years in pandas
-    year_col = [c for c in df.columns if "r" in c.lower() and len(c) == 2]
-    if year_col:
-        df = df[df[year_col[0]] < CURRENT_YEAR]
-    max_index = df.groupby("Lokalitetsnummer")["Index"].max().to_dict()
     print(f"  Found max index for {len(max_index):,} localities.")
     return max_index
 
