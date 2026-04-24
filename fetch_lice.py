@@ -102,8 +102,12 @@ def get_max_index_per_locality(headers: dict) -> dict:
         return {}
 
     df = pd.DataFrame(all_rows)
+    print(f"  Total rows fetched from Supabase: {len(df):,}")
+    print(f"  Supabase response columns: {list(df.columns)}")
     # Filter to only historical years in pandas
-    df = df[df["År"] < CURRENT_YEAR] if "År" in df.columns else df
+    year_col = [c for c in df.columns if "r" in c.lower() and len(c) == 2]
+    if year_col:
+        df = df[df[year_col[0]] < CURRENT_YEAR]
     max_index = df.groupby("Lokalitetsnummer")["Index"].max().to_dict()
     print(f"  Found max index for {len(max_index):,} localities.")
     return max_index
