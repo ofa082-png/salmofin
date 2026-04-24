@@ -120,7 +120,7 @@ def clean_and_index(df: pd.DataFrame, max_index: dict) -> pd.DataFrame:
 
     # Assign index continuing from historical max
     def assign_index(group):
-        lok = group["Lokalitetsnummer"].iloc[0]
+        lok = group.name  # group.name is the groupby key (Lokalitetsnummer)
         start = int(max_index.get(lok, 0)) + 1
         group = group.copy()
         group["Index"] = range(start, start + len(group))
