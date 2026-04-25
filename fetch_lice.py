@@ -83,7 +83,7 @@ def get_max_index_per_locality(headers: dict) -> dict:
     url = f"{SUPABASE_URL}/rest/v1/{TABLE}"
 
     # Call Supabase RPC function to get max index per locality
-    rpc_url = f"{SUPABASE_URL}/rest/v1/rpc/get_max_lice_index"
+    rpc_url = f"{SUPABASE_URL}/rest/v1/rpc/get_max_lice_index?limit=10000"
     resp = requests.post(rpc_url, headers=headers, json={})
     
     if resp.status_code != 200:
