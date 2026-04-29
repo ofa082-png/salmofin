@@ -3,6 +3,7 @@ fetch_lice.py
 -------------
 Daily script — fetches current year lice data from Barentswatch,
 continues Index from historical data already in Supabase,
+joins vessel visit counts per locality/week,
 deletes current year rows and reinserts fresh data.
 """
 
@@ -19,18 +20,20 @@ SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 BW_CLIENT_ID = os.environ["BW_CLIENT_ID"]
 BW_CLIENT_SECRET = os.environ["BW_CLIENT_SECRET"]
-TABLE = "lice"
+TABLE = "lice_test"
 CURRENT_YEAR = datetime.now().year
+
+VESSEL_CATEGORIES_URL = "https://raw.githubusercontent.com/ofa082-png/salmofin/main/vessel_categories.csv"
 
 KEEP_COLS = [
     "Uke", "År", "Lokalitetsnummer",
     "Voksne_hunnlus", "Lus_i_bevegelige_stadier", "Fastsittende_lus",
     "Trolig_uten_fisk", "Har_telt_lakselus",
     "Lusegrense_uke", "Over_lusegrense_uke", "Sjotemperatur",
-    "ProduksjonsomraadeId", "Index"
+    "ProduksjonsomraadeId", "Index",
+    "feedCarrier", "wellboat", "silage", "delicing", "processing", "visitDuration"
 ]
 
-# Column name mapping — source → target
 RENAME_MAP = {
     "År": "År",
     "Uke": "Uke",
@@ -72,52 +75,100 @@ def fetch_lice(token: str) -> pd.DataFrame:
     content = resp.content.decode("utf-8-sig")
     df = pd.read_csv(io.StringIO(content), low_memory=False)
     print(f"  Fetched {len(df):,} rows")
-    print(f"  Raw columns: {list(df.columns)}")
     return df
 
 
-def get_max_index_per_locality(headers: dict) -> dict:
-    """Get max Index per locality from historical data (År < current year)."""
-    print("Fetching max historical index per locality from Supabase...")
-    # Use URL encoding for Norwegian character in column name
-    url = f"{SUPABASE_URL}/rest/v1/{TABLE}"
+def fetch_vessels_from_supabase(headers: dict) -> pd.DataFrame:
+    print("Fetching vessel visits from Supabase...")
+    url = f"{SUPABASE_URL}/rest/v1/vessel_visits"
+    all_rows = []
+    offset = 0
+    batch_size = 10000
+    while True:
+        query_url = f"{url}?select=mmsi,localityNo,week,year,visitDuration&order=id.asc&limit={batch_size}&offset={offset}"
+        resp = requests.get(query_url, headers=headers)
+        resp.raise_for_status()
+        batch = resp.json()
+        if not batch:
+            break
+        all_rows.extend(batch)
+        offset += batch_size
+        if len(batch) < batch_size:
+            break
+    df = pd.DataFrame(all_rows)
+    print(f"  Fetched {len(df):,} vessel rows")
+    return df
 
-    # Call Supabase RPC function to get max index per locality
+
+def fetch_categories() -> pd.DataFrame:
+    print("Fetching vessel categories...")
+    resp = requests.get(VESSEL_CATEGORIES_URL)
+    resp.raise_for_status()
+    df = pd.read_csv(io.StringIO(resp.text), sep="\t")
+    # Keep only Type and MMSI
+    df = df[["Type", "MMSI"]].dropna(subset=["MMSI"])
+    df["MMSI"] = df["MMSI"].astype(str).str.strip()
+    print(f"  Loaded {len(df):,} vessel categories, types: {df['Type'].unique().tolist()}")
+    return df
+
+
+def build_vessel_aggregates(vessels: pd.DataFrame, categories: pd.DataFrame) -> pd.DataFrame:
+    print("Joining vessel categories and aggregating...")
+    vessels["mmsi"] = vessels["mmsi"].astype(str).str.strip()
+    merged = vessels.merge(categories, left_on="mmsi", right_on="MMSI", how="left")
+
+    agg = merged.groupby(["localityNo", "year", "week"]).agg(
+        feedCarrier=("Type", lambda x: (x == "Fish feed carrier").sum()),
+        wellboat=("Type", lambda x: (x == "Wellboat").sum()),
+        silage=("Type", lambda x: (x == "Silage").sum()),
+        delicing=("Type", lambda x: (x == "Delicing vessel").sum()),
+        processing=("Type", lambda x: (x == "Processing vessel").sum()),
+        visitDuration=("visitDuration", "sum")
+    ).reset_index()
+
+    print(f"  Aggregated to {len(agg):,} locality/week combinations")
+    return agg
+
+
+def get_max_index_per_locality(headers: dict) -> dict:
+    print("Fetching max historical index per locality from Supabase...")
     rpc_url = f"{SUPABASE_URL}/rest/v1/rpc/get_max_lice_index?limit=10000"
     resp = requests.post(rpc_url, headers=headers, json={})
-    
     if resp.status_code != 200:
         raise Exception(f"RPC call failed: {resp.status_code} {resp.text}")
-    
     rows = resp.json()
     if not rows:
         print("  No historical data found — index will start at 1.")
         return {}
-    
     df = pd.DataFrame(rows)
     max_index = df.set_index("Lokalitetsnummer")["max_index"].to_dict()
     print(f"  Found max index for {len(max_index):,} localities.")
     return max_index
 
 
-def clean_and_index(df: pd.DataFrame, max_index: dict) -> pd.DataFrame:
-    # Normalize column names first to handle any encoding issues
+def clean_and_index(df: pd.DataFrame, max_index: dict, vessel_agg: pd.DataFrame) -> pd.DataFrame:
     df.columns = df.columns.str.strip()
-    print(f"  Columns after strip: {list(df.columns)}")
-
     df = df.rename(columns=RENAME_MAP)
-    print(f"  Columns after rename: {list(df.columns)}")
 
     # Sort for correct indexing
     df = df.sort_values(["Lokalitetsnummer", "År", "Uke"]).reset_index(drop=True)
 
-    # Assign index continuing from historical max using cumcount
+    # Assign index continuing from historical max
     df["Index"] = df.groupby("Lokalitetsnummer").cumcount() + 1
-    # Add offset from historical max per locality
     df["Index"] = df.apply(
         lambda r: r["Index"] + int(max_index.get(r["Lokalitetsnummer"], 0)),
         axis=1
     )
+
+    # Join vessel aggregates
+    df = df.merge(
+        vessel_agg,
+        left_on=["Lokalitetsnummer", "År", "Uke"],
+        right_on=["localityNo", "year", "week"],
+        how="left"
+    )
+    # Drop duplicate join columns
+    df = df.drop(columns=["localityNo", "year", "week"], errors="ignore")
 
     # Fix numeric columns
     for col in ["Voksne_hunnlus", "Lus_i_bevegelige_stadier", "Fastsittende_lus",
@@ -129,7 +180,8 @@ def clean_and_index(df: pd.DataFrame, max_index: dict) -> pd.DataFrame:
             )
 
     # Fix integer columns
-    for col in ["Lokalitetsnummer", "År", "Uke", "ProduksjonsomraadeId"]:
+    for col in ["Lokalitetsnummer", "År", "Uke", "ProduksjonsomraadeId",
+                "feedCarrier", "wellboat", "silage", "delicing", "processing"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
 
@@ -148,10 +200,7 @@ def clean_and_index(df: pd.DataFrame, max_index: dict) -> pd.DataFrame:
 def delete_current_year(headers: dict) -> None:
     print(f"Deleting {CURRENT_YEAR} rows from Supabase...")
     delete_url = f"{SUPABASE_URL}/rest/v1/{TABLE}?%C3%85r=eq.{CURRENT_YEAR}"
-    resp = requests.delete(
-        delete_url,
-        headers={**headers, "Prefer": "return=minimal"}
-    )
+    resp = requests.delete(delete_url, headers={**headers, "Prefer": "return=minimal"})
     if resp.status_code not in (200, 204):
         raise Exception(f"Delete failed: {resp.status_code} {resp.text}")
     print("  Deleted.")
@@ -195,7 +244,10 @@ if __name__ == "__main__":
 
     token = get_token()
     df = fetch_lice(token)
+    vessels = fetch_vessels_from_supabase(headers)
+    categories = fetch_categories()
+    vessel_agg = build_vessel_aggregates(vessels, categories)
     max_index = get_max_index_per_locality(headers)
-    df = clean_and_index(df, max_index)
+    df = clean_and_index(df, max_index, vessel_agg)
     delete_current_year(headers)
     insert_to_supabase(df, headers)
