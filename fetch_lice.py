@@ -85,7 +85,7 @@ def fetch_vessels_from_supabase(headers: dict) -> pd.DataFrame:
     offset = 0
     batch_size = 10000
     while True:
-        query_url = f"{url}?select=mmsi,localityNo,week,year,visitDuration&order=id.asc&limit={batch_size}&offset={offset}"
+        query_url = f"{url}?select=mmsi,localityNo,week,year,startTime,stopTime&order=id.asc&limit={batch_size}&offset={offset}"
         resp = requests.get(query_url, headers=headers)
         resp.raise_for_status()
         batch = resp.json()
@@ -96,6 +96,12 @@ def fetch_vessels_from_supabase(headers: dict) -> pd.DataFrame:
         if len(batch) < batch_size:
             break
     df = pd.DataFrame(all_rows)
+    # Calculate visit duration in hours
+    df["visitDuration"] = (
+        pd.to_datetime(df["stopTime"], errors="coerce") - 
+        pd.to_datetime(df["startTime"], errors="coerce")
+    ).dt.total_seconds() / 3600
+    df["visitDuration"] = df["visitDuration"].clip(lower=0)
     print(f"  Fetched {len(df):,} vessel rows")
     return df
 
