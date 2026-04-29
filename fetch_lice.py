@@ -110,7 +110,7 @@ def fetch_categories() -> pd.DataFrame:
     print("Fetching vessel categories...")
     resp = requests.get(VESSEL_CATEGORIES_URL)
     resp.raise_for_status()
-    df = pd.read_csv(io.StringIO(resp.text), sep=None, engine="python")
+    df = pd.read_csv(io.StringIO(resp.content.decode("utf-8-sig")), sep=None, engine="python")
     print(f"  Raw columns: {list(df.columns)}")
     # Keep only Type and MMSI
     df = df[["Type", "MMSI"]].dropna(subset=["MMSI"])
