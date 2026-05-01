@@ -116,15 +116,17 @@ def fetch_categories() -> pd.DataFrame:
     print(f"  Raw columns: {list(df.columns)}")
     # Keep only Type and MMSI
     df = df[["Type", "MMSI"]].dropna(subset=["MMSI"])
-    df["MMSI"] = df["MMSI"].astype(str).str.strip()
+    df["MMSI"] = pd.to_numeric(df["MMSI"], errors="coerce").astype("Int64").astype(str).str.strip()
     df["Type"] = df["Type"].str.strip()
+    print(f"  Sample MMSI from categories: {df['MMSI'].head(3).tolist()}")
     print(f"  Loaded {len(df):,} vessel categories, types: {df['Type'].unique().tolist()}")
     return df
 
 
 def build_vessel_aggregates(vessels: pd.DataFrame, categories: pd.DataFrame) -> pd.DataFrame:
     print("Joining vessel categories and aggregating...")
-    vessels["mmsi"] = vessels["mmsi"].astype(str).str.strip()
+    vessels["mmsi"] = pd.to_numeric(vessels["mmsi"], errors="coerce").astype("Int64").astype(str).str.strip()
+    print(f"  Sample MMSI from vessels: {vessels['mmsi'].head(3).tolist()}")
     merged = vessels.merge(categories, left_on="mmsi", right_on="MMSI", how="left")
 
     agg = merged.groupby(["localityNo", "year", "week"]).agg(
