@@ -137,6 +137,8 @@ def build_vessel_aggregates(vessels: pd.DataFrame, categories: pd.DataFrame) -> 
     ).reset_index()
 
     print(f"  Aggregated to {len(agg):,} locality/week combinations")
+    print(f"  Agg columns: {list(agg.columns)}")
+    print(f"  Agg sample:\n{agg[agg['feedCarrier']>0].head(3).to_string()}")
     return agg
 
 
