@@ -103,6 +103,8 @@ def fetch_vessels_from_supabase(headers: dict) -> pd.DataFrame:
     ).dt.total_seconds() / 3600
     df["visitDuration"] = df["visitDuration"].clip(lower=0)
     print(f"  Fetched {len(df):,} vessel rows")
+    print(f"  Vessel columns: {list(df.columns)}")
+    print(f"  Vessel sample:\n{df.head(2).to_string()}")
     return df
 
 
@@ -115,6 +117,7 @@ def fetch_categories() -> pd.DataFrame:
     # Keep only Type and MMSI
     df = df[["Type", "MMSI"]].dropna(subset=["MMSI"])
     df["MMSI"] = df["MMSI"].astype(str).str.strip()
+    df["Type"] = df["Type"].str.strip()
     print(f"  Loaded {len(df):,} vessel categories, types: {df['Type'].unique().tolist()}")
     return df
 
