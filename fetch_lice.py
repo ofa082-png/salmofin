@@ -20,7 +20,7 @@ SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 BW_CLIENT_ID = os.environ["BW_CLIENT_ID"]
 BW_CLIENT_SECRET = os.environ["BW_CLIENT_SECRET"]
-TABLE = "lice_test"
+TABLE = "lice"
 CURRENT_YEAR = datetime.now().year
 
 VESSEL_CATEGORIES_URL = "https://raw.githubusercontent.com/ofa082-png/salmofin/main/vessel_categories.csv"
@@ -31,7 +31,7 @@ KEEP_COLS = [
     "Trolig_uten_fisk", "Har_telt_lakselus",
     "Lusegrense_uke", "Over_lusegrense_uke", "Sjotemperatur",
     "ProduksjonsomraadeId", "Index",
-    "feedCarrier", "wellboat", "silage", "delicing", "processing", "visitDuration"
+    "feedCarrier", "wellboat", "silage", "delicing", "processing"
 ]
 
 RENAME_MAP = {
@@ -103,8 +103,6 @@ def fetch_vessels_from_supabase(headers: dict) -> pd.DataFrame:
     ).dt.total_seconds() / 3600
     df["visitDuration"] = df["visitDuration"].clip(lower=0)
     print(f"  Fetched {len(df):,} vessel rows")
-    print(f"  Vessel columns: {list(df.columns)}")
-    print(f"  Vessel sample:\n{df.head(2).to_string()}")
     return df
 
 
@@ -118,7 +116,7 @@ def fetch_categories() -> pd.DataFrame:
     df = df[["Type", "MMSI"]].dropna(subset=["MMSI"])
     df["MMSI"] = pd.to_numeric(df["MMSI"], errors="coerce").astype("Int64").astype(str).str.strip()
     df["Type"] = df["Type"].str.strip()
-    print(f"  Sample MMSI from categories: {df['MMSI'].head(3).tolist()}")
+
     print(f"  Loaded {len(df):,} vessel categories, types: {df['Type'].unique().tolist()}")
     return df
 
@@ -126,7 +124,7 @@ def fetch_categories() -> pd.DataFrame:
 def build_vessel_aggregates(vessels: pd.DataFrame, categories: pd.DataFrame) -> pd.DataFrame:
     print("Joining vessel categories and aggregating...")
     vessels["mmsi"] = pd.to_numeric(vessels["mmsi"], errors="coerce").astype("Int64").astype(str).str.strip()
-    print(f"  Sample MMSI from vessels: {vessels['mmsi'].head(3).tolist()}")
+
     merged = vessels.merge(categories, left_on="mmsi", right_on="MMSI", how="left")
 
     agg = merged.groupby(["localityNo", "year", "week"]).agg(
@@ -135,12 +133,10 @@ def build_vessel_aggregates(vessels: pd.DataFrame, categories: pd.DataFrame) -> 
         silage=("Type", lambda x: (x == "Silage").sum()),
         delicing=("Type", lambda x: (x == "Delicing vessel").sum()),
         processing=("Type", lambda x: (x == "Processing vessel").sum()),
-        visitDuration=("visitDuration", "sum")
     ).reset_index()
 
     print(f"  Aggregated to {len(agg):,} locality/week combinations")
-    print(f"  Agg columns: {list(agg.columns)}")
-    print(f"  Agg sample:\n{agg[agg['feedCarrier']>0].head(3).to_string()}")
+
     return agg
 
 
