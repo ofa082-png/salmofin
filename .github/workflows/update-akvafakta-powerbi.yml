@@ -2,7 +2,7 @@ name: Update Akvafakta Power BI data
 
 on:
   schedule:
-    - cron: "15 5 * * 1"
+    - cron: "0 14 * * 3"
   workflow_dispatch:
 
 permissions:
