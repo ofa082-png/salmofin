@@ -1,36 +1,40 @@
 """
-test_jossnoya_v2.py
--------------------
-Uses the Barentswatch fishhealth vesseltrack API to detect
-wellboat and slaughter boat visits to Mowi Jøsnøya harvest plant.
+fetch_harvest_visits.py
+-----------------------
+Detects wellboat and slaughter boat visits to all Norwegian
+fish slaughterhouses using Barentswatch fishhealth API.
 
-Approach:
-1. Fetch all wellboats + slaughter boats from /vessels
-2. For each vessel, fetch vesseltrack for given year/week
-3. Run geofence check on track points against plant coordinates
-4. Log visits (entry/exit time, vessel name, type)
+Pipeline:
+1. Fetch all active slaughterhouses for the week (with coordinates)
+2. Fetch all wellboats + slaughter boats
+3. For each vessel, fetch week track
+4. Haversine check each ping against each plant
+5. Reconstruct visits (entry/exit) and filter short ones
+6. Upsert to Supabase
+
+Run weekly via GitHub Actions for the previous completed week.
 """
 
 import os
+import math
 import requests
 from math import cos, radians, sin, atan2, sqrt
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
+# --- Config ---
 TOKEN_URL = "https://id.barentswatch.no/connect/token"
-BASE_URL = "https://www.barentswatch.no/bwapi/v1/geodata/fishhealth"
+BASE_URL = "https://www.barentswatch.no/bwapi/v1/geodata"
+SUPABASE_URL = os.environ["SUPABASE_URL"]
+SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 BW_CLIENT_ID = os.environ["BW_CLIENT_ID"]
 BW_CLIENT_SECRET = os.environ["BW_CLIENT_SECRET"]
 
-# Mowi Jøsnøya harvest plant
-PLANTS = [
-    {"id": "mowi_jossnoya", "name": "Mowi Jøsnøya", "lat": 63.5085, "lon": 9.0719}
-]
-RADIUS_M = 1000
+RADIUS_M = 300          # meters around plant coordinate
+MIN_VISIT_HOURS = 1.0   # filter out short passbys
+TABLE = "harvest_plant_visits"
 
-# Query week — change these to test different weeks
-YEAR = 2026
-WEEK = 19  # week 19 = early May 2026
 
+# --- Auth ---
 
 def get_token() -> str:
     resp = requests.post(TOKEN_URL, data={
@@ -43,6 +47,8 @@ def get_token() -> str:
     return resp.json()["access_token"]
 
 
+# --- Helpers ---
+
 def haversine(lat1, lon1, lat2, lon2) -> float:
     """Returns distance in meters between two coordinates."""
     R = 6371000
@@ -53,10 +59,48 @@ def haversine(lat1, lon1, lat2, lon2) -> float:
     return R * 2 * atan2(sqrt(a), sqrt(1-a))
 
 
+def get_previous_week() -> tuple[int, int]:
+    """Returns (year, week) for the most recently completed ISO week."""
+    today = datetime.now(timezone.utc)
+    last_week = today - timedelta(weeks=1)
+    iso = last_week.isocalendar()
+    return iso.year, iso.week
+
+
+# --- Barentswatch API ---
+
+def get_slaughterhouses(token: str, year: int, week: int) -> list:
+    """Fetch all active fish slaughterhouses for a given week."""
+    resp = requests.get(
+        f"{BASE_URL}/fishslaughterhouses/{year}/{week}",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    resp.raise_for_status()
+    plants = resp.json()
+
+    # Parse coordinates from GeoJSON geometry
+    result = []
+    for p in plants:
+        coords = p.get("geometry", {}).get("coordinates", [])
+        if len(coords) < 2:
+            continue
+        result.append({
+            "id": p["id"],
+            "name": p.get("establishment", "Unknown"),
+            "company": p.get("company", "Unknown"),
+            "approval_number": p.get("approvalNumber", ""),
+            "lon": coords[0],  # GeoJSON is [lon, lat]
+            "lat": coords[1],
+        })
+
+    print(f"Found {len(result)} active slaughterhouses for {year}/W{week}")
+    return result
+
+
 def get_vessels(token: str) -> list:
     """Fetch all wellboats and slaughter boats."""
     resp = requests.get(
-        f"{BASE_URL}/vessels",
+        f"{BASE_URL}/fishhealth/vessels",
         headers={"Authorization": f"Bearer {token}"}
     )
     resp.raise_for_status()
@@ -67,21 +111,23 @@ def get_vessels(token: str) -> list:
 
 
 def get_vessel_track(token: str, mmsi: int, year: int, week: int) -> dict | None:
-    """Fetch vessel track for a given week."""
+    """Fetch vessel track for a given week. Returns None if no data."""
     resp = requests.get(
-        f"{BASE_URL}/vesseltrack/{mmsi}/{year}/{week}",
+        f"{BASE_URL}/fishhealth/vesseltrack/{mmsi}/{year}/{week}",
         headers={"Authorization": f"Bearer {token}"}
     )
     if resp.status_code == 204:
-        return None  # no data for this vessel/week
+        return None
     resp.raise_for_status()
     return resp.json()
 
 
-def check_plant_visits(track: dict, plants: list, radius_m: int) -> list:
+# --- Geofence logic ---
+
+def check_plant_visits(track: dict, plants: list, radius_m: int, min_hours: float) -> list:
     """
-    Check if any track points fall within radius of plant coordinates.
-    Returns list of visit events with entry/exit times.
+    Check track points against all plant geofences.
+    Returns completed visits filtered by minimum duration.
     """
     visits = []
 
@@ -89,50 +135,113 @@ def check_plant_visits(track: dict, plants: list, radius_m: int) -> list:
         if segment.get("isNoSignal"):
             continue
 
-        active_visit = None
+        # Track active visit per plant
+        active_visits = {}  # plant_id -> {entry_time, last_seen, plant}
 
         for point in segment.get("points", []):
             lat = point.get("lat")
             lon = point.get("lon")
             t = point.get("msgt")
 
-            if lat is None or lon is None:
+            if lat is None or lon is None or t is None:
                 continue
 
             for plant in plants:
                 dist = haversine(lat, lon, plant["lat"], plant["lon"])
+                plant_id = plant["id"]
 
                 if dist <= radius_m:
-                    if active_visit is None or active_visit["plant_id"] != plant["id"]:
-                        # Entry event
-                        active_visit = {
-                            "plant_id": plant["id"],
-                            "plant_name": plant["name"],
+                    if plant_id not in active_visits:
+                        active_visits[plant_id] = {
+                            "plant": plant,
                             "entry_time": t,
                             "last_seen": t
                         }
                     else:
-                        active_visit["last_seen"] = t
+                        active_visits[plant_id]["last_seen"] = t
                 else:
-                    if active_visit and active_visit["plant_id"] == plant["id"]:
-                        # Exit event — close the visit
-                        visits.append({**active_visit, "exit_time": active_visit["last_seen"]})
-                        active_visit = None
+                    if plant_id in active_visits:
+                        v = active_visits.pop(plant_id)
+                        visit = _close_visit(v, min_hours)
+                        if visit:
+                            visits.append(visit)
 
-        # Close any open visit at end of segment
-        if active_visit:
-            visits.append({**active_visit, "exit_time": active_visit["last_seen"]})
+        # Close any still-open visits at end of segment
+        for plant_id, v in active_visits.items():
+            visit = _close_visit(v, min_hours)
+            if visit:
+                visits.append(visit)
 
     return visits
 
 
-if __name__ == "__main__":
-    token = get_token()
-    print(f"Token OK\n")
+def _close_visit(v: dict, min_hours: float) -> dict | None:
+    """Close a visit and return it if it meets minimum duration."""
+    entry = datetime.fromisoformat(v["entry_time"].replace("Z", "+00:00"))
+    exit_ = datetime.fromisoformat(v["last_seen"].replace("Z", "+00:00"))
+    duration_hrs = (exit_ - entry).total_seconds() / 3600
 
+    if duration_hrs < min_hours:
+        return None
+
+    plant = v["plant"]
+    return {
+        "plant_id": plant["id"],
+        "plant_name": plant["name"],
+        "plant_company": plant["company"],
+        "approval_number": plant["approval_number"],
+        "entry_time": v["entry_time"],
+        "exit_time": v["last_seen"],
+        "duration_hrs": round(duration_hrs, 2),
+    }
+
+
+# --- Supabase ---
+
+def upsert_visits(visits: list, year: int, week: int) -> None:
+    """Upsert visit records to Supabase."""
+    if not visits:
+        print("No visits to insert.")
+        return
+
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+    }
+
+    url = f"{SUPABASE_URL}/rest/v1/{TABLE}"
+    batch_size = 500
+    total = len(visits)
+    inserted = 0
+
+    for i in range(0, total, batch_size):
+        batch = visits[i:i + batch_size]
+        resp = requests.post(url, json=batch, headers=headers)
+        if resp.status_code not in (200, 201):
+            print(f"  ERROR batch {i}: {resp.status_code} {resp.text[:200]}")
+        else:
+            inserted += len(batch)
+            print(f"  Upserted {inserted}/{total} visits")
+
+    print(f"Done. {inserted} visits upserted to '{TABLE}'")
+
+
+# --- Main ---
+
+if __name__ == "__main__":
+    year, week = get_previous_week()
+    print(f"Running for {year}/W{week}\n")
+
+    token = get_token()
+    print("Token OK\n")
+
+    plants = get_slaughterhouses(token, year, week)
     vessels = get_vessels(token)
 
     all_visits = []
+    processed = 0
 
     for vessel in vessels:
         mmsi = vessel["mmsi"]
@@ -140,23 +249,27 @@ if __name__ == "__main__":
         is_wellboat = vessel.get("isWellboat", False)
         is_slaughter = vessel.get("isSlaughterBoat", False)
 
-        track = get_vessel_track(token, mmsi, YEAR, WEEK)
+        track = get_vessel_track(token, mmsi, year, week)
         if not track:
             continue
 
-        visits = check_plant_visits(track, PLANTS, RADIUS_M)
+        visits = check_plant_visits(track, plants, RADIUS_M, MIN_VISIT_HOURS)
+
+        for v in visits:
+            v["mmsi"] = mmsi
+            v["vessel_name"] = name
+            v["is_wellboat"] = is_wellboat
+            v["is_slaughter_boat"] = is_slaughter
+            v["year"] = year
+            v["week"] = week
 
         if visits:
-            print(f"\n{'='*50}")
-            print(f"VESSEL: {name} (MMSI: {mmsi})")
-            print(f"  Wellboat: {is_wellboat} | SlaughterBoat: {is_slaughter}")
-            for v in visits:
-                print(f"  VISIT at {v['plant_name']}")
-                print(f"    Entry: {v['entry_time']}")
-                print(f"    Exit:  {v['exit_time']}")
+            print(f"  {name} ({mmsi}): {len(visits)} visit(s) detected")
             all_visits.extend(visits)
 
-    print(f"\n{'='*50}")
-    print(f"Total visits detected at harvest plants: {len(all_visits)}")
-    if not all_visits:
-        print("No visits detected — try a different week or check plant coordinates")
+        processed += 1
+        if processed % 25 == 0:
+            print(f"  ...{processed}/{len(vessels)} vessels processed")
+
+    print(f"\nTotal visits detected: {len(all_visits)}")
+    upsert_visits(all_visits, year, week)
