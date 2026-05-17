@@ -25,7 +25,7 @@ def get_token() -> str:
         "grant_type": "client_credentials",
         "client_id": BW_CLIENT_ID,
         "client_secret": BW_CLIENT_SECRET,
-        "scope": "ais"  # note: ais scope, not api
+        "scope": "api"  # note: ais scope, not api
     })
     resp.raise_for_status()
     return resp.json()["access_token"]
