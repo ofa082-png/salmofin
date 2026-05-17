@@ -25,7 +25,7 @@ BW_CLIENT_SECRET = os.environ["BW_CLIENT_SECRET"]
 PLANTS = [
     {"id": "mowi_jossnoya", "name": "Mowi Jøsnøya", "lat": 63.5085, "lon": 9.0719}
 ]
-RADIUS_M = 150
+RADIUS_M = 1000
 
 # Query week — change these to test different weeks
 YEAR = 2026
