@@ -16,9 +16,10 @@ jobs:
 
       - name: Install dependencies
         run: pip install requests
-
-      - name: Run test
-        env:
-          BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
-          BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
-        run: python test_jossnoya.py
+- name: Run test
+  env:
+    BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
+    BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
+    SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+    SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+  run: python test_jossnoya.py
