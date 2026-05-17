@@ -1,0 +1,24 @@
+name: Test Jøsnøya Geofence
+
+on:
+  workflow_dispatch:  # manual trigger button in GitHub UI
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run test
+        env:
+          BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
+          BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
+        run: python test_jossnoya.py
