@@ -81,9 +81,12 @@ def get_slaughterhouses(token: str, year: int, week: int) -> list:
     # Parse coordinates from GeoJSON geometry
     result = []
     for p in plants:
-        coords = p.get("geometry", {}).get("coordinates", [])
-        if len(coords) < 2:
-            continue
+    geometry = p.get("geometry")
+    if not geometry:
+        continue
+    coords = geometry.get("coordinates", [])
+    if len(coords) < 2:
+        continue
         result.append({
             "id": p["id"],
             "name": p.get("establishment", "Unknown"),
