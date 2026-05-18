@@ -1,0 +1,41 @@
+name: Backfill Harvest Plant Visits
+
+on:
+  workflow_dispatch:
+    inputs:
+      year:
+        description: 'Year to backfill (e.g. 2024)'
+        required: true
+        type: number
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run backfill
+        env:
+          BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
+          BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
+        run: python backfill_harvest_visits.py --year ${{ inputs.year }}
+
+      - name: Commit and push CSVs
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "Backfill harvest visits ${{ inputs.year }}"
+          git push
