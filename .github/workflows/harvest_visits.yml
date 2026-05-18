@@ -1,0 +1,38 @@
+name: Harvest Plant Vessel Visits
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday 06:00 UTC (previous week just completed)
+  workflow_dispatch:      # Keep manual trigger for testing
+
+jobs:
+  fetch-visits:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write     # Needed to commit CSV back to repo
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run harvest visit pipeline
+        env:
+          BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
+          BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
+        run: python fetch_harvest_visits.py
+
+      - name: Commit and push CSV
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "Add harvest visits $(date +'%G_W%V')"
+          git push
