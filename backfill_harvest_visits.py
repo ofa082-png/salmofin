@@ -290,15 +290,17 @@ if __name__ == "__main__":
         print("Nothing to do.")
         exit(0)
 
+    # Fetch vessels once (list doesn't change week to week)
     token = get_token()
     print("Token OK")
-
     vessels = get_vessels(token)
     print(f"Vessels: {len(vessels)} wellboats/slaughter boats\n")
 
     total_visits = 0
     for i, week in enumerate(weeks_to_run, 1):
         print(f"[{i}/{len(weeks_to_run)}] {year}/W{week:02d}")
+        # Refresh token every week to avoid expiry on long runs
+        token = get_token()
         total_visits += process_week(token, vessels, year, week)
 
     print(f"\nDone. {total_visits} total visits written across {len(weeks_to_run)} weeks.")
