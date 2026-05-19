@@ -2,12 +2,12 @@
 backfill_harvest_visits.py
 --------------------------
 Backfills harvest plant vessel visit data for a full year.
+Uses vessel_categories.csv as source of truth for vessel selection.
 Writes one CSV per week to data/, skipping weeks that already exist.
 
 Usage:
     python backfill_harvest_visits.py --year 2025
     python backfill_harvest_visits.py --year 2024
-    python backfill_harvest_visits.py --year 2023
 
 Requires env vars:
     BW_CLIENT_ID
@@ -33,15 +33,19 @@ BW_CLIENT_SECRET = os.environ["BW_CLIENT_SECRET"]
 RADIUS_M = 300
 MIN_VISIT_HOURS = 1.0
 DATA_DIR = Path("data")
-REQUEST_DELAY = 0.15  # seconds between vessel track API calls
+VESSEL_FILE = Path("vessel_categories.csv")
+REQUEST_DELAY = 0.15
+
+VESSEL_TYPES_TO_TRACK = {"Wellboat", "Processing vessel"}
 
 CSV_COLUMNS = [
     "year",
     "week",
     "mmsi",
     "vessel_name",
-    "is_wellboat",
-    "is_slaughter_boat",
+    "vessel_type",
+    "capacity",
+    "capacity_unit",
     "plant_id",
     "plant_name",
     "plant_company",
@@ -77,8 +81,7 @@ def haversine(lat1, lon1, lat2, lon2) -> float:
 
 
 def weeks_in_year(year: int) -> int:
-    """Returns 52 or 53 depending on the ISO calendar for that year."""
-    return datetime(year, 12, 28).isocalendar().week  # Dec 28 is always in the last week
+    return datetime(year, 12, 28).isocalendar().week
 
 
 def all_weeks(year: int) -> list:
@@ -87,6 +90,37 @@ def all_weeks(year: int) -> list:
 
 def csv_path(year: int, week: int) -> Path:
     return DATA_DIR / f"harvest_plant_visits_{year}_W{week:02d}.csv"
+
+
+# --- Vessel list ---
+
+def load_vessels() -> list:
+    vessels = []
+    with open(VESSEL_FILE, newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            vessel_type = row.get("Type", "").strip()
+            if vessel_type not in VESSEL_TYPES_TO_TRACK:
+                continue
+            mmsi_raw = row.get("MMSI", "").strip()
+            if not mmsi_raw:
+                continue
+            try:
+                mmsi = int(mmsi_raw)
+            except ValueError:
+                continue
+            vessels.append({
+                "mmsi": mmsi,
+                "name": row.get("Navn", "Unknown").strip(),
+                "vessel_type": vessel_type,
+                "capacity": row.get("LAST-KAP", "").strip(),
+                "capacity_unit": row.get("ENHET", "").strip(),
+            })
+
+    print(f"Loaded {len(vessels)} vessels "
+          f"({sum(1 for v in vessels if v['vessel_type'] == 'Wellboat')} wellboats, "
+          f"{sum(1 for v in vessels if v['vessel_type'] == 'Processing vessel')} processing vessels)")
+    return vessels
 
 
 # --- Barentswatch API ---
@@ -116,16 +150,6 @@ def get_slaughterhouses(token: str, year: int, week: int) -> list:
             "lat": coords[1],
         })
     return result
-
-
-def get_vessels(token: str) -> list:
-    resp = requests.get(
-        f"{BASE_URL}/fishhealth/vessels",
-        headers={"Authorization": f"Bearer {token}"}
-    )
-    resp.raise_for_status()
-    vessels = resp.json()
-    return [v for v in vessels if v.get("isWellboat") or v.get("isSlaughterBoat")]
 
 
 def get_vessel_track(token: str, mmsi: int, year: int, week: int):
@@ -232,9 +256,7 @@ def process_week(token: str, vessels: list, year: int, week: int) -> int:
 
     for vessel in vessels:
         mmsi = vessel["mmsi"]
-        name = vessel.get("vesselName", "Unknown")
-        is_wellboat = vessel.get("isWellboat", False)
-        is_slaughter = vessel.get("isSlaughterBoat", False)
+        name = vessel["name"]
 
         try:
             track = get_vessel_track(token, mmsi, year, week)
@@ -253,8 +275,9 @@ def process_week(token: str, vessels: list, year: int, week: int) -> int:
         for v in visits:
             v["mmsi"] = mmsi
             v["vessel_name"] = name
-            v["is_wellboat"] = is_wellboat
-            v["is_slaughter_boat"] = is_slaughter
+            v["vessel_type"] = vessel["vessel_type"]
+            v["capacity"] = vessel["capacity"]
+            v["capacity_unit"] = vessel["capacity_unit"]
             v["year"] = year
             v["week"] = week
 
@@ -270,6 +293,7 @@ def process_week(token: str, vessels: list, year: int, week: int) -> int:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Backfill harvest plant visits for a full year")
     parser.add_argument("--year", type=int, required=True, help="Year to backfill (e.g. 2025)")
+    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing CSV files")
     args = parser.parse_args()
 
     year = args.year
@@ -280,26 +304,25 @@ if __name__ == "__main__":
     if year == current_iso.year:
         weeks = [w for w in weeks if w < current_iso.week]
 
-    # Skip weeks that already have a CSV
-    weeks_to_run = [w for w in weeks if not csv_path(year, w).exists()]
-    skipped = len(weeks) - len(weeks_to_run)
+    # Skip weeks that already have a CSV unless --overwrite
+    if args.overwrite:
+        weeks_to_run = weeks
+    else:
+        weeks_to_run = [w for w in weeks if not csv_path(year, w).exists()]
 
+    skipped = len(weeks) - len(weeks_to_run)
     print(f"\nBackfilling {year}: {len(weeks_to_run)} weeks to fetch ({skipped} already exist)\n")
 
     if not weeks_to_run:
-        print("Nothing to do.")
+        print("Nothing to do. Use --overwrite to re-run existing weeks.")
         exit(0)
 
-    # Fetch vessels once (list doesn't change week to week)
-    token = get_token()
-    print("Token OK")
-    vessels = get_vessels(token)
-    print(f"Vessels: {len(vessels)} wellboats/slaughter boats\n")
+    vessels = load_vessels()
+    print()
 
     total_visits = 0
     for i, week in enumerate(weeks_to_run, 1):
         print(f"[{i}/{len(weeks_to_run)}] {year}/W{week:02d}")
-        # Refresh token every week to avoid expiry on long runs
         token = get_token()
         total_visits += process_week(token, vessels, year, week)
 
