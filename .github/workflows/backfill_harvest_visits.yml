@@ -7,6 +7,11 @@ on:
         description: 'Year to backfill (e.g. 2024)'
         required: true
         type: number
+      overwrite:
+        description: 'Overwrite existing CSV files'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   backfill:
@@ -30,7 +35,12 @@ jobs:
         env:
           BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
           BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
-        run: python backfill_harvest_visits.py --year ${{ inputs.year }}
+        run: |
+          if [ "${{ inputs.overwrite }}" = "true" ]; then
+            python backfill_harvest_visits.py --year ${{ inputs.year }} --overwrite
+          else
+            python backfill_harvest_visits.py --year ${{ inputs.year }}
+          fi
 
       - name: Commit and push CSVs
         run: |
