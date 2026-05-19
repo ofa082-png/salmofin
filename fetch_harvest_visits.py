@@ -1,13 +1,13 @@
 """
 fetch_harvest_visits.py
 -----------------------
-Detects wellboat and slaughter boat visits to all Norwegian
+Detects wellboat and processing vessel visits to all Norwegian
 fish slaughterhouses using Barentswatch fishhealth API.
 
 Pipeline:
 1. Fetch all active slaughterhouses for the week (with coordinates)
-2. Fetch all wellboats + slaughter boats
-3. For each vessel, fetch week track
+2. Load vessels from vessel_categories.csv (Wellboat + Processing vessel types)
+3. For each vessel, fetch week track from Barentswatch
 4. Haversine check each ping against each plant
 5. Reconstruct visits (entry/exit) and filter short ones
 6. Write to data/harvest_plant_visits_{year}_W{week:02d}.csv
@@ -17,8 +17,7 @@ Run weekly via GitHub Actions for the previous completed week.
 
 import os
 import csv
-import math
-from math import cos, radians, sin, atan2, sqrt
+from math import radians, cos, sin, atan2, sqrt
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -33,14 +32,18 @@ BW_CLIENT_SECRET = os.environ["BW_CLIENT_SECRET"]
 RADIUS_M = 300
 MIN_VISIT_HOURS = 1.0
 DATA_DIR = Path("data")
+VESSEL_FILE = Path("vessel_categories.csv")
+
+VESSEL_TYPES_TO_TRACK = {"Wellboat", "Processing vessel"}
 
 CSV_COLUMNS = [
     "year",
     "week",
     "mmsi",
     "vessel_name",
-    "is_wellboat",
-    "is_slaughter_boat",
+    "vessel_type",
+    "capacity",
+    "capacity_unit",
     "plant_id",
     "plant_name",
     "plant_company",
@@ -82,6 +85,37 @@ def get_previous_week() -> tuple:
     return iso.year, iso.week
 
 
+# --- Vessel list ---
+
+def load_vessels() -> list:
+    vessels = []
+    with open(VESSEL_FILE, newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            vessel_type = row.get("Type", "").strip()
+            if vessel_type not in VESSEL_TYPES_TO_TRACK:
+                continue
+            mmsi_raw = row.get("MMSI", "").strip()
+            if not mmsi_raw:
+                continue
+            try:
+                mmsi = int(mmsi_raw)
+            except ValueError:
+                continue
+            vessels.append({
+                "mmsi": mmsi,
+                "name": row.get("Navn", "Unknown").strip(),
+                "vessel_type": vessel_type,
+                "capacity": row.get("LAST-KAP", "").strip(),
+                "capacity_unit": row.get("ENHET", "").strip(),
+            })
+
+    print(f"Loaded {len(vessels)} vessels from {VESSEL_FILE} "
+          f"({sum(1 for v in vessels if v['vessel_type'] == 'Wellboat')} wellboats, "
+          f"{sum(1 for v in vessels if v['vessel_type'] == 'Processing vessel')} processing vessels)")
+    return vessels
+
+
 # --- Barentswatch API ---
 
 def get_slaughterhouses(token: str, year: int, week: int) -> list:
@@ -109,20 +143,8 @@ def get_slaughterhouses(token: str, year: int, week: int) -> list:
             "lat": coords[1],
         })
 
-    print(f"Found {len(result)} active slaughterhouses with coordinates for {year}/W{week:02d}")
+    print(f"Found {len(result)} active slaughterhouses for {year}/W{week:02d}")
     return result
-
-
-def get_vessels(token: str) -> list:
-    resp = requests.get(
-        f"{BASE_URL}/fishhealth/vessels",
-        headers={"Authorization": f"Bearer {token}"}
-    )
-    resp.raise_for_status()
-    vessels = resp.json()
-    relevant = [v for v in vessels if v.get("isWellboat") or v.get("isSlaughterBoat")]
-    print(f"Found {len(vessels)} total vessels, {len(relevant)} wellboats/slaughter boats")
-    return relevant
 
 
 def get_vessel_track(token: str, mmsi: int, year: int, week: int):
@@ -138,7 +160,7 @@ def get_vessel_track(token: str, mmsi: int, year: int, week: int):
 
 # --- Geofence logic ---
 
-def check_plant_visits(track: dict, plants: list, radius_m: int, min_hours: float) -> list:
+def check_plant_visits(track: dict, plants: list) -> list:
     visits = []
 
     for segment in track.get("vesselTracks", []):
@@ -159,7 +181,7 @@ def check_plant_visits(track: dict, plants: list, radius_m: int, min_hours: floa
                 dist = haversine(lat, lon, plant["lat"], plant["lon"])
                 plant_id = plant["id"]
 
-                if dist <= radius_m:
+                if dist <= RADIUS_M:
                     if plant_id not in active_visits:
                         active_visits[plant_id] = {
                             "plant": plant,
@@ -171,24 +193,24 @@ def check_plant_visits(track: dict, plants: list, radius_m: int, min_hours: floa
                 else:
                     if plant_id in active_visits:
                         v = active_visits.pop(plant_id)
-                        visit = _close_visit(v, min_hours)
+                        visit = _close_visit(v)
                         if visit:
                             visits.append(visit)
 
-        for plant_id, v in active_visits.items():
-            visit = _close_visit(v, min_hours)
+        for v in active_visits.values():
+            visit = _close_visit(v)
             if visit:
                 visits.append(visit)
 
     return visits
 
 
-def _close_visit(v: dict, min_hours: float):
+def _close_visit(v: dict):
     entry = datetime.fromisoformat(v["entry_time"].replace("Z", "+00:00"))
     exit_ = datetime.fromisoformat(v["last_seen"].replace("Z", "+00:00"))
     duration_hrs = (exit_ - entry).total_seconds() / 3600
 
-    if duration_hrs < min_hours:
+    if duration_hrs < MIN_VISIT_HOURS:
         return None
 
     plant = v["plant"]
@@ -228,34 +250,39 @@ if __name__ == "__main__":
     print("Token OK\n")
 
     plants = get_slaughterhouses(token, year, week)
-    vessels = get_vessels(token)
+    vessels = load_vessels()
 
     all_visits = []
     processed = 0
 
     for vessel in vessels:
         mmsi = vessel["mmsi"]
-        name = vessel.get("vesselName", "Unknown")
-        is_wellboat = vessel.get("isWellboat", False)
-        is_slaughter = vessel.get("isSlaughterBoat", False)
+        name = vessel["name"]
 
-        track = get_vessel_track(token, mmsi, year, week)
+        try:
+            track = get_vessel_track(token, mmsi, year, week)
+        except requests.HTTPError as e:
+            print(f"  WARNING: track fetch failed for {mmsi} ({name}): {e}")
+            processed += 1
+            continue
+
         if not track:
             processed += 1
             continue
 
-        visits = check_plant_visits(track, plants, RADIUS_M, MIN_VISIT_HOURS)
+        visits = check_plant_visits(track, plants)
 
         for v in visits:
             v["mmsi"] = mmsi
             v["vessel_name"] = name
-            v["is_wellboat"] = is_wellboat
-            v["is_slaughter_boat"] = is_slaughter
+            v["vessel_type"] = vessel["vessel_type"]
+            v["capacity"] = vessel["capacity"]
+            v["capacity_unit"] = vessel["capacity_unit"]
             v["year"] = year
             v["week"] = week
 
         if visits:
-            print(f"  {name} ({mmsi}): {len(visits)} visit(s) detected")
+            print(f"  {name} ({mmsi}) [{vessel['vessel_type']}]: {len(visits)} visit(s)")
             all_visits.extend(visits)
 
         processed += 1
