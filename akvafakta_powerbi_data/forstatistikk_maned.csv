@@ -9067,7 +9067,7 @@
 2025,11,Pellet liten sjø,,567
 2025,11,Pellet liten sjø,,7285.136
 2025,11,Pellet liten sjø,,10388.275
-2025,11,Pellet liten sjø,,12318.006
+2025,11,Pellet liten sjø,,12238.006
 2025,11,Pellet liten sjø,,22136
 2025,11,Pellet stor land,,0
 2025,11,Pellet stor sjø,,0
@@ -9075,7 +9075,7 @@
 2025,11,Pellet stor sjø,,17439
 2025,11,Pellet stor sjø,,32819.204999999994
 2025,11,Pellet stor sjø,,35962.939000000006
-2025,11,Pellet stor sjø,,59473.158
+2025,11,Pellet stor sjø,,58913.158
 2025,11,Settefisk,,124.5
 2025,11,Settefisk,,159.5
 2025,11,Settefisk,,1479.478
@@ -9085,4 +9085,177 @@
 2025,11,Total,,39575
 2025,11,Total,,44274.77
 2025,11,Total,,47189.63
-2025,11,Total,,73271.64
+2025,11,Total,,72631.64
+2025,12,Annet,,0
+2025,12,Annet,,25.21
+2025,12,Annet,,1965.4630000000002
+2025,12,Importert,,0
+2025,12,Importert,,77.165
+2025,12,Importert,,158.685
+2025,12,Melvare,,0
+2025,12,Pellet liten land,,0
+2025,12,Pellet liten land,,88
+2025,12,Pellet liten land,,807.764
+2025,12,Pellet liten sjø,,0
+2025,12,Pellet liten sjø,,224
+2025,12,Pellet liten sjø,,6069.2850000000008
+2025,12,Pellet liten sjø,,11250.798
+2025,12,Pellet liten sjø,,12281.175
+2025,12,Pellet liten sjø,,17950
+2025,12,Pellet stor land,,0
+2025,12,Pellet stor sjø,,0
+2025,12,Pellet stor sjø,,1466.5
+2025,12,Pellet stor sjø,,15000.999999999998
+2025,12,Pellet stor sjø,,29200.24
+2025,12,Pellet stor sjø,,30564.925
+2025,12,Pellet stor sjø,,54429.734
+2025,12,Settefisk,,68
+2025,12,Settefisk,,137.975
+2025,12,Settefisk,,236.5
+2025,12,Settefisk,,1620.634
+2025,12,Settefisk,,2200.85
+2025,12,Total,,68
+2025,12,Total,,1927
+2025,12,Total,,33039
+2025,12,Total,,36240.47
+2025,12,Total,,47012.409999999996
+2025,12,Total,,67301.17
+2026,1,Annet,,0
+2026,1,Annet,,3.2
+2026,1,Annet,,489.025
+2026,1,Annet,,1133.671
+2026,1,Importert,,0
+2026,1,Importert,,19.034
+2026,1,Importert,,102.45
+2026,1,Melvare,,0
+2026,1,Pellet liten land,,0
+2026,1,Pellet liten land,,90
+2026,1,Pellet liten land,,565.45
+2026,1,Pellet liten sjø,,0
+2026,1,Pellet liten sjø,,283.5
+2026,1,Pellet liten sjø,,4622.269
+2026,1,Pellet liten sjø,,9031.591
+2026,1,Pellet liten sjø,,9055.255000000001
+2026,1,Pellet liten sjø,,15590
+2026,1,Pellet stor land,,0
+2026,1,Pellet stor sjø,,0
+2026,1,Pellet stor sjø,,1336.5
+2026,1,Pellet stor sjø,,13635.000000000002
+2026,1,Pellet stor sjø,,23716.891000000003
+2026,1,Pellet stor sjø,,26970.305
+2026,1,Pellet stor sjø,,46443.859
+2026,1,Settefisk,,124
+2026,1,Settefisk,,124.5
+2026,1,Settefisk,,161.425
+2026,1,Settefisk,,1286.54
+2026,1,Settefisk,,3060.529
+2026,1,Total,,124
+2026,1,Total,,1744.5
+2026,1,Total,,29315
+2026,1,Total,,29555.06
+2026,1,Total,,40196.1
+2026,1,Total,,56788.85
+2026,2,Annet,,0
+2026,2,Annet,,3.2
+2026,2,Annet,,621.005
+2026,2,Annet,,1435.375
+2026,2,Importert,,0
+2026,2,Importert,,18.559
+2026,2,Importert,,153.525
+2026,2,Melvare,,0
+2026,2,Pellet liten land,,0
+2026,2,Pellet liten land,,56
+2026,2,Pellet liten land,,452.2
+2026,2,Pellet liten sjø,,0
+2026,2,Pellet liten sjø,,81
+2026,2,Pellet liten sjø,,4308.424
+2026,2,Pellet liten sjø,,6395.519
+2026,2,Pellet liten sjø,,6970.187
+2026,2,Pellet liten sjø,,9787
+2026,2,Pellet stor land,,0
+2026,2,Pellet stor sjø,,0
+2026,2,Pellet stor sjø,,859
+2026,2,Pellet stor sjø,,9096
+2026,2,Pellet stor sjø,,18924.468
+2026,2,Pellet stor sjø,,21687.202
+2026,2,Pellet stor sjø,,39815.581999999995
+2026,2,Settefisk,,87.77
+2026,2,Settefisk,,88
+2026,2,Settefisk,,1278.76
+2026,2,Settefisk,,3167.0249999999996
+2026,2,Total,,88
+2026,2,Total,,1028
+2026,2,Total,,18939
+2026,2,Total,,24393.87
+2026,2,Total,,32685.12
+2026,2,Total,,48067.73
+2026,3,Annet,,0
+2026,3,Annet,,0.8
+2026,3,Annet,,536.06
+2026,3,Annet,,1583.826
+2026,3,Importert,,0
+2026,3,Importert,,28.165
+2026,3,Importert,,916.925
+2026,3,Melvare,,0
+2026,3,Pellet liten land,,0
+2026,3,Pellet liten land,,252
+2026,3,Pellet liten land,,798.25
+2026,3,Pellet liten sjø,,0
+2026,3,Pellet liten sjø,,194.5
+2026,3,Pellet liten sjø,,3464.625
+2026,3,Pellet liten sjø,,7705.782
+2026,3,Pellet liten sjø,,9059.048
+2026,3,Pellet liten sjø,,13575.000000000002
+2026,3,Pellet stor land,,0
+2026,3,Pellet stor sjø,,0
+2026,3,Pellet stor sjø,,781
+2026,3,Pellet stor sjø,,11320
+2026,3,Pellet stor sjø,,18596.815
+2026,3,Pellet stor sjø,,29041.286
+2026,3,Pellet stor sjø,,48469.441999999995
+2026,3,Settefisk,,197.15
+2026,3,Settefisk,,249.5
+2026,3,Settefisk,,293.5
+2026,3,Settefisk,,1607.72
+2026,3,Settefisk,,2717.9049999999997
+2026,3,Total,,249.5
+2026,3,Total,,1269
+2026,3,Total,,23592.899999999998
+2026,3,Total,,25147
+2026,3,Total,,42402.07
+2026,3,Total,,57783.74
+2026,4,Annet,,0
+2026,4,Annet,,1.6
+2026,4,Annet,,683.523
+2026,4,Annet,,1881.9790000000003
+2026,4,Importert,,0
+2026,4,Importert,,11.214
+2026,4,Importert,,951.809
+2026,4,Melvare,,0
+2026,4,Pellet liten land,,0
+2026,4,Pellet liten land,,71
+2026,4,Pellet liten land,,738.5
+2026,4,Pellet liten sjø,,0
+2026,4,Pellet liten sjø,,326.4
+2026,4,Pellet liten sjø,,4109.4710000000005
+2026,4,Pellet liten sjø,,8084.380000000001
+2026,4,Pellet liten sjø,,8891.608
+2026,4,Pellet liten sjø,,17559
+2026,4,Pellet stor land,,0
+2026,4,Pellet stor sjø,,0
+2026,4,Pellet stor sjø,,897.4
+2026,4,Pellet stor sjø,,13788.999999999998
+2026,4,Pellet stor sjø,,18373.451
+2026,4,Pellet stor sjø,,25769.194
+2026,4,Pellet stor sjø,,47725.986000000004
+2026,4,Settefisk,,175
+2026,4,Settefisk,,287.8
+2026,4,Settefisk,,339.5
+2026,4,Settefisk,,1355.5
+2026,4,Settefisk,,2487.991
+2026,4,Total,,175
+2026,4,Total,,1563.3
+2026,4,Total,,24192.75
+2026,4,Total,,31419
+2026,4,Total,,39030.77
+2026,4,Total,,57167.469999999994
