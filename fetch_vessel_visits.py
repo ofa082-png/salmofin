@@ -1,20 +1,44 @@
+"""
+fetch_vessel_visits.py
+----------------------
+Fetches vessel visits per salmon locality from Barentswatch for the
+current year. Deletes current year rows and reinserts fresh data.
+Safe to re-run.
+"""
+
 import asyncio
 import aiohttp
 import requests
 import os
+import json
+import pandas as pd
+from datetime import datetime
+from google.cloud import bigquery
+from google.oauth2 import service_account
 
 # ── Config ────────────────────────────────────────────────────────────────
 FISKERIDIR_URL   = "https://api.fiskeridir.no/pub-aqua/api/v1/sites"
 BW_TOKEN_URL     = "https://id.barentswatch.no/connect/token"
 BW_API_URL       = "https://www.barentswatch.no/bwapi"
-SUPABASE_URL     = os.environ["SUPABASE_URL"]
-SUPABASE_KEY     = os.environ["SUPABASE_KEY"]
 BW_CLIENT_ID     = os.environ["BW_CLIENT_ID"]
 BW_CLIENT_SECRET = os.environ["BW_CLIENT_SECRET"]
-YEAR             = 2026
+CURRENT_YEAR     = datetime.now().year
 MAX_CONCURRENT   = 20
 
-# ── Step 1: Get Barentswatch token ────────────────────────────────────────
+PROJECT_ID       = "salmofin"
+DATASET_ID       = "salmofin"
+VISITS_TABLE     = f"{PROJECT_ID}.{DATASET_ID}.vessel_visits"
+
+# ── BigQuery client ───────────────────────────────────────────────────────
+def get_bq_client():
+    credentials_info = json.loads(os.environ["GOOGLE_CREDENTIALS"])
+    credentials = service_account.Credentials.from_service_account_info(
+        credentials_info,
+        scopes=["https://www.googleapis.com/auth/cloud-platform"]
+    )
+    return bigquery.Client(credentials=credentials, project=PROJECT_ID)
+
+# ── Barentswatch token ────────────────────────────────────────────────────
 def get_bw_token():
     resp = requests.post(BW_TOKEN_URL, data={
         "grant_type":    "client_credentials",
@@ -25,7 +49,7 @@ def get_bw_token():
     print("Token response:", resp.status_code)
     return resp.json()["access_token"]
 
-# ── Step 2: Get all salmon localities from Fiskeridir ─────────────────────
+# ── Get all salmon localities ─────────────────────────────────────────────
 def get_localities():
     localities = []
     start = 0
@@ -45,10 +69,10 @@ def get_localities():
     print(f"Found {len(localities)} salmon localities")
     return localities
 
-# ── Step 3: Fetch vessel visits for one locality ──────────────────────────
+# ── Fetch vessel visits for one locality ──────────────────────────────────
 async def fetch_locality(session, locality_no, token, semaphore):
     async with semaphore:
-        url = f"{BW_API_URL}/v1/geodata/fishhealth/locality/{locality_no}/Vessel/{YEAR}"
+        url = f"{BW_API_URL}/v1/geodata/fishhealth/locality/{locality_no}/Vessel/{CURRENT_YEAR}"
         try:
             async with session.get(url, headers={"Authorization": f"Bearer {token}"}) as resp:
                 if resp.status != 200:
@@ -78,32 +102,30 @@ async def fetch_locality(session, locality_no, token, semaphore):
             print(f"Error fetching locality {locality_no}: {e}")
             return []
 
-# ── Step 4: Upsert rows to Supabase ──────────────────────────────────────
-def upsert_to_supabase(rows):
-    if not rows:
-        print("No rows to upsert!")
-        return
-    for i in range(0, len(rows), 500):
-        chunk = rows[i:i+500]
-        resp = requests.post(
-            f"{SUPABASE_URL}/rest/v1/vessel_visits",
-            headers={
-                "apikey":        SUPABASE_KEY,
-                "Authorization": f"Bearer {SUPABASE_KEY}",
-                "Content-Type":  "application/json",
-                "Prefer":        "resolution=merge-duplicates,return=minimal"
-            },
-            json=chunk
-        )
-        if resp.status_code not in (200, 201):
-            print(f"Supabase error: {resp.status_code} {resp.text}")
-        else:
-            print(f"Upserted rows {i} to {i+len(chunk)}")
+# ── Delete current year ───────────────────────────────────────────────────
+def delete_current_year(client):
+    print(f"Deleting {CURRENT_YEAR} rows from BigQuery...")
+    client.query(f"""
+        DELETE FROM `{VISITS_TABLE}`
+        WHERE year = {CURRENT_YEAR}
+    """).result()
+    print("  Deleted.")
+
+# ── Insert to BigQuery ────────────────────────────────────────────────────
+def insert_to_bigquery(client, df):
+    print(f"Inserting {len(df):,} rows to BigQuery...")
+    job_config = bigquery.LoadJobConfig(
+        write_disposition=bigquery.WriteDisposition.WRITE_APPEND
+    )
+    client.load_table_from_dataframe(df, VISITS_TABLE, job_config=job_config).result()
+    print(f"  Inserted {len(df):,} rows.")
 
 # ── Main ──────────────────────────────────────────────────────────────────
 async def main():
-    print(f"Starting vessel visit fetch for {YEAR}...")
-    token       = get_bw_token()
+    print(f"Starting vessel visit fetch for {CURRENT_YEAR}...")
+    client = get_bq_client()
+    token  = get_bw_token()
+
     localities  = get_localities()
     loc_numbers = [loc["siteNr"] for loc in localities if loc.get("siteNr")]
     print(f"Fetching vessel visits for {len(loc_numbers)} localities...")
@@ -114,8 +136,20 @@ async def main():
         results = await asyncio.gather(*tasks)
 
     all_rows = [row for result in results for row in result]
-    print(f"Total vessel visit rows: {len(all_rows)}")
-    upsert_to_supabase(all_rows)
+    print(f"Total vessel visit rows fetched: {len(all_rows)}")
+
+    if not all_rows:
+        print("No rows fetched — exiting.")
+        return
+
+    df = pd.DataFrame(all_rows)
+    df["startTime"] = pd.to_datetime(df["startTime"], errors="coerce", utc=True)
+    df["stopTime"]  = pd.to_datetime(df["stopTime"],  errors="coerce", utc=True)
+    for col in ["localityNo", "year", "week", "mmsi", "shipType", "shipRegisterVesselType"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+
+    delete_current_year(client)
+    insert_to_bigquery(client, df)
     print("Done!")
 
 if __name__ == "__main__":
