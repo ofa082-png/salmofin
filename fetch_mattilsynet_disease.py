@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     for col in ["varslingsdato", "oppdrettersMistankedato", "kvalitetssikretMistankedato",
                 "diagnosedato", "avslutningsdato", "ugyldiggjøringsdato", "opprettet", "oppdatert"]:
-        df[col] = pd.to_datetime(df[col], errors="coerce", utc=True)
+        df[col] = pd.to_datetime(df[col], errors="coerce", utc=True).astype("datetime64[us, UTC]")
 
     df["lokalitetsnummer"] = pd.to_numeric(df["lokalitetsnummer"], errors="coerce").astype("Int64")
     df["sekvensnummer"]    = pd.to_numeric(df["sekvensnummer"],    errors="coerce").astype("Int64")
