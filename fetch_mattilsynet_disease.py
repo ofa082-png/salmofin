@@ -35,4 +35,4 @@ def fetch_all_facilities():
     limit = 100
 
     while True:
-        resp = requests.get(BASE_URL, headers=HEADERS, params={"limit": limit, "offset": o
+      resp = requests.get(BASE_URL, headers=HEADERS, params={"limit": limit, "offset": offset})
