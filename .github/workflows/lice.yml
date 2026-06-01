@@ -1,28 +1,22 @@
 name: Fetch Lice
-
 on:
   schedule:
     - cron: '15 2 * * *'  # Daily at 2:15am UTC (15 min after vessel_visits)
   workflow_dispatch:
-
 jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install dependencies
-        run: pip install requests pandas
-
+        run: pip install requests pandas google-cloud-bigquery db-dtypes
       - name: Run fetch_lice.py
         env:
           BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
           BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: python fetch_lice.py
