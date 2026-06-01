@@ -1,9 +1,9 @@
 """
 fetch_mattilsynet_disease.py
 ----------------------------
-Fetches disease cases per facility from Mattilsynet public API.
+Fetches disease reports from Mattilsynet public API.
 No authentication required — Client-Id header only.
-Deletes all rows and reinserts fresh (full dataset, not year-based).
+Deletes all rows and reinserts fresh daily.
 """
 
 import requests
@@ -13,12 +13,11 @@ import pandas as pd
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
-PROJECT_ID     = "salmofin"
-DATASET_ID     = "salmofin"
-DISEASE_TABLE  = f"{PROJECT_ID}.{DATASET_ID}.mattilsynet_disease"
-BASE_URL = "https://akvakultur-offentlig-api.fisk.mattilsynet.io/api/sykdomstilfeller/v1/rapporteringer"
-CLIENT_ID      = "salmofin"
-HEADERS        = {"Client-Id": CLIENT_ID, "Accept": "application/json"}
+PROJECT_ID    = "salmofin"
+DATASET_ID    = "salmofin"
+DISEASE_TABLE = f"{PROJECT_ID}.{DATASET_ID}.mattilsynet_disease"
+BASE_URL      = "https://akvakultur-offentlig-api.fisk.mattilsynet.io/api/sykdomstilfeller/v1/rapporteringer"
+HEADERS       = {"Client-Id": "salmofin", "Accept": "application/json"}
 
 def get_bq_client():
     credentials_info = json.loads(os.environ["GOOGLE_CREDENTIALS"])
@@ -28,8 +27,8 @@ def get_bq_client():
     )
     return bigquery.Client(credentials=credentials, project=PROJECT_ID)
 
-def fetch_all_facilities():
-    print("Fetching facilities from Mattilsynet...")
+def fetch_all_reports():
+    print("Fetching disease reports from Mattilsynet...")
     all_rows = []
     offset = 0
     limit = 100
@@ -40,36 +39,35 @@ def fetch_all_facilities():
         if not batch:
             break
         all_rows.extend(batch)
-        print(f"  Fetched {len(all_rows):,} facilities...")
+        print(f"  Fetched {len(all_rows):,} reports...")
         if len(batch) < limit:
             break
         offset += limit
-    print(f"  Total facilities: {len(all_rows):,}")
+    print(f"  Total reports: {len(all_rows):,}")
     return all_rows
 
-def flatten_to_rows(facilities):
+def flatten_to_rows(reports):
     rows = []
-    for f in facilities:
-        base = {
-            "anleggId":        f.get("anleggId"),
-            "anleggNavn":      f.get("anleggNavn"),
-            "produksjonsform": ", ".join(f.get("produksjonsform") or []),
-        }
-        owners   = f.get("eiere") or []
-        org_nr   = owners[0].get("id")   if owners else None
-        org_navn = owners[0].get("navn") if owners else None
-        diseases = f.get("sykdomstilfeller") or []
-        if not diseases:
-            rows.append({**base, "organisasjonsnummer": org_nr, "organisasjonsnavn": org_navn,
-                         "sykdomstype": None, "diagnoseDato": None})
-        else:
-            for d in diseases:
-                rows.append({**base,
-                    "organisasjonsnummer": org_nr,
-                    "organisasjonsnavn":   org_navn,
-                    "sykdomstype":         d.get("sykdomstype"),
-                    "diagnoseDato":        d.get("diagnoseDato"),
-                })
+    for r in reports:
+        arter = r.get("arter") or []
+        rows.append({
+            "id":                          r.get("id"),
+            "lokalitetsnummer":            r.get("lokalitetsnummer"),
+            "lokalitetsnavn":              r.get("lokalitetsnavn"),
+            "sykdomstype":                 r.get("sykdomstype"),
+            "sykdomssubtype":              r.get("sykdomssubtype"),
+            "artskode":                    arter[0].get("artskode") if arter else None,
+            "varslingsdato":               r.get("varslingsdato"),
+            "oppdrettersMistankedato":     r.get("oppdrettersMistankedato"),
+            "kvalitetssikretMistankedato": r.get("kvalitetssikretMistankedato"),
+            "diagnosedato":                r.get("diagnosedato"),
+            "avslutningsdato":             r.get("avslutningsdato"),
+            "avslutningsarsak":            r.get("avslutningsårsak"),
+            "ugyldiggjøringsdato":         r.get("ugyldiggjøringsdato"),
+            "opprettet":                   r.get("opprettet"),
+            "oppdatert":                   r.get("oppdatert"),
+            "sekvensnummer":               r.get("sekvensnummer"),
+        })
     return rows
 
 def reload_bigquery(client, df):
@@ -84,15 +82,19 @@ def reload_bigquery(client, df):
 
 if __name__ == "__main__":
     print("Script starting...")
-    client     = get_bq_client()
+    client  = get_bq_client()
     print("BQ client ok")
-    facilities = fetch_all_facilities()
-    print(f"Got {len(facilities)} facilities")
-    rows       = flatten_to_rows(facilities)
-    print(f"Flattened to {len(rows)} rows")
-    df         = pd.DataFrame(rows)
-    df["anleggId"]    = pd.to_numeric(df["anleggId"], errors="coerce").astype("Int64")
-    df["diagnoseDato"] = pd.to_datetime(df["diagnoseDato"], errors="coerce", utc=True)
+    reports = fetch_all_reports()
+    rows    = flatten_to_rows(reports)
+    df      = pd.DataFrame(rows)
+
+    for col in ["varslingsdato", "oppdrettersMistankedato", "kvalitetssikretMistankedato",
+                "diagnosedato", "avslutningsdato", "ugyldiggjøringsdato", "opprettet", "oppdatert"]:
+        df[col] = pd.to_datetime(df[col], errors="coerce", utc=True)
+
+    df["lokalitetsnummer"] = pd.to_numeric(df["lokalitetsnummer"], errors="coerce").astype("Int64")
+    df["sekvensnummer"]    = pd.to_numeric(df["sekvensnummer"],    errors="coerce").astype("Int64")
+
     print(df.shape)
     reload_bigquery(client, df)
     print("Done!")
