@@ -16,7 +16,7 @@ from google.oauth2 import service_account
 PROJECT_ID     = "salmofin"
 DATASET_ID     = "salmofin"
 DISEASE_TABLE  = f"{PROJECT_ID}.{DATASET_ID}.mattilsynet_disease"
-BASE_URL       = "https://akvakultur-offentlig-api.fisk.mattilsynet.io/api/sykdom/v1/anlegg"
+BASE_URL = "https://akvakultur-offentlig-api.fisk.mattilsynet.io/api/sykdomstilfeller/v1/rapporteringer"
 CLIENT_ID      = "salmofin"
 HEADERS        = {"Client-Id": CLIENT_ID, "Accept": "application/json"}
 
