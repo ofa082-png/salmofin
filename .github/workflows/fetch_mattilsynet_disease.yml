@@ -1,0 +1,20 @@
+name: Fetch Mattilsynet Disease
+on:
+  schedule:
+    - cron: '0 3 * * *'  # runs every night at 3am UTC
+  workflow_dispatch:
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: pip install requests pandas google-cloud-bigquery google-auth pyarrow
+      - name: Run fetch script
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python fetch_mattilsynet_disease.py
