@@ -33,6 +33,66 @@ def fetch_all_facilities():
     all_rows = []
     offset = 0
     limit = 100
-
     while True:
-      resp = requests.get(BASE_URL, headers=HEADERS, params={"limit": limit, "offset": offset})
+        resp = requests.get(BASE_URL, headers=HEADERS, params={"limit": limit, "offset": offset})
+        resp.raise_for_status()
+        batch = resp.json()
+        if not batch:
+            break
+        all_rows.extend(batch)
+        print(f"  Fetched {len(all_rows):,} facilities...")
+        if len(batch) < limit:
+            break
+        offset += limit
+    print(f"  Total facilities: {len(all_rows):,}")
+    return all_rows
+
+def flatten_to_rows(facilities):
+    rows = []
+    for f in facilities:
+        base = {
+            "anleggId":        f.get("anleggId"),
+            "anleggNavn":      f.get("anleggNavn"),
+            "produksjonsform": ", ".join(f.get("produksjonsform") or []),
+        }
+        owners   = f.get("eiere") or []
+        org_nr   = owners[0].get("id")   if owners else None
+        org_navn = owners[0].get("navn") if owners else None
+        diseases = f.get("sykdomstilfeller") or []
+        if not diseases:
+            rows.append({**base, "organisasjonsnummer": org_nr, "organisasjonsnavn": org_navn,
+                         "sykdomstype": None, "diagnoseDato": None})
+        else:
+            for d in diseases:
+                rows.append({**base,
+                    "organisasjonsnummer": org_nr,
+                    "organisasjonsnavn":   org_navn,
+                    "sykdomstype":         d.get("sykdomstype"),
+                    "diagnoseDato":        d.get("diagnoseDato"),
+                })
+    return rows
+
+def reload_bigquery(client, df):
+    print("Deleting existing rows...")
+    client.query(f"DELETE FROM `{DISEASE_TABLE}` WHERE true").result()
+    print(f"Inserting {len(df):,} rows...")
+    job_config = bigquery.LoadJobConfig(
+        write_disposition=bigquery.WriteDisposition.WRITE_APPEND
+    )
+    client.load_table_from_dataframe(df, DISEASE_TABLE, job_config=job_config).result()
+    print("  Done.")
+
+if __name__ == "__main__":
+    print("Script starting...")
+    client     = get_bq_client()
+    print("BQ client ok")
+    facilities = fetch_all_facilities()
+    print(f"Got {len(facilities)} facilities")
+    rows       = flatten_to_rows(facilities)
+    print(f"Flattened to {len(rows)} rows")
+    df         = pd.DataFrame(rows)
+    df["anleggId"]    = pd.to_numeric(df["anleggId"], errors="coerce").astype("Int64")
+    df["diagnoseDato"] = pd.to_datetime(df["diagnoseDato"], errors="coerce", utc=True)
+    print(df.shape)
+    reload_bigquery(client, df)
+    print("Done!")
