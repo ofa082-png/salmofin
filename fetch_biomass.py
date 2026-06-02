@@ -95,6 +95,11 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
                 "Uttak_hodekappet_kg", "Uttak_rundvekt_kg"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
+   
+    # Force string columns to str
+    for col in ["PO_kode", "PO_navn", "Maaned", "Artsid", "AarMnd"]:
+        if col in df.columns:
+            df[col] = df[col].astype(str)
 
     print(f"  Final shape: {df.shape}")
     return df
