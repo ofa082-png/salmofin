@@ -104,6 +104,10 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
                 df[col].astype(str).str.replace(",", ".", regex=False).str.strip(),
                 errors="coerce"
             )
+    # Fix Norwegian booleans
+    for col in ["Trolig_uten_fisk", "Har_telt_lakselus", "Over_lusegrense_uke"]:
+        if col in df.columns:
+            df[col] = df[col].map({"Ja": True, "Nei": False, True: True, False: False})
 
     print(f"  Final shape: {df.shape}")
     return df
