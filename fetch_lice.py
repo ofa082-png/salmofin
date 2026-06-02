@@ -23,7 +23,7 @@ BW_CLIENT_SECRET = os.environ["BW_CLIENT_SECRET"]
 
 PROJECT_ID  = "salmofin"
 DATASET_ID  = "salmofin"
-LICE_TABLE  = f"{PROJECT_ID}.{DATASET_ID}.lice"
+LICE_TABLE  = f"{PROJECT_ID}.{DATASET_ID}.lice_bw"
 CURRENT_YEAR = datetime.now().year
 
 RENAME_MAP = {
