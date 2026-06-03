@@ -1,0 +1,22 @@
+name: Fetch Locality Capacity
+on:
+  schedule:
+    - cron: '0 7 1 * *'  # 1st of each month at 7am UTC
+  workflow_dispatch:
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests pandas google-cloud-bigquery db-dtypes
+      - name: Run fetch_locality_capacity.py
+        env:
+          BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
+          BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python fetch_locality_capacity.py
