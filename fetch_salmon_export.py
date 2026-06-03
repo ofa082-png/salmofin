@@ -8,8 +8,9 @@ No auth required.
 
 import json
 import os
-import requests
+import urllib.request
 import pandas as pd
+from io import StringIO
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
@@ -22,9 +23,9 @@ SSB_URL = (
     "&outputformat=csv&outputformatparams=separatorsemicolon,usetexts"
 )
 
-PROJECT_ID    = "salmofin"
-DATASET_ID    = "salmofin"
-EXPORT_TABLE  = f"{PROJECT_ID}.{DATASET_ID}.salmon_export_weekly"
+PROJECT_ID   = "salmofin"
+DATASET_ID   = "salmofin"
+EXPORT_TABLE = f"{PROJECT_ID}.{DATASET_ID}.salmon_export_weekly"
 
 
 def get_bq_client():
@@ -38,16 +39,14 @@ def get_bq_client():
 
 def fetch_export() -> pd.DataFrame:
     print("Fetching salmon export data from SSB...")
-    resp = requests.get(SSB_URL)
-    resp.raise_for_status()
-    from io import StringIO
-    df = pd.read_csv(StringIO(resp.content.decode("latin-1")), sep=";")
+    with urllib.request.urlopen(SSB_URL) as response:
+        content = response.read().decode("latin-1")
+    df = pd.read_csv(StringIO(content), sep=";")
     print(f"  Fetched {len(df):,} rows, columns: {list(df.columns)}")
     return df
 
 
 def clean(df: pd.DataFrame) -> pd.DataFrame:
-    # Rename columns
     df.columns = [c.strip() for c in df.columns]
     last_col = df.columns[-1]
     df = df.rename(columns={last_col: "value"})
