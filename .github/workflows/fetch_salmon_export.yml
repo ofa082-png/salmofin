@@ -1,0 +1,20 @@
+name: Fetch Salmon Export
+on:
+  schedule:
+    - cron: '45 2 * * *'  # Daily at 2:45am UTC
+  workflow_dispatch:
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests pandas google-cloud-bigquery db-dtypes
+      - name: Run fetch_salmon_export.py
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python fetch_salmon_export.py
