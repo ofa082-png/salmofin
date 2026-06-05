@@ -9,9 +9,9 @@ No joins — flat raw data only.
 import os
 import io
 import json
+import datetime
 import requests
 import pandas as pd
-from datetime import datetime
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
@@ -21,28 +21,29 @@ API_URL   = "https://www.barentswatch.no/bwapi/v1/geodata/download/fishhealth"
 BW_CLIENT_ID     = os.environ["BW_CLIENT_ID"]
 BW_CLIENT_SECRET = os.environ["BW_CLIENT_SECRET"]
 
-PROJECT_ID  = "salmofin"
-DATASET_ID  = "salmofin"
-LICE_TABLE  = f"{PROJECT_ID}.{DATASET_ID}.lice_bw"
-CURRENT_YEAR = datetime.now().year
+PROJECT_ID   = "salmofin"
+DATASET_ID   = "salmofin"
+LICE_TABLE   = f"{PROJECT_ID}.{DATASET_ID}.lice_bw"
+CURRENT_YEAR = datetime.datetime.now().year
 
 RENAME_MAP = {
-    "År":                    "Ar",
-    "Uke":                   "Uke",
-    "Lokalitetsnummer":      "Lokalitetsnummer",
-    "Voksne hunnlus":        "Voksne_hunnlus",
+    "År":                       "Ar",
+    "Uke":                      "Uke",
+    "Lokalitetsnummer":         "Lokalitetsnummer",
+    "Lokalitetsnavn":           "Lokalitetsnavn",        # added
+    "Voksne hunnlus":           "Voksne_hunnlus",
     "Lus i bevegelige stadier": "Lus_i_bevegelige_stadier",
-    "Fastsittende lus":      "Fastsittende_lus",
-    "Trolig uten fisk":      "Trolig_uten_fisk",
-    "Har telt lakselus":     "Har_telt_lakselus",
-    "Lusegrense uke":        "Lusegrense_uke",
-    "Over lusegrense uke":   "Over_lusegrense_uke",
-    "Sjøtemperatur":         "Sjotemperatur",
-    "ProduksjonsområdeId":   "ProduksjonsomraadeId",
+    "Fastsittende lus":         "Fastsittende_lus",
+    "Trolig uten fisk":         "Trolig_uten_fisk",
+    "Har telt lakselus":        "Har_telt_lakselus",
+    "Lusegrense uke":           "Lusegrense_uke",
+    "Over lusegrense uke":      "Over_lusegrense_uke",
+    "Sjøtemperatur":            "Sjotemperatur",
+    "ProduksjonsområdeId":      "ProduksjonsomraadeId",
 }
 
 KEEP_COLS = [
-    "Uke", "Ar", "Lokalitetsnummer",
+    "Uke", "Ar", "Lokalitetsnummer", "Lokalitetsnavn",   # added
     "Voksne_hunnlus", "Lus_i_bevegelige_stadier", "Fastsittende_lus",
     "Trolig_uten_fisk", "Har_telt_lakselus",
     "Lusegrense_uke", "Over_lusegrense_uke", "Sjotemperatur",
@@ -70,6 +71,12 @@ def get_token() -> str:
     return resp.json()["access_token"]
 
 
+def max_week(year: int) -> int:
+    """Returns 53 if the year has a week 53, otherwise 52."""
+    last_day = datetime.date(year, 12, 28)  # Dec 28 is always in the last ISO week
+    return last_day.isocalendar()[1]
+
+
 def fetch_lice(token: str) -> pd.DataFrame:
     print(f"Fetching {CURRENT_YEAR} lice data from Barentswatch...")
     resp = requests.get(API_URL, params={
@@ -78,7 +85,7 @@ def fetch_lice(token: str) -> pd.DataFrame:
         "fromyear":   str(CURRENT_YEAR),
         "fromweek":   "1",
         "toyear":     str(CURRENT_YEAR),
-        "toweek":     "53"
+        "toweek":     str(max_week(CURRENT_YEAR)),
     }, headers={"Authorization": f"Bearer {token}"})
     resp.raise_for_status()
     df = pd.read_csv(io.StringIO(resp.content.decode("utf-8-sig")), low_memory=False)
@@ -104,6 +111,7 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
                 df[col].astype(str).str.replace(",", ".", regex=False).str.strip(),
                 errors="coerce"
             )
+
     # Fix Norwegian booleans
     for col in ["Trolig_uten_fisk", "Har_telt_lakselus", "Over_lusegrense_uke"]:
         if col in df.columns:
