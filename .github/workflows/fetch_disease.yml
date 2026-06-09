@@ -1,0 +1,27 @@
+name: Fetch disease BW
+
+on:
+  schedule:
+    - cron: "0 5 * * 1"  # Every Monday 05:00 UTC
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests pandas google-cloud-bigquery db-dtypes pyarrow
+
+      - name: Run pipeline
+        env:
+          BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
+          BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python pipelines/fetch_disease_bw.py
