@@ -2,7 +2,7 @@ name: Fetch disease BW
 
 on:
   schedule:
-    - cron: "0 5 * * 1"  # Every Monday 05:00 UTC
+    - cron: "0 4 * * 1"  # Every Monday 04:00 UTC
   workflow_dispatch:
 
 jobs:
