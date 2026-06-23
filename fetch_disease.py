@@ -21,7 +21,7 @@ BW_CLIENT_SECRET = os.environ["BW_CLIENT_SECRET"]
 
 PROJECT_ID    = "salmofin"
 DATASET_ID    = "salmofin"
-DISEASE_TABLE = f"{PROJECT_ID}.{DATASET_ID}.disease_bw"
+DISEASE_TABLE = f"{PROJECT_ID}.{DATASET_ID}.disease"
 
 RENAME_MAP = {
     "År":              "Ar",
