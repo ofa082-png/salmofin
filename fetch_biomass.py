@@ -48,7 +48,7 @@ KEEP_COLS = [
     "Utsettsar", "Behfisk_stk", "Biomasse_kg", "Utsett_smolt_stk",
     "Utsett_smolt_stk_under500g", "Forforbruk_kg", "Uttak_stk", "Uttak_kg",
     "Uttak_sloyd_kg", "Uttak_hodekappet_kg", "Uttak_rundvekt_kg",
-    "Dodfisk_stk", "Utkast_stk", "Romming_stk", "Andre_stk", "AarMnd",
+    "Dodfisk_stk", "Utkast_stk", "Romming_stk", "Andre_stk", "AarMnd", "running_month",
 ]
 
 
@@ -76,6 +76,7 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
 
     # Add AarMnd computed column
     df["AarMnd"] = df["Ar"].astype(str) + "-" + df["Maaned_kode"].astype(str).str.zfill(2)
+    df["running_month"] = (df["Ar"] - df["Utsettsar"]).astype(int) * 12 + df["Maaned_kode"].astype(int)
 
     missing = [c for c in KEEP_COLS if c not in df.columns]
     if missing:
