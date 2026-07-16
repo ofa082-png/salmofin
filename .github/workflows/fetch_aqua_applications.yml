@@ -28,7 +28,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests pandas google-cloud-bigquery google-auth db-dtypes pyarrow
+          pip install requests pandas google-cloud-bigquery google-auth db-dtypes pyarrow pandas-gbq
 
       - name: Run fetch_aqua_applications.py (incremental)
         if: ${{ github.event.inputs.backfill != 'true' }}
