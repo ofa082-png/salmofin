@@ -1,0 +1,43 @@
+name: Fetch Aqua Applications
+
+on:
+  schedule:
+    # Every Monday at 05:00 UTC — adjust as needed
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: "Run a full backfill instead of incremental"
+        required: false
+        default: "false"
+        type: boolean
+
+jobs:
+  fetch-aqua-applications:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install requests pandas google-cloud-bigquery google-auth db-dtypes pyarrow
+
+      - name: Run fetch_aqua_applications.py (incremental)
+        if: ${{ github.event.inputs.backfill != 'true' }}
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python fetch_aqua_applications.py
+
+      - name: Run fetch_aqua_applications.py (backfill)
+        if: ${{ github.event.inputs.backfill == 'true' }}
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python fetch_aqua_applications.py --backfill
