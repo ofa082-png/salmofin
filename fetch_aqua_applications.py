@@ -331,13 +331,30 @@ def upsert_to_bigquery(client, rows: list[dict]):
     int_cols    = ["submission_id", "site_no", "num_tilsagn"]
     bool_cols   = ["is_area_changed"]
 
+    all_cols = list(df.columns)
+
+    def bq_type(col):
+        if col in ts_cols:    return "TIMESTAMP"
+        if col in float_cols: return "FLOAT64"
+        if col in int_cols:   return "INT64"
+        if col in bool_cols:  return "BOOL"
+        return "STRING"
+
+    # Explicit schema — do NOT rely on autodetect. When a batch happens to have
+    # an entirely-null column (e.g. no withdrawals this run), autodetect can't
+    # infer a type and silently defaults to something like INT64, which then
+    # breaks the CAST(... AS TIMESTAMP) below with "Invalid cast from INT64 to
+    # TIMESTAMP". An explicit schema makes every column's type independent of
+    # what happens to be present in a given batch.
+    schema = [bigquery.SchemaField(col, bq_type(col)) for col in all_cols]
+
     temp = f"{TABLE_ID}_temp"
     print(f"Loading {len(df):,} rows to temp table...")
     client.load_table_from_dataframe(
         df, temp,
         job_config=bigquery.LoadJobConfig(
             write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
-            autodetect=True,
+            schema=schema,
         )
     ).result()
 
@@ -349,7 +366,6 @@ def upsert_to_bigquery(client, rows: list[dict]):
         if col in bool_cols:   return f"CAST(S.{col} AS BOOL) AS {col}"
         return f"S.{col}"
 
-    all_cols    = list(df.columns)
     cast_select = ",\n                ".join(cast(c) for c in all_cols)
     update_cols = [c for c in all_cols if c not in ("application_no", "created_at")]
     update_set  = ",\n            ".join(f"T.{c} = src.{c}" for c in update_cols)
