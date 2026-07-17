@@ -223,8 +223,10 @@ def flatten_row(item: dict, detail: dict, sub: dict, sub_data: dict, evaluation:
         "applicant_org_name":          item.get("applicantOrganisationName"),
         "type":                        item.get("type"),
         "title":                       item.get("title"),
-        "withdrawn_at":                item.get("withdrawnAt"),
-        "submitted_at":                item.get("submittedAt"),
+        # The list endpoint often doesn't carry these — the detail endpoint (d)
+        # reliably has them (confirmed via raw_detail_json), so prefer that.
+        "withdrawn_at":                d.get("withdrawnAt") or item.get("withdrawnAt"),
+        "submitted_at":                d.get("submittedAt") or item.get("submittedAt"),
 
         # ── 2. Application detail — raw backup, field names not yet confirmed ──
         "raw_detail_json":             json.dumps(d, ensure_ascii=False) if d else None,
