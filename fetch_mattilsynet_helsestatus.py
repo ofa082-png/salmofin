@@ -1,9 +1,14 @@
 """
 fetch_mattilsynet_helsestatus.py
 ---------------------------------
-Fetches per-locality fish health status from Mattilsynet public API.
-No authentication required — Client-Id header only.
-Deletes all rows and reinserts fresh daily (current-state snapshot, not a log).
+Fetches currently-active disease status per locality from Mattilsynet
+public API. No authentication required — Client-Id header only.
+This is a status table, not a locality registry — only localities with
+an open disease case are included (locality/company/production-form
+detail already lives in the localities/licenses tables; full disease
+history lives in mattilsynet_disease). One row per active case, so a
+locality with two simultaneous diseases gets two rows.
+Deletes all rows and reinserts fresh daily (current-state snapshot).
 """
 
 import requests
@@ -14,11 +19,11 @@ import pandas as pd
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
-PROJECT_ID       = "salmofin"
-DATASET_ID       = "salmofin"
+PROJECT_ID        = "salmofin"
+DATASET_ID        = "salmofin"
 HELSESTATUS_TABLE = f"{PROJECT_ID}.{DATASET_ID}.mattilsynet_helsestatus"
-BASE_URL         = "https://akvakultur-offentlig-api.fisk.mattilsynet.io/api/helsestatus/v2/lokaliteter"
-HEADERS          = {"Client-Id": "salmofin", "Accept": "application/json"}
+BASE_URL          = "https://akvakultur-offentlig-api.fisk.mattilsynet.io/api/helsestatus/v2/lokaliteter"
+HEADERS           = {"Client-Id": "salmofin", "Accept": "application/json"}
 
 def get_bq_client():
     credentials_info = json.loads(os.environ["GOOGLE_CREDENTIALS"])
@@ -50,20 +55,14 @@ def flatten_to_rows(records):
     fetched_at = datetime.datetime.now(datetime.timezone.utc)
     rows = []
     for r in records:
-        virksomheter = r.get("virksomheter") or []
-        arter = r.get("arter") or []
-        sykdomstilfeller = r.get("sykdomstilfeller") or []
-        rows.append({
-            "lokalitetsnummer":    r.get("lokalitetsnummer"),
-            "lokalitetsnavn":      r.get("lokalitetsnavn"),
-            "produksjonsformer":   ",".join(r.get("produksjonsformer") or []),
-            "num_virksomheter":    len(virksomheter),
-            "virksomheter":        ",".join(v.get("navn") for v in virksomheter if v.get("navn")),
-            "arter":               ",".join(a.get("artskode") for a in arter if a.get("artskode")),
-            "has_active_sykdom":   len(sykdomstilfeller) > 0,
-            "active_sykdomstyper": ",".join(sorted(set(s.get("sykdomstype") for s in sykdomstilfeller if s.get("sykdomstype")))),
-            "fetched_at":          fetched_at,
-        })
+        for s in (r.get("sykdomstilfeller") or []):
+            rows.append({
+                "lokalitetsnummer": r.get("lokalitetsnummer"),
+                "lokalitetsnavn":   r.get("lokalitetsnavn"),
+                "sykdomstype":      s.get("sykdomstype"),
+                "diagnosedato":     s.get("diagnoseDato"),
+                "fetched_at":       fetched_at,
+            })
     return rows
 
 def reload_bigquery(client, df):
@@ -87,7 +86,7 @@ if __name__ == "__main__":
     df      = pd.DataFrame(rows)
 
     df["lokalitetsnummer"] = pd.to_numeric(df["lokalitetsnummer"], errors="coerce").astype("Int64")
-    df["num_virksomheter"] = pd.to_numeric(df["num_virksomheter"], errors="coerce").astype("Int64")
+    df["diagnosedato"]     = pd.to_datetime(df["diagnosedato"], errors="coerce", utc=True).astype("datetime64[us, UTC]")
     df["fetched_at"]       = pd.to_datetime(df["fetched_at"], utc=True).astype("datetime64[us, UTC]")
 
     print(df.shape)
