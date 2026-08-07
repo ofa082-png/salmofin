@@ -310,9 +310,10 @@ def fetch_plant_weekday_this_week():
     return {k: [v if i <= today_weekday else None for i, v in enumerate(vals)] for k, vals in result.items()}
 
 def fetch_plant_status():
-    """Latest-week plant ranking per vessel type. The CSV is already
-    restricted to Wellboat + Processing vessel (fetch_harvest_visits.py
-    only tracks those two types against harvest plants)."""
+    """Latest-week plant ranking per vessel type — every plant with
+    activity, not just the top N. The CSV is already restricted to
+    Wellboat + Processing vessel (fetch_harvest_visits.py only tracks
+    those two types against harvest plants)."""
     path = latest_plant_csv()
     if not path:
         return {}, None
@@ -329,7 +330,7 @@ def fetch_plant_status():
                 if not p["last_exit"] or row["exit_time"] > p["last_exit"]:
                     p["last_exit"] = row["exit_time"]
     ranked_by_type = {
-        key: sorted(plants.items(), key=lambda kv: -kv[1]["capacity"])[:12]
+        key: sorted(plants.items(), key=lambda kv: -kv[1]["capacity"])
         for key, plants in plants_by_type.items()
     }
     return ranked_by_type, week_label
