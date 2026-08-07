@@ -337,17 +337,64 @@ def fetch_plant_status():
 NO_PLANT_DATA_ROW = ('<tr><td colspan="5" style="padding:14px 10px;color:var(--text-muted);'
                       'text-align:center;">Ingen slakterianløp registrert for denne fartøytypen.</td></tr>')
 
-def build_plant_rows(ranked):
+PLANT_MATRIX_WEEKS = 8   # weeks of history shown in the per-plant sparkline column
+SPARK_BAR_H = 24         # px
+
+def fetch_plant_visit_matrix(ranked_by_type, n_weeks):
+    """Per type: weekly visit counts for each of that type's ranked plants,
+    over the last n_weeks completed weeks plus the current partial week
+    (if a file for it exists) — the data behind the "Anløp" sparkline
+    column. Kept separate from fetch_plant_status (which only reads the
+    single latest completed week) since this needs several files."""
+    completed = completed_plant_csvs()[-n_weeks:]
+    current = current_week_plant_path()
+    files = completed + ([current] if current else [])
+    labels = [os.path.basename(p).replace("harvest_plant_visits_", "").replace(".csv", "").split("_")[-1] for p in files]
+    partial_idx = len(files) - 1 if current else None
+
+    counts = defaultdict(lambda: defaultdict(lambda: [0] * len(files)))
+    for idx, path in enumerate(files):
+        with open(path, encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                vtype = row["vessel_type"].strip()
+                name = row["plant_name"]
+                for key in ("Alle", vtype):
+                    counts[name][key][idx] += 1
+
+    matrix_by_type = {}
+    for type_key, ranked in ranked_by_type.items():
+        rows = {name: counts[name][type_key] for name, _ in ranked}
+        max_val = max((max(vals) for vals in rows.values()), default=0)
+        matrix_by_type[type_key] = {"labels": labels, "partial_idx": partial_idx, "rows": rows, "max_val": max_val}
+    return matrix_by_type
+
+def render_sparkline(values, labels, partial_idx, max_val):
+    bars = []
+    for i, v in enumerate(values):
+        h = max(2, round((v / max_val) * SPARK_BAR_H)) if v and max_val else 1
+        opacity = "0.5" if i == partial_idx else "1"
+        bars.append(
+            f'<div title="{labels[i]}: {v}" style="width:5px;height:{h}px;'
+            f'background:var(--accent);opacity:{opacity};border-radius:1px;"></div>'
+        )
+    return (f'<div style="display:flex;align-items:flex-end;gap:2px;height:{SPARK_BAR_H}px;">'
+            f'{"".join(bars)}</div>')
+
+def build_plant_rows(ranked, matrix=None):
     if not ranked:
         return NO_PLANT_DATA_ROW
     rows = []
     for name, p in ranked:
         last_date = p["last_exit"][:10] if p["last_exit"] else ""
+        if matrix and name in matrix["rows"]:
+            anlop_cell = render_sparkline(matrix["rows"][name], matrix["labels"], matrix["partial_idx"], matrix["max_val"])
+        else:
+            anlop_cell = str(p["visits"])
         rows.append(f"""
       <tr style="border-top:0.5px solid var(--border);">
         <td style="padding:8px 10px;">{name.title()}</td>
         <td style="padding:8px 10px;">{p['company'].title()}</td>
-        <td style="padding:8px 10px;text-align:right;">{p['visits']}</td>
+        <td style="padding:8px 10px;">{anlop_cell}</td>
         <td style="padding:8px 10px;text-align:right;">{p['capacity']:,.0f} t</td>
         <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">{last_date}</td>
       </tr>""")
@@ -485,14 +532,14 @@ TEMPLATE = """<!doctype html>
       <canvas id="plantWeekdayChart" width="640" height="150"></canvas>
     </div>
 
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Status per slakteri, uke {plant_week}. Kapasitet = summert fartøykapasitet ved anløp, ikke bekreftet levert volum.</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Status per slakteri, uke {plant_week}. Kapasitet = summert fartøykapasitet ved anløp, ikke bekreftet levert volum. Siste (lysere) søyle i Anløp-kolonnen er inneværende uke (delvis).</div>
     <div style="border:0.5px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto;">
       <table style="font-size:13px;table-layout:fixed;">
         <thead>
         <tr style="background:var(--surface-2);">
           <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Anlegg</td>
           <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Selskap</td>
-          <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Anløp</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Anløp, siste {plant_matrix_weeks} uker</td>
           <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Kapasitet</td>
           <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Siste</td>
         </tr>
@@ -678,8 +725,10 @@ if __name__ == "__main__":
 
     # --- Plant (slakteri) section — computed first so it can feed into harvest_data ---
     plant_ranked_by_type, plant_week = fetch_plant_status()
+    plant_matrix = fetch_plant_visit_matrix(plant_ranked_by_type, PLANT_MATRIX_WEEKS)
     plant_rows_by_type = {
-        t: build_plant_rows(plant_ranked_by_type.get(t, [])) for t in HARVEST_ORDER
+        t: build_plant_rows(plant_ranked_by_type.get(t, []), matrix=plant_matrix.get(t))
+        for t in HARVEST_ORDER
     }
     plant_weekly = fetch_plant_weekly_series(PLANT_WEEKS_HISTORY)
     plant_current = fetch_plant_current_week_counts()
@@ -733,6 +782,7 @@ if __name__ == "__main__":
         plant_rows_json=json.dumps(plant_rows_by_type),
         plant_week=plant_week or "-",
         plant_weeks_history=PLANT_WEEKS_HISTORY,
+        plant_matrix_weeks=PLANT_MATRIX_WEEKS,
         feed_wtd_visits=feed_data["wtd_visits"],
         feed_wtd_diff_label=feed_data["wtd_diff_label"],
         feed_wtd_diff_color=feed_data["wtd_diff_color"],
