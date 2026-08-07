@@ -29,7 +29,7 @@ FLEET_CSV = os.path.join(BASE_DIR, "vessel_categories.csv")
 PLANT_LOCATIONS_CSV = os.path.join(BASE_DIR, "data", "plant_locations.csv")
 
 BIG_VESSEL_MIN_TONNES = 400
-LOOKBACK_WEEKS = 8
+LOOKBACK_WEEKS = 2
 
 def get_bq_client():
     credentials_info = json.loads(os.environ["GOOGLE_CREDENTIALS"])
@@ -155,6 +155,45 @@ def build_vessel_options(vessels, itineraries):
         for v in vessels
     )
 
+def build_vessel_summary(vessels, itineraries):
+    """One row per vessel: activity counts + last-seen date, sorted by
+    activity so the most-active vessels (and, at the bottom, the
+    conspicuously inactive ones) are visible at a glance."""
+    summary = []
+    for v in vessels:
+        stops = itineraries.get(str(v["mmsi"]), [])
+        localities = {s["name"] for s in stops if s["type"] == "locality"}
+        plants = {s["name"] for s in stops if s["type"] == "plant"}
+        last_seen = max((s["start"] for s in stops), default=None)
+        summary.append({
+            "mmsi": v["mmsi"],
+            "name": v["name"],
+            "type": v["type"],
+            "capacity_t": v["capacity_t"],
+            "stops": len(stops),
+            "localities": len(localities),
+            "plants": len(plants),
+            "last_seen": last_seen,
+        })
+    summary.sort(key=lambda s: -s["stops"])
+    return summary
+
+def build_summary_rows(summary):
+    rows = []
+    for s in summary:
+        last_seen = s["last_seen"][:10] if s["last_seen"] else "—"
+        rows.append(f"""
+      <tr data-mmsi="{s['mmsi']}" style="border-top:0.5px solid var(--border);cursor:pointer;">
+        <td style="padding:8px 10px;">{s['name']}</td>
+        <td style="padding:8px 10px;color:var(--text-secondary);">{s['type']}</td>
+        <td style="padding:8px 10px;text-align:right;">{s['capacity_t']}t</td>
+        <td style="padding:8px 10px;text-align:right;">{s['stops']}</td>
+        <td style="padding:8px 10px;text-align:right;">{s['localities']}</td>
+        <td style="padding:8px 10px;text-align:right;">{s['plants']}</td>
+        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">{last_seen}</td>
+      </tr>""")
+    return "".join(rows)
+
 TEMPLATE = """<!doctype html>
 <html lang="no">
 <head>
@@ -185,6 +224,25 @@ TEMPLATE = """<!doctype html>
       <div style="font-size:13px;color:var(--text-muted)">Fartøy ≥{min_tonnes}t · siste {lookback_weeks} uker · oppdatert {updated}</div>
     </div>
     <a href="traffic.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">trafikk →</a>
+  </div>
+
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Oversikt</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Sortert etter aktivitet. Klikk en rad for å se ruten under.</div>
+  <div style="border:0.5px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto;margin-bottom:1.75rem;">
+    <table style="font-size:13px;table-layout:fixed;">
+      <thead>
+      <tr style="background:var(--surface-2);">
+        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Fartøy</td>
+        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Type</td>
+        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Kap.</td>
+        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Anløp</td>
+        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Lok.</td>
+        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Slakt.</td>
+        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Sist sett</td>
+      </tr>
+      </thead>
+      <tbody id="summaryRows">{summary_rows}</tbody>
+    </table>
   </div>
 
   <select id="vesselSelect">{vessel_options}</select>
@@ -267,14 +325,23 @@ function showVessel(mmsi) {{
 }}
 
 document.getElementById('vesselSelect').addEventListener('change', (e) => showVessel(e.target.value));
-// Object.keys() on integer-like mmsi keys reorders them numerically, not by
-// insertion order, so pick the default by walking the <select> options
-// instead — that preserves the server-side capacity-descending sort.
-const options = [...document.getElementById('vesselSelect').options];
-const defaultOption = options.find(o => (ITINERARIES[o.value] || []).length > 0) || options[0];
-if (defaultOption) {{
-  document.getElementById('vesselSelect').value = defaultOption.value;
-  showVessel(defaultOption.value);
+
+document.getElementById('summaryRows').addEventListener('click', (e) => {{
+  const row = e.target.closest('tr[data-mmsi]');
+  if (!row) return;
+  const mmsi = row.dataset.mmsi;
+  document.getElementById('vesselSelect').value = mmsi;
+  showVessel(mmsi);
+  document.getElementById('map').scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+}});
+// Default to the top (most active) row of the summary table rather than
+// the highest-capacity vessel, so the map opens on something with data.
+const firstSummaryRow = document.querySelector('#summaryRows tr[data-mmsi]');
+const defaultMmsi = firstSummaryRow ? firstSummaryRow.dataset.mmsi
+  : (document.getElementById('vesselSelect').options[0] || {{}}).value;
+if (defaultMmsi) {{
+  document.getElementById('vesselSelect').value = defaultMmsi;
+  showVessel(defaultMmsi);
 }}
 </script>
 </body>
@@ -301,6 +368,8 @@ if __name__ == "__main__":
 
     itineraries = build_itineraries(vessels, locality_rows, plant_rows, plant_locations)
     vessel_options = build_vessel_options(vessels, itineraries)
+    summary = build_vessel_summary(vessels, itineraries)
+    summary_rows = build_summary_rows(summary)
 
     now = datetime.datetime.now(datetime.timezone.utc)
     html = TEMPLATE.format(
@@ -308,6 +377,7 @@ if __name__ == "__main__":
         lookback_weeks=LOOKBACK_WEEKS,
         updated=now.strftime("%d.%m.%Y %H:%M UTC"),
         vessel_options=vessel_options,
+        summary_rows=summary_rows,
         itineraries_json=json.dumps(itineraries),
     )
 
