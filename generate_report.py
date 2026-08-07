@@ -151,8 +151,8 @@ TEMPLATE = """<!doctype html>
   </div>
 
   <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Lusenivå, siste 12 uker</div>
-  <div style="position:relative;height:140px;margin-bottom:1.75rem;">
-    <canvas id="liceChart"></canvas>
+  <div style="position:relative;width:100%;height:140px;margin-bottom:1.75rem;">
+    <canvas id="liceChart" width="640" height="140"></canvas>
   </div>
 
   <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Nye og pågående sykdomstilfeller, siste 14 dager</div>
