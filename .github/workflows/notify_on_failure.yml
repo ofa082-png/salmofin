@@ -16,6 +16,7 @@ on:
       - "Fetch Salmon Export"
       - "Generate Fish Health Report"
       - "Generate Traffic Report"
+      - "Generate Big Vessel Tracker"
       - "Harvest Plant Vessel Visits"
       - "Fetch Lice"
       - "Fetch Treatments"

@@ -479,7 +479,10 @@ TEMPLATE = """<!doctype html>
       <div style="font-size:18px;font-weight:500;">Trafikkrapport</div>
       <div style="font-size:13px;color:var(--text-muted)">Data t.o.m. {yesterday_label} · oppdatert {updated}</div>
     </div>
-    <a href="index.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">fiskehelse →</a>
+    <div style="display:flex;gap:6px;">
+      <a href="big_vessels.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">store fartøy →</a>
+      <a href="index.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">fiskehelse →</a>
+    </div>
   </div>
 
   <section>
