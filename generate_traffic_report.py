@@ -31,7 +31,7 @@ FLEET_CSV    = os.path.join(BASE_DIR, "vessel_categories.csv")
 
 WEEKS_HISTORY = 10   # weeks shown in bar charts, including the current (partial) week
 PACING_WEEKS  = 8     # completed weeks used to build the weekday-pacing curve for forecasts
-PLANT_WEEKS_HISTORY = 14
+PLANT_WEEKS_HISTORY = WEEKS_HISTORY  # kept equal to the locality-visit lookback for a consistent trend window
 
 HARVEST_LABELS = {
     "Alle":              "Alle",
@@ -573,12 +573,12 @@ TEMPLATE = """<!doctype html>
   </section>
 
   <section>
-    <div class="section-title">Fôr vs. ensilasje</div>
-    <div class="section-sub">Fôr og ensilasje følger normalt hverandre (produksjonsdrevet). Ensilasje som stiger uten tilsvarende fôrøkning kan indikere en hendelse (f.eks. dødelighet) snarere enn normal drift.</div>
-    <div style="position:relative;width:100%;height:170px;margin-bottom:6px;">
-      <canvas id="feedSilageChart" width="640" height="170"></canvas>
+    <div class="section-title">Fiskehelseindikator</div>
+    <div class="section-sub">Egenutviklet indikator basert på vessel-trafikkmønstre. Stigende verdier kan tyde på økt dødelighet eller helseutfordringer på anleggene.</div>
+    <div style="position:relative;width:100%;height:170px;margin-bottom:4px;">
+      <canvas id="fishHealthChart" width="640" height="170"></canvas>
     </div>
-    <div style="font-size:11px;color:var(--text-muted);">Siste søyle er inneværende uke (delvis).</div>
+    <div style="font-size:11px;color:var(--text-muted);">Siste punkt er inneværende uke (delvis).</div>
   </section>
 
   <section>
@@ -684,15 +684,14 @@ new Chart(document.getElementById('feedChart'), {{
     scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
 }});
 
-new Chart(document.getElementById('feedSilageChart'), {{
+new Chart(document.getElementById('fishHealthChart'), {{
+  type: 'line',
   data: {{ labels: {feed_weekly_labels_json}, datasets: [
-    {{ type: 'bar', label: 'Ensilasje', data: {silage_weekly_values_json}, backgroundColor: barColors({feed_weekly_labels_json}, {feed_partial_idx}, '#d68a2a'), borderRadius: 3, yAxisID: 'y', order: 2 }},
-    {{ type: 'line', label: 'Ensilasje/fôr-forhold', data: {ratio_weekly_values_json}, borderColor: '#7a4fc9', backgroundColor: '#7a4fc9', tension: 0.25, pointRadius: 3, yAxisID: 'y1', order: 1, spanGaps: true }}
+    {{ label: 'Indikator', data: {ratio_weekly_values_json}, borderColor: '#7a4fc9', backgroundColor: '#7a4fc9', tension: 0.25, pointRadius: 3, spanGaps: true }}
   ] }},
-  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: true, labels: {{ color: '#898781', font: {{ size: 11 }}, boxWidth: 10 }} }} }},
+  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
     scales: {{
-      y: {{ position: 'left', ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }},
-      y1: {{ position: 'right', ticks: {{ color: '#7a4fc9', font: {{ size: 11 }} }}, grid: {{ display: false }} }},
+      y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }},
       x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }}
     }} }}
 }});
@@ -792,7 +791,6 @@ if __name__ == "__main__":
         feed_weekly_labels_json=json.dumps(feed_data["weekly_labels"]),
         feed_weekly_values_json=json.dumps(feed_data["weekly_values"]),
         feed_partial_idx=feed_data["weekly_partial_idx"],
-        silage_weekly_values_json=json.dumps(silage_weekly_values),
         ratio_weekly_values_json=json.dumps(ratio_weekly_values),
         delousing_weekly_labels_json=json.dumps([w[0] for w in delousing_weekly]),
         delousing_weekly_values_json=json.dumps([w[1] for w in delousing_weekly]),
