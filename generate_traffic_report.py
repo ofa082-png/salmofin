@@ -730,8 +730,12 @@ if __name__ == "__main__":
         t: build_plant_rows(plant_ranked_by_type.get(t, []), matrix=plant_matrix.get(t))
         for t in HARVEST_ORDER
     }
-    plant_weekly = fetch_plant_weekly_series(PLANT_WEEKS_HISTORY)
     plant_current = fetch_plant_current_week_counts()
+    # The current partial week gets appended to this series separately (see
+    # build_harvest_group_data), so fetch one fewer completed week when it
+    # exists — otherwise the plant chart would show one more bar than the
+    # harvest chart even though both use the same *_WEEKS_HISTORY value.
+    plant_weekly = fetch_plant_weekly_series(PLANT_WEEKS_HISTORY - 1 if plant_current else PLANT_WEEKS_HISTORY)
     plant_weekday = fetch_plant_weekday_series(PLANT_WEEKS_HISTORY)
     plant_weekday_this_week = fetch_plant_weekday_this_week()
 
