@@ -41,6 +41,7 @@ HARVEST_LABELS = {
 HARVEST_ORDER = ["Alle", "Wellboat", "Processing vessel"]
 
 NO_WEEKDAY = ["mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag", "søndag"]
+NO_WEEKDAY_SHORT = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"]
 
 def get_bq_client():
     credentials_info = json.loads(os.environ["GOOGLE_CREDENTIALS"])
@@ -127,6 +128,31 @@ def build_pacing_curve(daily, current_monday, pacing_weeks):
             fractions[i].append(cum / wk_total)
     return [sum(f) / len(f) if f else (i + 1) / 7 for i, f in enumerate(fractions)]
 
+def build_weekday_avg_counts(daily, current_monday, pacing_weeks):
+    """avg visit count per weekday (0=Mon..6=Sun), based on the
+    `pacing_weeks` completed weeks immediately before `current_monday` —
+    the baseline a "this week" / "last week" line gets compared against."""
+    sums = [0] * 7
+    for w in range(1, pacing_weeks + 1):
+        m = current_monday - datetime.timedelta(weeks=w)
+        for i in range(7):
+            d = m + datetime.timedelta(days=i)
+            sums[i] += daily.get(d, {}).get("visits", 0)
+    return [round(s / pacing_weeks, 1) for s in sums]
+
+def build_weekday_actuals(daily, monday, upto=None):
+    """actual visit count per weekday for the week starting `monday`.
+    Days after `upto` (if given) are None — not yet occurred, so a line
+    chart just stops there instead of drawing a false zero."""
+    result = []
+    for i in range(7):
+        d = monday + datetime.timedelta(days=i)
+        if upto is not None and d > upto:
+            result.append(None)
+        else:
+            result.append(daily.get(d, {}).get("visits", 0))
+    return result
+
 def build_weekly_series(daily, current_monday, weeks_history, yesterday):
     """[(label, total, is_partial), ...] oldest -> newest, newest may be partial."""
     series = []
@@ -146,7 +172,7 @@ def diff_label(pct):
 def diff_color(pct):
     return "#008300" if pct >= 0 else "#a32d2d"
 
-def build_harvest_group_data(daily, current_monday, yesterday, two_days_ago, plant_weekly=None):
+def build_harvest_group_data(daily, current_monday, yesterday, two_days_ago, plant_weekly=None, plant_current=None, plant_weekday=None):
     pacing = build_pacing_curve(daily, current_monday, PACING_WEEKS)
     wtd = week_total(daily, current_monday, yesterday)
     lw_end = yesterday - datetime.timedelta(days=7)
@@ -160,6 +186,9 @@ def build_harvest_group_data(daily, current_monday, yesterday, two_days_ago, pla
     forecast = round(wtd / frac)
 
     weekly = build_weekly_series(daily, current_monday, WEEKS_HISTORY, yesterday)
+    weekday_avg = build_weekday_avg_counts(daily, current_monday, PACING_WEEKS)
+    weekday_this_week = build_weekday_actuals(daily, current_monday, upto=yesterday)
+    weekday_last_week = build_weekday_actuals(daily, lw_monday, upto=None)
 
     y_visits = daily.get(yesterday, {}).get("visits", 0)
     tda_visits = daily.get(two_days_ago, {}).get("visits", 0)
@@ -176,6 +205,9 @@ def build_harvest_group_data(daily, current_monday, yesterday, two_days_ago, pla
         "weekly_labels": [w[0] for w in weekly],
         "weekly_values": [w[1] for w in weekly],
         "weekly_partial_idx": len(weekly) - 1,
+        "weekday_avg": weekday_avg,
+        "weekday_this_week": weekday_this_week,
+        "weekday_last_week": weekday_last_week,
         "yesterday_visits": y_visits,
         "y_diff_label": diff_label(y_diff_pct),
         "y_diff_color": diff_color(y_diff_pct),
@@ -184,27 +216,98 @@ def build_harvest_group_data(daily, current_monday, yesterday, two_days_ago, pla
     }
 
     if plant_weekly is not None:
+        # p_last/p_prev (the "forrige uke" tile) always come from the
+        # completed-weeks-only series — a partial current week must never
+        # feed into that comparison. It's appended to the chart series
+        # afterwards, purely as an extra (lighter-shaded) trend bar.
         p_labels = [w[0] for w in plant_weekly]
         p_values = [w[1] for w in plant_weekly]
         p_last = p_values[-1] if p_values else 0
         p_prev = p_values[-2] if len(p_values) > 1 else 0
         p_diff_pct = ((p_last - p_prev) / p_prev * 100) if p_prev else 0
+
+        chart_labels = list(p_labels)
+        chart_values = list(p_values)
+        chart_partial_idx = None
+        if plant_current is not None:
+            cur_label, cur_value = plant_current
+            chart_labels.append(cur_label)
+            chart_values.append(cur_value)
+            chart_partial_idx = len(chart_values) - 1
+
         result.update({
-            "plant_weekly_labels": p_labels,
-            "plant_weekly_values": p_values,
+            "plant_weekly_labels": chart_labels,
+            "plant_weekly_values": chart_values,
+            "plant_weekly_partial_idx": chart_partial_idx,
             "plant_last_week": p_last,
             "plant_diff_label": diff_label(p_diff_pct),
             "plant_diff_color": diff_color(p_diff_pct),
         })
 
-    return result
+    if plant_weekday is not None:
+        result.update({
+            "plant_weekday_avg": plant_weekday["avg"],
+            "plant_weekday_last_week": plant_weekday["last_week"],
+            "plant_weekday_this_week": plant_weekday.get("this_week", [None] * 7),
+        })
 
-def latest_plant_csv():
-    files = sorted(glob.glob(os.path.join(BASE_DIR, "data", "harvest_plant_visits_*.csv")))
-    return files[-1] if files else None
+    return result
 
 def all_plant_csvs():
     return sorted(glob.glob(os.path.join(BASE_DIR, "data", "harvest_plant_visits_*.csv")))
+
+def current_week_plant_path():
+    """Path to the in-progress week's plant CSV, refreshed daily by
+    fetch_harvest_visits.py — may not exist yet (e.g. very early Monday
+    before the first vessel track has any pings)."""
+    iso = datetime.date.today().isocalendar()
+    path = os.path.join(BASE_DIR, "data", f"harvest_plant_visits_{iso[0]}_W{iso[1]:02d}.csv")
+    return path if os.path.exists(path) else None
+
+def completed_plant_csvs():
+    """All plant CSVs excluding the current in-progress week's file, so
+    weekly/weekday averages and the "last completed week" figures never
+    get contaminated by a still-growing partial week."""
+    current = current_week_plant_path()
+    return [f for f in all_plant_csvs() if f != current]
+
+def latest_plant_csv():
+    files = completed_plant_csvs()
+    return files[-1] if files else None
+
+def fetch_plant_current_week_counts():
+    """Per vessel type: (label, count) for the current in-progress week,
+    or None if no partial file exists yet."""
+    path = current_week_plant_path()
+    if not path:
+        return None
+    label = os.path.basename(path).replace("harvest_plant_visits_", "").replace(".csv", "").split("_")[-1]
+    counts = {"Alle": 0, "Wellboat": 0, "Processing vessel": 0}
+    with open(path, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            counts["Alle"] += 1
+            vtype = row["vessel_type"].strip()
+            if vtype in counts:
+                counts[vtype] += 1
+    return {k: (label, v) for k, v in counts.items()}
+
+def fetch_plant_weekday_this_week():
+    """Per vessel type: actual plant-visit count per weekday (of
+    entry_time) for the current in-progress week, with None for weekdays
+    not yet reached — mirrors build_weekday_actuals for the locality
+    (vessel_visits) side."""
+    path = current_week_plant_path()
+    result = {"Alle": [0] * 7, "Wellboat": [0] * 7, "Processing vessel": [0] * 7}
+    if not path:
+        return {k: [None] * 7 for k in result}
+    with open(path, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            vtype = row["vessel_type"].strip()
+            weekday = datetime.date.fromisoformat(row["entry_time"][:10]).weekday()
+            for key in ("Alle", vtype):
+                result[key][weekday] += 1
+    today_weekday = datetime.date.today().weekday()
+    return {k: [v if i <= today_weekday else None for i, v in enumerate(vals)] for k, vals in result.items()}
 
 def fetch_plant_status():
     """Latest-week plant ranking per vessel type. The CSV is already
@@ -252,8 +355,9 @@ def build_plant_rows(ranked):
 
 def fetch_plant_weekly_series(n_weeks):
     """Weekly plant-visit totals per vessel type, from the last n_weeks
-    harvest_plant_visits CSVs (each file = one already-completed week)."""
-    files = all_plant_csvs()[-n_weeks:]
+    completed harvest_plant_visits CSVs (the in-progress week, if any, is
+    added separately by the caller so it can be marked partial)."""
+    files = completed_plant_csvs()[-n_weeks:]
     series = {"Alle": [], "Wellboat": [], "Processing vessel": []}
     for path in files:
         label = os.path.basename(path).replace("harvest_plant_visits_", "").replace(".csv", "").split("_")[-1]
@@ -267,6 +371,35 @@ def fetch_plant_weekly_series(n_weeks):
         for k in series:
             series[k].append((label, counts[k]))
     return series
+
+def fetch_plant_weekday_series(n_weeks):
+    """Per vessel type: avg plant-visit count per weekday (of entry_time)
+    across the last n_weeks completed weeks, plus the actual per-weekday
+    count for just the newest completed week — the "last week" line to
+    compare against that average. The current in-progress week (if any)
+    is handled separately by fetch_plant_weekday_this_week."""
+    files = completed_plant_csvs()[-n_weeks:]
+    avg_sums = {"Alle": [0] * 7, "Wellboat": [0] * 7, "Processing vessel": [0] * 7}
+    last_week_counts = {"Alle": [0] * 7, "Wellboat": [0] * 7, "Processing vessel": [0] * 7}
+    for idx, path in enumerate(files):
+        is_last = (idx == len(files) - 1)
+        with open(path, encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                vtype = row["vessel_type"].strip()
+                weekday = datetime.date.fromisoformat(row["entry_time"][:10]).weekday()
+                for key in ("Alle", vtype):
+                    if key not in avg_sums:
+                        continue
+                    avg_sums[key][weekday] += 1
+                    if is_last:
+                        last_week_counts[key][weekday] += 1
+    result = {}
+    for key in avg_sums:
+        result[key] = {
+            "avg": [round(s / len(files), 1) for s in avg_sums[key]] if files else [0] * 7,
+            "last_week": last_week_counts[key],
+        }
+    return result
 
 TEMPLATE = """<!doctype html>
 <html lang="no">
@@ -325,7 +458,12 @@ TEMPLATE = """<!doctype html>
     <div style="position:relative;width:100%;height:150px;margin-bottom:4px;">
       <canvas id="harvestChart" width="640" height="150"></canvas>
     </div>
-    <div style="font-size:11px;color:var(--text-muted);">Siste søyle er inneværende uke (delvis).</div>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:16px;">Siste søyle er inneværende uke (delvis).</div>
+
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:2px;">Ukedagsmønster: denne uken og forrige uke mot snitt (siste {pacing_weeks} fullførte uker)</div>
+    <div style="position:relative;width:100%;height:150px;">
+      <canvas id="harvestWeekdayChart" width="640" height="150"></canvas>
+    </div>
   </section>
 
   <section>
@@ -340,6 +478,11 @@ TEMPLATE = """<!doctype html>
 
     <div style="position:relative;width:100%;height:150px;margin-bottom:14px;">
       <canvas id="plantWeeklyChart" width="640" height="150"></canvas>
+    </div>
+
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:2px;">Ukedagsmønster: denne uken (delvis) og forrige uke ({plant_week}) mot snitt (siste {plant_weeks_history} uker)</div>
+    <div style="position:relative;width:100%;height:150px;margin-bottom:14px;">
+      <canvas id="plantWeekdayChart" width="640" height="150"></canvas>
     </div>
 
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Status per slakteri, uke {plant_week}. Kapasitet = summert fartøykapasitet ved anløp, ikke bekreftet levert volum.</div>
@@ -390,6 +533,15 @@ TEMPLATE = """<!doctype html>
     <div style="font-size:11px;color:var(--text-muted);">Siste søyle er inneværende uke (delvis).</div>
   </section>
 
+  <section>
+    <div class="section-title">Avlusningsfartøy</div>
+    <div class="section-sub">Kun beskrivende — testet mot faktiske avlusningsregistreringer og fanger foreløpig opp ca. 22–26% av dem, så dette er ikke en pålitelig indikator ennå, kun et rått anløpsbilde.</div>
+    <div style="position:relative;width:100%;height:150px;margin-bottom:4px;">
+      <canvas id="delousingWeeklyChart" width="640" height="150"></canvas>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);">Siste søyle er inneværende uke (delvis).</div>
+  </section>
+
   <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
     Lokalitetsanløp: BarentsWatch AIS, kun fartøy i vår flåteliste (vessel_categories.csv). Slakterianløp: BarentsWatch fiskehelse, oppdatert ukentlig for forrige fullførte uke. Anslag hele uken bruker gjennomsnittlig ukentlig fremdriftsmønster fra de siste {pacing_weeks} fullførte ukene. Via salmofin BigQuery-pipeline.
   </div>
@@ -418,6 +570,26 @@ const plantWeeklyChart = new Chart(document.getElementById('plantWeeklyChart'), 
     scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
 }});
 
+const harvestWeekdayChart = new Chart(document.getElementById('harvestWeekdayChart'), {{
+  data: {{ labels: {no_weekday_short_json}, datasets: [
+    {{ type: 'bar', label: 'Snitt', data: [], backgroundColor: '#e1e0d9', borderRadius: 3, order: 3 }},
+    {{ type: 'line', label: 'Forrige uke', data: [], borderColor: '#898781', backgroundColor: '#898781', tension: 0.25, pointRadius: 3, order: 2 }},
+    {{ type: 'line', label: 'Denne uken', data: [], borderColor: '#2a78d6', backgroundColor: '#2a78d6', tension: 0.25, pointRadius: 3, order: 1, spanGaps: false }}
+  ] }},
+  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: true, labels: {{ color: '#898781', font: {{ size: 11 }}, boxWidth: 10 }} }} }},
+    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
+}});
+
+const plantWeekdayChart = new Chart(document.getElementById('plantWeekdayChart'), {{
+  data: {{ labels: {no_weekday_short_json}, datasets: [
+    {{ type: 'bar', label: 'Snitt', data: [], backgroundColor: '#e1e0d9', borderRadius: 3, order: 3 }},
+    {{ type: 'line', label: 'Forrige uke', data: [], borderColor: '#898781', backgroundColor: '#898781', tension: 0.25, pointRadius: 3, order: 2 }},
+    {{ type: 'line', label: 'Denne uken', data: [], borderColor: '#2a78d6', backgroundColor: '#2a78d6', tension: 0.25, pointRadius: 3, order: 1, spanGaps: false }}
+  ] }},
+  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: true, labels: {{ color: '#898781', font: {{ size: 11 }}, boxWidth: 10 }} }} }},
+    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
+}});
+
 function showHarvest(key) {{
   const d = HARVEST_DATA[key];
   if (!d) return;
@@ -438,7 +610,17 @@ function showHarvest(key) {{
   const pd = document.getElementById('p-diff'); pd.textContent = d.plant_diff_label + ' vs. uken før'; pd.style.color = d.plant_diff_color;
   plantWeeklyChart.data.labels = d.plant_weekly_labels;
   plantWeeklyChart.data.datasets[0].data = d.plant_weekly_values;
+  plantWeeklyChart.data.datasets[0].backgroundColor = d.plant_weekly_partial_idx === null
+    ? '#2a78d6' : barColors(d.plant_weekly_labels, d.plant_weekly_partial_idx, '#2a78d6');
   plantWeeklyChart.update();
+  harvestWeekdayChart.data.datasets[0].data = d.weekday_avg;
+  harvestWeekdayChart.data.datasets[1].data = d.weekday_last_week;
+  harvestWeekdayChart.data.datasets[2].data = d.weekday_this_week;
+  harvestWeekdayChart.update();
+  plantWeekdayChart.data.datasets[0].data = d.plant_weekday_avg;
+  plantWeekdayChart.data.datasets[1].data = d.plant_weekday_last_week;
+  plantWeekdayChart.data.datasets[2].data = d.plant_weekday_this_week;
+  plantWeekdayChart.update();
   document.querySelectorAll('#harvestPills .pill').forEach(el => el.classList.toggle('active', el.dataset.type === key));
 }}
 
@@ -465,6 +647,13 @@ new Chart(document.getElementById('feedSilageChart'), {{
       y1: {{ position: 'right', ticks: {{ color: '#7a4fc9', font: {{ size: 11 }} }}, grid: {{ display: false }} }},
       x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }}
     }} }}
+}});
+
+new Chart(document.getElementById('delousingWeeklyChart'), {{
+  type: 'bar',
+  data: {{ labels: {delousing_weekly_labels_json}, datasets: [{{ data: {delousing_weekly_values_json}, backgroundColor: barColors({delousing_weekly_labels_json}, {delousing_partial_idx}, '#52514e'), borderRadius: 4 }}] }},
+  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
+    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
 }});
 </script>
 </body>
@@ -493,6 +682,9 @@ if __name__ == "__main__":
         t: build_plant_rows(plant_ranked_by_type.get(t, [])) for t in HARVEST_ORDER
     }
     plant_weekly = fetch_plant_weekly_series(PLANT_WEEKS_HISTORY)
+    plant_current = fetch_plant_current_week_counts()
+    plant_weekday = fetch_plant_weekday_series(PLANT_WEEKS_HISTORY)
+    plant_weekday_this_week = fetch_plant_weekday_this_week()
 
     # --- Harvest section (Wellboat + Processing vessel) ---
     harvest_daily = {
@@ -501,7 +693,12 @@ if __name__ == "__main__":
         "Processing vessel": stats.get("Processing vessel", {}),
     }
     harvest_data = {
-        key: build_harvest_group_data(daily, current_monday, yesterday, two_days_ago, plant_weekly=plant_weekly[key])
+        key: build_harvest_group_data(
+            daily, current_monday, yesterday, two_days_ago,
+            plant_weekly=plant_weekly[key],
+            plant_current=plant_current[key] if plant_current else None,
+            plant_weekday={**plant_weekday[key], "this_week": plant_weekday_this_week[key]},
+        )
         for key, daily in harvest_daily.items()
     }
     harvest_pills = "".join(
@@ -521,6 +718,10 @@ if __name__ == "__main__":
         for s, f in zip(silage_weekly_values, feed_data["weekly_values"])
     ]
 
+    # --- Delousing vessels (descriptive only — see correlation caveat) ---
+    delousing_daily = stats.get("Delicing vessel", {})
+    delousing_weekly = build_weekly_series(delousing_daily, current_monday, WEEKS_HISTORY, yesterday)
+
     now = datetime.datetime.now(datetime.timezone.utc)
     html = TEMPLATE.format(
         yesterday_label=yesterday.strftime("%d.%m.%Y"),
@@ -531,6 +732,7 @@ if __name__ == "__main__":
         harvest_data_json=json.dumps(harvest_data),
         plant_rows_json=json.dumps(plant_rows_by_type),
         plant_week=plant_week or "-",
+        plant_weeks_history=PLANT_WEEKS_HISTORY,
         feed_wtd_visits=feed_data["wtd_visits"],
         feed_wtd_diff_label=feed_data["wtd_diff_label"],
         feed_wtd_diff_color=feed_data["wtd_diff_color"],
@@ -541,6 +743,10 @@ if __name__ == "__main__":
         feed_partial_idx=feed_data["weekly_partial_idx"],
         silage_weekly_values_json=json.dumps(silage_weekly_values),
         ratio_weekly_values_json=json.dumps(ratio_weekly_values),
+        delousing_weekly_labels_json=json.dumps([w[0] for w in delousing_weekly]),
+        delousing_weekly_values_json=json.dumps([w[1] for w in delousing_weekly]),
+        delousing_partial_idx=len(delousing_weekly) - 1,
+        no_weekday_short_json=json.dumps(NO_WEEKDAY_SHORT),
         pacing_weeks=PACING_WEEKS,
     )
 

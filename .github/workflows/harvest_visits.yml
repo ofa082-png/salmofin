@@ -2,7 +2,7 @@ name: Harvest Plant Vessel Visits
 
 on:
   schedule:
-    - cron: '0 6 * * 1'  # Every Monday 06:00 UTC (previous week just completed)
+    - cron: '0 6 * * *'  # Daily 06:00 UTC — previous completed week (once, then skipped) + current in-progress week (refreshed daily)
   workflow_dispatch:      # Keep manual trigger for testing
 
 jobs:
@@ -34,5 +34,5 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/
-          git diff --cached --quiet || git commit -m "Add harvest visits $(date +'%G_W%V')"
+          git diff --cached --quiet || git commit -m "Update harvest visits data $(date +'%Y-%m-%d')"
           git push

@@ -85,6 +85,11 @@ def get_previous_week() -> tuple:
     return iso.year, iso.week
 
 
+def get_current_week() -> tuple:
+    iso = datetime.now(timezone.utc).isocalendar()
+    return iso.year, iso.week
+
+
 # --- Vessel list ---
 
 def load_vessels() -> list:
@@ -240,17 +245,12 @@ def write_csv(visits: list, year: int, week: int) -> Path:
     return path
 
 
-# --- Main ---
+# --- Per-week run ---
 
-if __name__ == "__main__":
-    year, week = get_previous_week()
-    print(f"Running for {year}/W{week:02d}\n")
-
-    token = get_token()
-    print("Token OK\n")
+def run_for_week(token: str, year: int, week: int, vessels: list) -> Path | None:
+    print(f"\n=== Running for {year}/W{week:02d} ===")
 
     plants = get_slaughterhouses(token, year, week)
-    vessels = load_vessels()
 
     all_visits = []
     processed = 0
@@ -289,9 +289,34 @@ if __name__ == "__main__":
         if processed % 25 == 0:
             print(f"  ...{processed}/{len(vessels)} vessels processed")
 
-    print(f"\nTotal visits detected: {len(all_visits)}")
+    print(f"Total visits detected for {year}/W{week:02d}: {len(all_visits)}")
 
     if all_visits:
-        write_csv(all_visits, year, week)
+        return write_csv(all_visits, year, week)
+    print(f"No visits found for {year}/W{week:02d} — no CSV written.")
+    return None
+
+
+# --- Main ---
+
+if __name__ == "__main__":
+    token = get_token()
+    print("Token OK")
+
+    vessels = load_vessels()
+
+    # Previous (fully completed) week: final and immutable once written, so
+    # skip re-fetching it if we already have it — the file only needs to be
+    # produced once, right after the week ends.
+    prev_year, prev_week = get_previous_week()
+    prev_path = DATA_DIR / f"harvest_plant_visits_{prev_year}_W{prev_week:02d}.csv"
+    if prev_path.exists():
+        print(f"\n{prev_path} already exists — previous week is final, skipping refetch.")
     else:
-        print("No visits found — no CSV written.")
+        run_for_week(token, prev_year, prev_week, vessels)
+
+    # Current (in-progress) week: partial and grows daily, so always
+    # re-fetch and overwrite — this is what lets the traffic report show a
+    # "this week so far" line instead of only ever-completed weeks.
+    cur_year, cur_week = get_current_week()
+    run_for_week(token, cur_year, cur_week, vessels)
