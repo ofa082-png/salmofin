@@ -1,0 +1,54 @@
+name: Notify on Pipeline Failure
+on:
+  workflow_run:
+    workflows:
+      - "Fetch Aquaculture Applications"
+      - "Fetch Aqua Applications"
+      - "Fetch Biomass"
+      - "Fetch disease BW"
+      - "Fetch Env Reports"
+      - "Fetch Licenses"
+      - "Fetch Localities"
+      - "Fetch Locality Capacity"
+      - "Fetch Mattilsynet Disease"
+      - "Fetch Mattilsynet Helsestatus"
+      - "Fetch Salmofin Data"
+      - "Fetch Salmon Export"
+      - "Generate Fish Health Report"
+      - "Harvest Plant Vessel Visits"
+      - "Fetch Lice"
+      - "Fetch Treatments"
+      - "Fetch Vessel Visits"
+      - "Update Akvafakta Power BI data"
+    types:
+      - completed
+jobs:
+  notify:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post to Teams
+        if: ${{ secrets.TEAMS_WEBHOOK_URL != '' }}
+        run: |
+          curl -H "Content-Type: application/json" -d '{
+            "type": "message",
+            "attachments": [{
+              "contentType": "application/vnd.microsoft.card.adaptive",
+              "content": {
+                "type": "AdaptiveCard",
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                "version": "1.4",
+                "body": [
+                  { "type": "TextBlock", "text": "Pipeline failed: ${{ github.event.workflow_run.name }}", "weight": "bolder", "size": "medium" },
+                  { "type": "TextBlock", "text": "Repo: ${{ github.repository }}", "wrap": true },
+                  { "type": "TextBlock", "text": "Run: ${{ github.event.workflow_run.html_url }}", "wrap": true }
+                ],
+                "actions": [
+                  { "type": "Action.OpenUrl", "title": "View run", "url": "${{ github.event.workflow_run.html_url }}" }
+                ]
+              }
+            }]
+          }' "${{ secrets.TEAMS_WEBHOOK_URL }}"
+      - name: No webhook configured
+        if: ${{ secrets.TEAMS_WEBHOOK_URL == '' }}
+        run: echo "TEAMS_WEBHOOK_URL secret not set — skipping Teams notification for failed run of '${{ github.event.workflow_run.name }}'"
