@@ -33,6 +33,8 @@ RADIUS_M = 300
 MIN_VISIT_HOURS = 1.0
 DATA_DIR = Path("data")
 VESSEL_FILE = Path("vessel_categories.csv")
+PLANT_LOCATIONS_FILE = DATA_DIR / "plant_locations.csv"
+PLANT_LOCATION_COLUMNS = ["plant_id", "plant_name", "plant_company", "approval_number", "lat", "lon"]
 
 VESSEL_TYPES_TO_TRACK = {"Wellboat", "Processing vessel"}
 
@@ -152,6 +154,38 @@ def get_slaughterhouses(token: str, year: int, week: int) -> list:
     return result
 
 
+def update_plant_locations(plants: list) -> None:
+    """Upsert plant coordinates into data/plant_locations.csv, keyed by
+    plant_id. Runs as a side effect of every get_slaughterhouses() call
+    since that already fetches this data — it just wasn't kept anywhere
+    before. Used by the big-vessel route tracker for connect-the-dots
+    maps (harvest_plant_visits.csv only stores plant_name/company, not
+    coordinates)."""
+    existing = {}
+    if PLANT_LOCATIONS_FILE.exists():
+        with open(PLANT_LOCATIONS_FILE, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                existing[row["plant_id"]] = row
+
+    for p in plants:
+        existing[p["id"]] = {
+            "plant_id": p["id"],
+            "plant_name": p["name"],
+            "plant_company": p["company"],
+            "approval_number": p["approval_number"],
+            "lat": p["lat"],
+            "lon": p["lon"],
+        }
+
+    DATA_DIR.mkdir(exist_ok=True)
+    with open(PLANT_LOCATIONS_FILE, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=PLANT_LOCATION_COLUMNS)
+        writer.writeheader()
+        for row in sorted(existing.values(), key=lambda r: r["plant_name"]):
+            writer.writerow(row)
+    print(f"Updated {PLANT_LOCATIONS_FILE} ({len(existing)} plants)")
+
+
 def get_vessel_track(token: str, mmsi: int, year: int, week: int):
     resp = requests.get(
         f"{BASE_URL}/fishhealth/vesseltrack/{mmsi}/{year}/{week}",
@@ -251,6 +285,7 @@ def run_for_week(token: str, year: int, week: int, vessels: list) -> Path | None
     print(f"\n=== Running for {year}/W{week:02d} ===")
 
     plants = get_slaughterhouses(token, year, week)
+    update_plant_locations(plants)
 
     all_visits = []
     processed = 0
