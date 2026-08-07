@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trafikkrapport — vessel- og anleggstrafikk</title>
+<style>
+  :root { --surface-1:#f5f4f0; --surface-2:#ffffff; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781; --border:#e1e0d9; }
+  @media (prefers-color-scheme: dark) {
+    :root { --surface-1:#242422; --surface-2:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781; --border:#2c2c2a; }
+  }
+  body { background:var(--surface-1); color:var(--text-primary); font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:0; padding:2rem 1rem; }
+  .wrap { max-width:680px; margin:0 auto; }
+  table { border-collapse:collapse; width:100%; }
+  a { color:var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.25rem;">
+    <div>
+      <div style="font-size:18px;font-weight:500;">Trafikkrapport</div>
+      <div style="font-size:13px;color:var(--text-muted)">Data for 06.08.2026 · oppdatert 07.08.2026 09:13 UTC</div>
+    </div>
+    <a href="index.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">fiskehelse →</a>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:1.5rem;">
+    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Anløp i går (torsdag)</div>
+      <div style="font-size:24px;font-weight:500;">1475</div>
+      <div style="font-size:12px;color:#008300;">+3% vs. forrige torsdag</div>
+    </div>
+    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Hittil denne uken</div>
+      <div style="font-size:24px;font-weight:500;">6008</div>
+      <div style="font-size:12px;color:#008300;">+9% vs. samme periode forrige uke</div>
+    </div>
+    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Brønnbåtanløp i går</div>
+      <div style="font-size:24px;font-weight:500;">102</div>
+    </div>
+    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Lokaliteter besøkt i går</div>
+      <div style="font-size:24px;font-weight:500;">644</div>
+    </div>
+  </div>
+
+  <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Anløp per dag, siste 14 dager</div>
+  <div style="position:relative;width:100%;height:140px;margin-bottom:1.75rem;">
+    <canvas id="visitsChart" width="640" height="140"></canvas>
+  </div>
+
+  <div style="font-size:16px;font-weight:500;margin-bottom:4px;">Status per slakteri, uke 2026_W31</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Kapasitet = summert fartøykapasitet ved anløp, ikke bekreftet levert volum.</div>
+  <div style="border:0.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.75rem;overflow-x:auto;">
+    <table style="font-size:13px;table-layout:fixed;">
+      <tr style="background:var(--surface-2);">
+        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Anlegg</td>
+        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Selskap</td>
+        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Anløp</td>
+        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Kapasitet</td>
+        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Siste</td>
+      </tr>
+      
+      <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">Salmar As Avd Slakterianlegg</td>
+        <td style="padding:8px 10px;">Salmar As</td>
+        <td style="padding:8px 10px;text-align:right;">13</td>
+        <td style="padding:8px 10px;text-align:right;">53,400 t</td>
+        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">2026-08-02</td>
+      </tr>
+      <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">Salmar As Avd Bearbeiding</td>
+        <td style="padding:8px 10px;">Salmar As</td>
+        <td style="padding:8px 10px;text-align:right;">11</td>
+        <td style="padding:8px 10px;text-align:right;">36,850 t</td>
+        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">2026-08-02</td>
+      </tr>
+      <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">Nordlaks Produkter As Avd Stokmarknes</td>
+        <td style="padding:8px 10px;">Nordlaks Produkter As</td>
+        <td style="padding:8px 10px;text-align:right;">10</td>
+        <td style="padding:8px 10px;text-align:right;">35,600 t</td>
+        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">2026-08-02</td>
+      </tr>
+      <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">Lerøy Seafood Industri As Avdeling Jøsnøya</td>
+        <td style="padding:8px 10px;">Lerøy Seafood Industri As</td>
+        <td style="padding:8px 10px;text-align:right;">13</td>
+        <td style="padding:8px 10px;text-align:right;">34,150 t</td>
+        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">2026-08-02</td>
+      </tr>
+      <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">Cermaq Norway As Avd Slakteri Steigen</td>
+        <td style="padding:8px 10px;">Cermaq Norway As</td>
+        <td style="padding:8px 10px;text-align:right;">8</td>
+        <td style="padding:8px 10px;text-align:right;">31,200 t</td>
+        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">2026-08-02</td>
+      </tr>
+      <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">Sinkaberg Nt145 As</td>
+        <td style="padding:8px 10px;">Sinkaberg Nt145 As</td>
+        <td style="padding:8px 10px;text-align:right;">11</td>
+        <td style="padding:8px 10px;text-align:right;">30,300 t</td>
+        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">2026-08-02</td>
+      </tr>
+      <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">Nova Sea As Avd Industri</td>
+        <td style="padding:8px 10px;">Nova Sea As</td>
+        <td style="padding:8px 10px;text-align:right;">10</td>
+        <td style="padding:8px 10px;text-align:right;">30,000 t</td>
+        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">2026-07-31</td>
+      </tr>
+      <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">Holmøy Produkter As</td>
+        <td style="padding:8px 10px;">Holmøy Produkter As</td>
+        <td style="padding:8px 10px;text-align:right;">7</td>
+        <td style="padding:8px 10px;text-align:right;">28,648 t</td>
+        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">2026-08-02</td>
+      </tr>
+      <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">Mowi Avd Eggebønes Processing</td>
+        <td style="padding:8px 10px;">Mowi Asa</td>
+        <td style="padding:8px 10px;text-align:right;">10</td>
+        <td style="padding:8px 10px;text-align:right;">22,480 t</td>
+        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">2026-08-01</td>
+      </tr>
+      <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">Viking Fjord As</td>
+        <td style="padding:8px 10px;">Viking Fjord As</td>
+        <td style="padding:8px 10px;text-align:right;">4</td>
+        <td style="padding:8px 10px;text-align:right;">20,000 t</td>
+        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">2026-08-02</td>
+      </tr>
+      <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">Salten N950 As</td>
+        <td style="padding:8px 10px;">Salten N950 As</td>
+        <td style="padding:8px 10px;text-align:right;">8</td>
+        <td style="padding:8px 10px;text-align:right;">18,900 t</td>
+        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">2026-08-02</td>
+      </tr>
+      <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">Mowi Avd Slakteri Herøy</td>
+        <td style="padding:8px 10px;">Mowi Asa</td>
+        <td style="padding:8px 10px;text-align:right;">7</td>
+        <td style="padding:8px 10px;text-align:right;">18,140 t</td>
+        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">2026-07-31</td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
+    Anløpsdata: BarentsWatch AIS, oppdatert daglig. Slakteridata: BarentsWatch fiskehelse, oppdatert ukentlig for forrige fullførte uke. Via salmofin BigQuery-pipeline.
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+new Chart(document.getElementById('visitsChart'), {
+  type: 'bar',
+  data: { labels: ["22.07", "23.07", "24.07", "25.07", "26.07", "27.07", "28.07", "29.07", "30.07", "31.07", "01.08", "02.08", "03.08", "04.08", "05.08", "06.08"], datasets: [{ data: [1399, 1359, 1240, 1054, 1376, 1345, 1351, 1403, 1427, 1319, 1136, 1474, 1458, 1598, 1477, 1475], backgroundColor: '#2a78d6', borderRadius: 4 }] },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+    scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 10 } }, grid: { display: false } } } }
+});
+</script>
+</body>
+</html>

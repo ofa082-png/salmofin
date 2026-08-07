@@ -119,6 +119,7 @@ TEMPLATE = """<!doctype html>
   body {{ background:var(--surface-1); color:var(--text-primary); font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:0; padding:2rem 1rem; }}
   .wrap {{ max-width:680px; margin:0 auto; }}
   table {{ border-collapse:collapse; }}
+  a {{ color:var(--text-secondary); }}
 </style>
 </head>
 <body>
@@ -128,7 +129,10 @@ TEMPLATE = """<!doctype html>
       <div style="font-size:18px;font-weight:500;">Fiskehelse — ukesrapport</div>
       <div style="font-size:13px;color:var(--text-muted)">Uke {week}, {year} · oppdatert {updated}</div>
     </div>
-    <div style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;">kilde: mattilsynet.io</div>
+    <div style="display:flex;gap:8px;align-items:baseline;">
+      <a href="traffic.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">trafikk →</a>
+      <div style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;">kilde: mattilsynet.io</div>
+    </div>
   </div>
 
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;">
