@@ -1,14 +1,22 @@
 """
 generate_big_vessel_tracker.py
 --------------------------------
-Standalone route tracker for "big vessels" (>=400t capacity, from
-vessel_categories.csv). For each vessel, over the last LOOKBACK_WEEKS
-weeks: a chronological itinerary of locality stops (vessel_visits +
-localities, both BigQuery) and harvest-plant stops (harvest_plant_visits
-CSVs + data/plant_locations.csv), rendered as a connect-the-dots map
-(straight lines between consecutive real-coordinate stops — not the
-vessel's actual continuous AIS track, which isn't persisted anywhere)
-plus a table.
+Standalone page for "big vessels" (>=400t capacity, from
+vessel_categories.csv). Two views:
+
+  1. Vessel overview — per big vessel (Wellboat/Processing vessel only —
+     the only types ever checked against plants), a weekly
+     harvest-plant-visit-count sparkline over PLANT_OVERVIEW_WEEKS, with
+     an Alle/Wellboat/Processing vessel toggle (same sparkline treatment
+     as the main traffic report's plant table, just grouped by vessel
+     instead of by plant).
+  2. Route tracker — per vessel, over the shorter LOOKBACK_WEEKS, a
+     chronological itinerary of locality stops (vessel_visits +
+     localities, both BigQuery) and harvest-plant stops
+     (harvest_plant_visits CSVs + data/plant_locations.csv), rendered
+     as a connect-the-dots map (straight lines between consecutive
+     real-coordinate stops — not the vessel's actual continuous AIS
+     track, which isn't persisted anywhere) plus a table.
 
 Writes docs/big_vessels.html.
 """
@@ -155,44 +163,78 @@ def build_vessel_options(vessels, itineraries):
         for v in vessels
     )
 
-def build_vessel_summary(vessels, itineraries):
-    """One row per vessel: activity counts + last-seen date, sorted by
-    activity so the most-active vessels (and, at the bottom, the
-    conspicuously inactive ones) are visible at a glance."""
-    summary = []
-    for v in vessels:
-        stops = itineraries.get(str(v["mmsi"]), [])
-        localities = {s["name"] for s in stops if s["type"] == "locality"}
-        plants = {s["name"] for s in stops if s["type"] == "plant"}
-        last_seen = max((s["start"] for s in stops), default=None)
-        summary.append({
-            "mmsi": v["mmsi"],
-            "name": v["name"],
-            "type": v["type"],
-            "capacity_t": v["capacity_t"],
-            "stops": len(stops),
-            "localities": len(localities),
-            "plants": len(plants),
-            "last_seen": last_seen,
-        })
-    summary.sort(key=lambda s: -s["stops"])
-    return summary
+PLANT_OVERVIEW_WEEKS = 8   # longer than LOOKBACK_WEEKS — this is a trend view, not a route drill-down
+HARVEST_TYPE_ORDER = ["Alle", "Wellboat", "Processing vessel"]
+HARVEST_TYPE_LABELS = {"Alle": "Alle", "Wellboat": "Brønnbåt", "Processing vessel": "Prosesseringsfartøy"}
+SPARK_BAR_H = 24  # px
 
-def build_summary_rows(summary):
-    rows = []
-    for s in summary:
-        last_seen = s["last_seen"][:10] if s["last_seen"] else "—"
-        rows.append(f"""
-      <tr data-mmsi="{s['mmsi']}" style="border-top:0.5px solid var(--border);cursor:pointer;">
-        <td style="padding:8px 10px;">{s['name']}</td>
-        <td style="padding:8px 10px;color:var(--text-secondary);">{s['type']}</td>
-        <td style="padding:8px 10px;text-align:right;">{s['capacity_t']}t</td>
-        <td style="padding:8px 10px;text-align:right;">{s['stops']}</td>
-        <td style="padding:8px 10px;text-align:right;">{s['localities']}</td>
-        <td style="padding:8px 10px;text-align:right;">{s['plants']}</td>
-        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">{last_seen}</td>
+def fetch_big_vessel_weekly_matrix(vessels, n_weeks):
+    """Per type (Alle/Wellboat/Processing vessel): each big vessel with a
+    weekly harvest-plant-visit-count sparkline. `vessels` should already
+    be restricted to Wellboat/Processing vessel — those are the only
+    types fetch_harvest_visits.py tracks against plants, so a Silage
+    vessel would just show an all-zero row. Ranked by total visits in
+    the window, so the busiest vessels — and the conspicuously idle
+    ones at the bottom — are visible at a glance."""
+    files = all_plant_csvs()[-n_weeks:]
+    labels = [os.path.basename(p).replace("harvest_plant_visits_", "").replace(".csv", "").split("_")[-1] for p in files]
+
+    mmsi_to_vessel = {v["mmsi"]: v for v in vessels}
+    weekly = defaultdict(lambda: [0] * len(files))
+    for idx, path in enumerate(files):
+        with open(path, encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                if not row.get("mmsi"):
+                    continue
+                mmsi = int(row["mmsi"])
+                if mmsi not in mmsi_to_vessel:
+                    continue
+                weekly[mmsi][idx] += 1
+
+    ranked_by_type = {}
+    for key in HARVEST_TYPE_ORDER:
+        entries = [
+            (v, weekly.get(v["mmsi"], [0] * len(files)))
+            for v in vessels
+            if key == "Alle" or v["type"] == key
+        ]
+        entries.sort(key=lambda vw: -sum(vw[1]))
+        ranked_by_type[key] = entries
+    return ranked_by_type, labels
+
+def render_sparkline(values, labels, max_val):
+    bars = []
+    for i, v in enumerate(values):
+        h = max(2, round((v / max_val) * SPARK_BAR_H)) if v and max_val else 1
+        opacity = "0.5" if i == len(values) - 1 else "1"
+        bars.append(
+            f'<div title="{labels[i]}: {v}" style="width:5px;height:{h}px;'
+            f'background:var(--accent);opacity:{opacity};border-radius:1px;"></div>'
+        )
+    return (f'<div style="display:flex;align-items:flex-end;gap:2px;height:{SPARK_BAR_H}px;">'
+            f'{"".join(bars)}</div>')
+
+NO_VESSEL_DATA_ROW = ('<tr><td colspan="3" style="padding:14px 10px;color:var(--text-muted);'
+                       'text-align:center;">Ingen fartøy ≥%dt for denne typen.</td></tr>' % BIG_VESSEL_MIN_TONNES)
+
+def build_vessel_overview_rows(ranked_by_type, labels):
+    rows_by_type = {}
+    for key, entries in ranked_by_type.items():
+        if not entries:
+            rows_by_type[key] = NO_VESSEL_DATA_ROW
+            continue
+        max_val = max((max(w) for _, w in entries), default=0)
+        rows = []
+        for v, w in entries:
+            spark = render_sparkline(w, labels, max_val)
+            rows.append(f"""
+      <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">{v['name']}</td>
+        <td style="padding:8px 10px;color:var(--text-secondary);text-align:right;">{v['capacity_t']}t</td>
+        <td style="padding:8px 10px;">{spark}</td>
       </tr>""")
-    return "".join(rows)
+        rows_by_type[key] = "".join(rows)
+    return rows_by_type
 
 TEMPLATE = """<!doctype html>
 <html lang="no">
@@ -214,6 +256,8 @@ TEMPLATE = """<!doctype html>
   #map {{ width:100%; height:360px; border-radius:8px; border:0.5px solid var(--border); margin-bottom:1rem; }}
   .legend {{ display:flex; gap:16px; font-size:12px; color:var(--text-secondary); margin-bottom:1rem; }}
   .dot {{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; }}
+  .pill {{ font-size:12px; border:0.5px solid var(--border); border-radius:999px; padding:5px 12px; cursor:pointer; background:var(--surface-2); color:var(--text-secondary); white-space:nowrap; }}
+  .pill.active {{ background:var(--accent); border-color:var(--accent); color:#fff; }}
 </style>
 </head>
 <body>
@@ -221,30 +265,29 @@ TEMPLATE = """<!doctype html>
   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.25rem;">
     <div>
       <div style="font-size:18px;font-weight:500;">Store fartøy — rutetracker</div>
-      <div style="font-size:13px;color:var(--text-muted)">Fartøy ≥{min_tonnes}t · siste {lookback_weeks} uker · oppdatert {updated}</div>
+      <div style="font-size:13px;color:var(--text-muted)">Fartøy ≥{min_tonnes}t · oppdatert {updated}</div>
     </div>
     <a href="traffic.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">trafikk →</a>
   </div>
 
-  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Oversikt</div>
-  <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Sortert etter aktivitet. Klikk en rad for å se ruten under.</div>
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Slakterianløp per fartøy</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Kun fartøy ≥{min_tonnes}t. Siste {plant_overview_weeks} uker, rangert etter aktivitet.</div>
+  <div id="plantPills" style="display:flex;gap:6px;margin-bottom:12px;">{plant_pills}</div>
   <div style="border:0.5px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto;margin-bottom:1.75rem;">
     <table style="font-size:13px;table-layout:fixed;">
       <thead>
       <tr style="background:var(--surface-2);">
         <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Fartøy</td>
-        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Type</td>
         <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Kap.</td>
-        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Anløp</td>
-        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Lok.</td>
-        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Slakt.</td>
-        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Sist sett</td>
+        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Anløp, siste {plant_overview_weeks} uker</td>
       </tr>
       </thead>
-      <tbody id="summaryRows">{summary_rows}</tbody>
+      <tbody id="vesselOverviewRows"></tbody>
     </table>
   </div>
 
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Rutetracker</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Siste {lookback_weeks} uker.</div>
   <select id="vesselSelect">{vessel_options}</select>
 
   <div class="legend">
@@ -276,6 +319,16 @@ TEMPLATE = """<!doctype html>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const ITINERARIES = {itineraries_json};
+const VESSEL_OVERVIEW_ROWS = {vessel_overview_rows_json};
+
+function showVesselType(key) {{
+  document.getElementById('vesselOverviewRows').innerHTML = VESSEL_OVERVIEW_ROWS[key] || '';
+  document.querySelectorAll('#plantPills .pill').forEach(el => el.classList.toggle('active', el.dataset.type === key));
+}}
+document.querySelectorAll('#plantPills .pill').forEach(el => {{
+  el.addEventListener('click', () => showVesselType(el.dataset.type));
+}});
+showVesselType('Alle');
 
 const map = L.map('map').setView([65.0, 12.0], 4);
 L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
@@ -326,22 +379,14 @@ function showVessel(mmsi) {{
 
 document.getElementById('vesselSelect').addEventListener('change', (e) => showVessel(e.target.value));
 
-document.getElementById('summaryRows').addEventListener('click', (e) => {{
-  const row = e.target.closest('tr[data-mmsi]');
-  if (!row) return;
-  const mmsi = row.dataset.mmsi;
-  document.getElementById('vesselSelect').value = mmsi;
-  showVessel(mmsi);
-  document.getElementById('map').scrollIntoView({{ behavior: 'smooth', block: 'center' }});
-}});
-// Default to the top (most active) row of the summary table rather than
-// the highest-capacity vessel, so the map opens on something with data.
-const firstSummaryRow = document.querySelector('#summaryRows tr[data-mmsi]');
-const defaultMmsi = firstSummaryRow ? firstSummaryRow.dataset.mmsi
-  : (document.getElementById('vesselSelect').options[0] || {{}}).value;
-if (defaultMmsi) {{
-  document.getElementById('vesselSelect').value = defaultMmsi;
-  showVessel(defaultMmsi);
+// Object.keys() on integer-like mmsi keys reorders them numerically, not by
+// insertion order, so pick the default by walking the <select> options
+// instead — that preserves the server-side capacity-descending sort.
+const options = [...document.getElementById('vesselSelect').options];
+const defaultOption = options.find(o => (ITINERARIES[o.value] || []).length > 0) || options[0];
+if (defaultOption) {{
+  document.getElementById('vesselSelect').value = defaultOption.value;
+  showVessel(defaultOption.value);
 }}
 </script>
 </body>
@@ -368,16 +413,26 @@ if __name__ == "__main__":
 
     itineraries = build_itineraries(vessels, locality_rows, plant_rows, plant_locations)
     vessel_options = build_vessel_options(vessels, itineraries)
-    summary = build_vessel_summary(vessels, itineraries)
-    summary_rows = build_summary_rows(summary)
+
+    # Only Wellboat/Processing vessel are ever checked against plants
+    # (see fetch_harvest_visits.py), so that's the row set for this table.
+    harvest_vessels = [v for v in vessels if v["type"] in ("Wellboat", "Processing vessel")]
+    vessel_ranked_by_type, plant_labels = fetch_big_vessel_weekly_matrix(harvest_vessels, PLANT_OVERVIEW_WEEKS)
+    vessel_overview_rows = build_vessel_overview_rows(vessel_ranked_by_type, plant_labels)
+    plant_pills = "".join(
+        f'<button class="pill" data-type="{t}">{HARVEST_TYPE_LABELS[t]}</button>' for t in HARVEST_TYPE_ORDER
+    )
+    print(f"  vessel overview: {len(vessel_ranked_by_type.get('Alle', []))} vessels (Alle)")
 
     now = datetime.datetime.now(datetime.timezone.utc)
     html = TEMPLATE.format(
         min_tonnes=BIG_VESSEL_MIN_TONNES,
         lookback_weeks=LOOKBACK_WEEKS,
+        plant_overview_weeks=PLANT_OVERVIEW_WEEKS,
         updated=now.strftime("%d.%m.%Y %H:%M UTC"),
         vessel_options=vessel_options,
-        summary_rows=summary_rows,
+        plant_pills=plant_pills,
+        vessel_overview_rows_json=json.dumps(vessel_overview_rows),
         itineraries_json=json.dumps(itineraries),
     )
 
