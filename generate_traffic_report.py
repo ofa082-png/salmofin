@@ -167,6 +167,83 @@ def fetch_export_regression(client, harvest_mmsi_list):
         "n_weeks": m,
     }
 
+def fetch_export_lookup(client, min_year):
+    """{(year, week): export_tonn} for actual published exports — used to
+    check the regression's predictions against reality, and to detect
+    "not published yet" (a missing key) for the most recent 1-2 weeks,
+    since official export stats lag ~3-4 days behind the week itself."""
+    rows = list(client.query(f"""
+        SELECT year AS yr, week AS wk, SUM(vekt_tonn) AS export_tonn
+        FROM `salmofin.salmofin.salmon_export_weekly`
+        WHERE year >= {min_year}
+        GROUP BY yr, wk
+    """).result())
+    return {(r.yr, r.wk): r.export_tonn for r in rows}
+
+def build_export_backtest_rows(regression, weekly_mondays, weekly_visits, export_lookup, n_weeks):
+    """Predicted-vs-actual for the last n_weeks *completed* weeks (the
+    current partial week is excluded by the caller). Each prediction
+    uses two fully-known visit counts — no forecast uncertainty — so
+    any gap between predicted and actual here is purely model error,
+    not projection error."""
+    rows = []
+    # weekly_mondays/weekly_visits are oldest -> newest; need index i-1 for
+    # the "last week" term, so start from 1.
+    start = max(1, len(weekly_mondays) - n_weeks)
+    for i in range(start, len(weekly_mondays)):
+        monday = weekly_mondays[i]
+        visits = weekly_visits[i]
+        prev_visits = weekly_visits[i - 1]
+        predicted = regression["a"] * visits + regression["b"] * prev_visits + regression["c"]
+        iso = monday.isocalendar()
+        actual = export_lookup.get((iso[0], iso[1]))
+        diff_pct = ((predicted - actual) / actual * 100) if actual else None
+        rows.append({
+            "label": f"U{iso[1]}",
+            "predicted": round(predicted),
+            "actual": round(actual) if actual is not None else None,
+            "diff_pct": diff_pct,
+        })
+    return rows
+
+def build_export_backtest_section(rows):
+    """Small predicted-vs-actual table for the last few completed weeks —
+    the most recent row(s) typically show "ikke publisert ennå" since
+    official export stats lag ~3-4 days behind the week, and the rest
+    let you see how the model has actually been tracking."""
+    if not rows:
+        return ""
+    trs = []
+    for r in rows:
+        actual_cell = f"{r['actual']:,.0f} t" if r["actual"] is not None else '<span style="color:var(--text-muted);">ikke publisert ennå</span>'
+        if r["diff_pct"] is not None:
+            color = "#008300" if abs(r["diff_pct"]) <= 10 else "#a32d2d"
+            diff_cell = f'<span style="color:{color};">{diff_label(r["diff_pct"])}</span>'
+        else:
+            diff_cell = ""
+        trs.append(f"""
+      <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">{r['label']}</td>
+        <td style="padding:8px 10px;text-align:right;">{r['predicted']:,.0f} t</td>
+        <td style="padding:8px 10px;text-align:right;">{actual_cell}</td>
+        <td style="padding:8px 10px;text-align:right;">{diff_cell}</td>
+      </tr>""")
+    return f"""
+    <div style="font-size:12px;color:var(--text-muted);margin:8px 0;">Prognose vs. faktisk eksportvolum, siste uker (begge tall bruker kun kjente anløp — ingen prognoseusikkerhet):</div>
+    <div style="border:0.5px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto;margin-bottom:14px;">
+      <table style="font-size:13px;table-layout:fixed;">
+        <thead>
+        <tr style="background:var(--surface-2);">
+          <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Uke</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Anslått</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Faktisk</td>
+          <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Avvik</td>
+        </tr>
+        </thead>
+        <tbody>{"".join(trs)}</tbody>
+      </table>
+    </div>"""
+
 def build_daily_stats(rows, mmsi_to_type):
     """{vessel_type: {date: {"visits": int, "localities": set, "vessels": set}}}"""
     stats = defaultdict(lambda: defaultdict(lambda: {"visits": 0, "localities": set(), "vessels": set()}))
@@ -601,6 +678,7 @@ TEMPLATE = """<!doctype html>
     <div id="harvestPills" style="display:flex;gap:6px;margin-bottom:12px;">{harvest_pills}</div>
 
     {export_forecast_card}
+    {export_backtest_section}
 
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px;">
       <div class="card">
@@ -880,6 +958,19 @@ if __name__ == "__main__":
     last_week_actual = alle_weekly_values[-2] if len(alle_weekly_values) >= 2 else None
     export_forecast_card = build_export_forecast_card(export_regression, harvest_data["Alle"]["forecast"], last_week_actual)
 
+    # Predicted-vs-actual backtest table: last few *completed* weeks only
+    # (drop the current partial week — its own prediction is the card above).
+    weekly_mondays = [current_monday - datetime.timedelta(weeks=i) for i in range(WEEKS_HISTORY - 1, -1, -1)]
+    completed_mondays = weekly_mondays[:-1]
+    completed_visits = alle_weekly_values[:-1]
+    export_backtest_section = ""
+    if export_regression:
+        export_lookup = fetch_export_lookup(client, current_monday.year - 1)
+        backtest_rows = build_export_backtest_rows(
+            export_regression, completed_mondays, completed_visits, export_lookup, n_weeks=6
+        )
+        export_backtest_section = build_export_backtest_section(backtest_rows)
+
     # --- Feed section ---
     feed_daily = stats.get("Fish feed carrier", {})
     feed_data = build_harvest_group_data(feed_daily, current_monday, yesterday, two_days_ago)
@@ -905,6 +996,7 @@ if __name__ == "__main__":
         updated=now.strftime("%d.%m.%Y %H:%M UTC"),
         harvest_pills=harvest_pills,
         export_forecast_card=export_forecast_card,
+        export_backtest_section=export_backtest_section,
         harvest_data_json=json.dumps(harvest_data),
         plant_rows_json=json.dumps(plant_rows_by_type),
         plant_week=plant_week or "-",
