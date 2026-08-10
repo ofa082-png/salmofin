@@ -75,6 +75,59 @@ def fetch_visit_rows(client, mmsi_list, days_back):
     """, job_config=job_config).result())
     return rows
 
+def fetch_export_regression(client, harvest_mmsi_list):
+    """Fit exports_tonn ~ slope*visits + intercept using every matched
+    (year, week) of harvest-fleet locality visits vs. BigQuery export
+    data. Refit live on every run — rather than hardcoding coefficients
+    — so the relationship self-corrects as the fleet or export mix
+    drifts, instead of silently going stale."""
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[bigquery.ArrayQueryParameter("mmsi_list", "INT64", harvest_mmsi_list)]
+    )
+    rows = list(client.query("""
+        WITH visits AS (
+          SELECT EXTRACT(ISOYEAR FROM startTime) AS yr, EXTRACT(ISOWEEK FROM startTime) AS wk, COUNT(*) AS visit_count
+          FROM `salmofin.salmofin.vessel_visits`
+          WHERE mmsi IN UNNEST(@mmsi_list)
+          GROUP BY yr, wk
+        ),
+        exports AS (
+          SELECT year AS yr, week AS wk, SUM(vekt_tonn) AS export_tonn
+          FROM `salmofin.salmofin.salmon_export_weekly`
+          GROUP BY yr, wk
+        )
+        SELECT v.yr, v.wk, v.visit_count, e.export_tonn
+        FROM visits v JOIN exports e ON v.yr = e.yr AND v.wk = e.wk
+        ORDER BY v.yr, v.wk
+    """, job_config=job_config).result())
+
+    n = len(rows)
+    if n < 8:
+        return None
+
+    visits = [r.visit_count for r in rows]
+    exports = [r.export_tonn for r in rows]
+    mx = sum(visits) / n
+    my = sum(exports) / n
+    cov = sum((x - mx) * (y - my) for x, y in zip(visits, exports))
+    sxx = sum((x - mx) ** 2 for x in visits)
+    syy = sum((y - my) ** 2 for y in exports)
+    if sxx == 0 or syy == 0:
+        return None
+
+    slope = cov / sxx
+    intercept = my - slope * mx
+    r = cov / ((sxx ** 0.5) * (syy ** 0.5))
+    rmse = (sum((y - (slope * x + intercept)) ** 2 for x, y in zip(visits, exports)) / n) ** 0.5
+
+    return {
+        "slope": slope,
+        "intercept": intercept,
+        "r": r,
+        "rmse_pct": round(rmse / my * 100) if my else 0,
+        "n_weeks": n,
+    }
+
 def build_daily_stats(rows, mmsi_to_type):
     """{vessel_type: {date: {"visits": int, "localities": set, "vessels": set}}}"""
     stats = defaultdict(lambda: defaultdict(lambda: {"visits": 0, "localities": set(), "vessels": set()}))
@@ -449,6 +502,23 @@ def fetch_plant_weekday_series(n_weeks):
         }
     return result
 
+def build_export_forecast_card(regression, forecast_visits):
+    """Card showing this week's projected total export tonnage, derived
+    from the existing harvest-locality-visit forecast via a linear
+    regression fit live against BigQuery export data. Independent of
+    the Alle/Brønnbåt/Prosesseringsfartøy pill — exports aren't a
+    per-vessel-type quantity, so this always uses the combined ("Alle")
+    forecast regardless of which pill is currently selected."""
+    if regression is None:
+        return ""
+    predicted = round(regression["slope"] * forecast_visits + regression["intercept"])
+    return f"""
+    <div class="card" style="margin-bottom:14px;border:1px solid var(--accent);">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Anslått eksportvolum denne uken</div>
+      <div style="font-size:24px;font-weight:500;">{predicted:,.0f} t</div>
+      <div style="font-size:12px;color:var(--text-muted);">Utledet fra anløpsprognosen (Alle). Modell tilpasset live mot eksportdata: r={regression['r']:.2f}, avvik ~±{regression['rmse_pct']}% (siste {regression['n_weeks']} uker). Ikke offisielle tall.</div>
+    </div>"""
+
 TEMPLATE = """<!doctype html>
 <html lang="no">
 <head>
@@ -489,6 +559,8 @@ TEMPLATE = """<!doctype html>
     <div class="section-title">Slakteaktivitet — lokalitetsanløp</div>
     <div class="section-sub">Brønnbåt og prosesseringsfartøy ved oppdrettslokaliteter (ikke slakteri). BarentsWatch AIS.</div>
     <div id="harvestPills" style="display:flex;gap:6px;margin-bottom:12px;">{harvest_pills}</div>
+
+    {export_forecast_card}
 
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px;">
       <div class="card">
@@ -761,6 +833,11 @@ if __name__ == "__main__":
         f'<button class="pill" data-type="{t}">{HARVEST_LABELS[t]}</button>' for t in HARVEST_ORDER
     )
 
+    # --- Export volume forecast (regression fit live against BigQuery) ---
+    harvest_mmsi_list = [mmsi for mmsi, t in mmsi_to_type.items() if t in ("Wellboat", "Processing vessel")]
+    export_regression = fetch_export_regression(client, harvest_mmsi_list)
+    export_forecast_card = build_export_forecast_card(export_regression, harvest_data["Alle"]["forecast"])
+
     # --- Feed section ---
     feed_daily = stats.get("Fish feed carrier", {})
     feed_data = build_harvest_group_data(feed_daily, current_monday, yesterday, two_days_ago)
@@ -785,6 +862,7 @@ if __name__ == "__main__":
         yesterday_weekday_json=json.dumps(NO_WEEKDAY[yesterday.weekday()]),
         updated=now.strftime("%d.%m.%Y %H:%M UTC"),
         harvest_pills=harvest_pills,
+        export_forecast_card=export_forecast_card,
         harvest_data_json=json.dumps(harvest_data),
         plant_rows_json=json.dumps(plant_rows_by_type),
         plant_week=plant_week or "-",
