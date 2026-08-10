@@ -20,7 +20,7 @@
   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.25rem;">
     <div>
       <div style="font-size:18px;font-weight:500;">Fiskehelse — ukesrapport</div>
-      <div style="font-size:13px;color:var(--text-muted)">Uke 32, 2026 · oppdatert 09.08.2026</div>
+      <div style="font-size:13px;color:var(--text-muted)">Uke 33, 2026 · oppdatert 10.08.2026</div>
     </div>
     <div style="display:flex;gap:8px;align-items:baseline;">
       <a href="traffic.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">trafikk →</a>
@@ -39,11 +39,11 @@
     </div>
     <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
       <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Voksne hunnlus, snitt</div>
-      <div style="font-size:24px;font-weight:500;">0.1408</div>
+      <div style="font-size:24px;font-weight:500;">0.1404</div>
     </div>
     <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
       <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Behandlinger siste 14 dager</div>
-      <div style="font-size:24px;font-weight:500;">147</div>
+      <div style="font-size:24px;font-weight:500;">3</div>
     </div>
   </div>
 
@@ -119,8 +119,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <script>
-const liceLabels = ["u21", "u22", "u23", "u24", "u25", "u26", "u27", "u28", "u29", "u30", "u31", "u32"];
-const liceValues = [0.0549, 0.0697, 0.0846, 0.098, 0.1076, 0.1161, 0.1163, 0.1138, 0.1116, 0.1297, 0.1383, 0.1408];
+const liceLabels = ["u22", "u23", "u24", "u25", "u26", "u27", "u28", "u29", "u30", "u31", "u32"];
+const liceValues = [0.0697, 0.0846, 0.098, 0.1076, 0.1161, 0.1163, 0.1138, 0.1116, 0.1297, 0.1381, 0.1404];
 new Chart(document.getElementById('liceChart'), {
   type: 'line',
   data: { labels: liceLabels, datasets: [{ data: liceValues, borderColor: '#2a78d6', backgroundColor: 'rgba(42,120,214,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] },
