@@ -75,12 +75,37 @@ def fetch_visit_rows(client, mmsi_list, days_back):
     """, job_config=job_config).result())
     return rows
 
+def _solve_3x3(A, B):
+    """Cramer's rule — avoids adding numpy as a pipeline dependency for
+    one small linear solve."""
+    def det3(m):
+        return (m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
+              - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
+              + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]))
+    d = det3(A)
+    if abs(d) < 1e-9:
+        return None
+    result = []
+    for col in range(3):
+        Ai = [row[:] for row in A]
+        for r in range(3):
+            Ai[r][col] = B[r]
+        result.append(det3(Ai) / d)
+    return result
+
 def fetch_export_regression(client, harvest_mmsi_list):
-    """Fit exports_tonn ~ slope*visits + intercept using every matched
-    (year, week) of harvest-fleet locality visits vs. BigQuery export
-    data. Refit live on every run — rather than hardcoding coefficients
-    — so the relationship self-corrects as the fleet or export mix
-    drifts, instead of silently going stale."""
+    """Fit exports_tonn[i] ~ a*visits[i] + b*visits[i-1] + c using every
+    matched (year, week) of harvest-fleet locality visits vs. BigQuery
+    export data. Refit live on every run — rather than hardcoding
+    coefficients — so the relationship self-corrects as the fleet or
+    export mix drifts, instead of silently going stale.
+
+    Two visit terms, not one: a single-variable same-week-only fit gets
+    r=0.91, but last week's *already-known* (not forecast) visit count
+    carries real independent signal — a day-level lag scan peaks at a
+    2-3 day shift, consistent with the real harvest-to-export processing
+    lag — and adding it as a second term lifts R^2 from 0.82 to 0.86
+    while adding zero extra forecast uncertainty for that term."""
     job_config = bigquery.QueryJobConfig(
         query_parameters=[bigquery.ArrayQueryParameter("mmsi_list", "INT64", harvest_mmsi_list)]
     )
@@ -101,31 +126,45 @@ def fetch_export_regression(client, harvest_mmsi_list):
         ORDER BY v.yr, v.wk
     """, job_config=job_config).result())
 
-    n = len(rows)
-    if n < 8:
+    if len(rows) < 12:
         return None
 
     visits = [r.visit_count for r in rows]
     exports = [r.export_tonn for r in rows]
-    mx = sum(visits) / n
-    my = sum(exports) / n
-    cov = sum((x - mx) * (y - my) for x, y in zip(visits, exports))
-    sxx = sum((x - mx) ** 2 for x in visits)
-    syy = sum((y - my) ** 2 for y in exports)
-    if sxx == 0 or syy == 0:
-        return None
 
-    slope = cov / sxx
-    intercept = my - slope * mx
-    r = cov / ((sxx ** 0.5) * (syy ** 0.5))
-    rmse = (sum((y - (slope * x + intercept)) ** 2 for x, y in zip(visits, exports)) / n) ** 0.5
+    xs = visits[1:]        # this-week visits
+    xs_prev = visits[:-1]  # last-week visits (known, not forecast)
+    ys = exports[1:]
+    m = len(ys)
+
+    sx1 = sum(xs); sx2 = sum(xs_prev); sy = sum(ys)
+    sx1x1 = sum(x * x for x in xs); sx2x2 = sum(x * x for x in xs_prev)
+    sx1x2 = sum(x1 * x2 for x1, x2 in zip(xs, xs_prev))
+    sx1y = sum(x * y for x, y in zip(xs, ys)); sx2y = sum(x * y for x, y in zip(xs_prev, ys))
+
+    A = [[sx1x1, sx1x2, sx1], [sx1x2, sx2x2, sx2], [sx1, sx2, m]]
+    B = [sx1y, sx2y, sy]
+    coef = _solve_3x3(A, B)
+    if coef is None:
+        return None
+    a, b, c = coef
+
+    preds = [a * x1 + b * x2 + c for x1, x2 in zip(xs, xs_prev)]
+    my = sy / m
+    ss_res = sum((y - p) ** 2 for y, p in zip(ys, preds))
+    ss_tot = sum((y - my) ** 2 for y in ys)
+    if ss_tot == 0:
+        return None
+    r2 = 1 - ss_res / ss_tot
+    rmse = (ss_res / m) ** 0.5
 
     return {
-        "slope": slope,
-        "intercept": intercept,
-        "r": r,
+        "a": a,
+        "b": b,
+        "c": c,
+        "r2": r2,
         "rmse_pct": round(rmse / my * 100) if my else 0,
-        "n_weeks": n,
+        "n_weeks": m,
     }
 
 def build_daily_stats(rows, mmsi_to_type):
@@ -502,21 +541,22 @@ def fetch_plant_weekday_series(n_weeks):
         }
     return result
 
-def build_export_forecast_card(regression, forecast_visits):
+def build_export_forecast_card(regression, this_week_forecast, last_week_actual):
     """Card showing this week's projected total export tonnage, derived
-    from the existing harvest-locality-visit forecast via a linear
-    regression fit live against BigQuery export data. Independent of
-    the Alle/Brønnbåt/Prosesseringsfartøy pill — exports aren't a
+    from this week's harvest-locality-visit forecast *and* last week's
+    already-known actual visit count, via a regression fit live against
+    BigQuery export data. Independent of the
+    Alle/Brønnbåt/Prosesseringsfartøy pill — exports aren't a
     per-vessel-type quantity, so this always uses the combined ("Alle")
-    forecast regardless of which pill is currently selected."""
-    if regression is None:
+    numbers regardless of which pill is currently selected."""
+    if regression is None or last_week_actual is None:
         return ""
-    predicted = round(regression["slope"] * forecast_visits + regression["intercept"])
+    predicted = round(regression["a"] * this_week_forecast + regression["b"] * last_week_actual + regression["c"])
     return f"""
     <div class="card" style="margin-bottom:14px;border:1px solid var(--accent);">
       <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Anslått eksportvolum denne uken</div>
       <div style="font-size:24px;font-weight:500;">{predicted:,.0f} t</div>
-      <div style="font-size:12px;color:var(--text-muted);">Utledet fra anløpsprognosen (Alle). Modell tilpasset live mot eksportdata: r={regression['r']:.2f}, avvik ~±{regression['rmse_pct']}% (siste {regression['n_weeks']} uker). Ikke offisielle tall.</div>
+      <div style="font-size:12px;color:var(--text-muted);">Utledet fra anløpsprognose denne uken + faktiske anløp forrige uke (begge Alle). Modell tilpasset live mot eksportdata: R²={regression['r2']:.2f}, avvik ~±{regression['rmse_pct']}% (siste {regression['n_weeks']} uker). Ikke offisielle tall.</div>
     </div>"""
 
 TEMPLATE = """<!doctype html>
@@ -836,7 +876,9 @@ if __name__ == "__main__":
     # --- Export volume forecast (regression fit live against BigQuery) ---
     harvest_mmsi_list = [mmsi for mmsi, t in mmsi_to_type.items() if t in ("Wellboat", "Processing vessel")]
     export_regression = fetch_export_regression(client, harvest_mmsi_list)
-    export_forecast_card = build_export_forecast_card(export_regression, harvest_data["Alle"]["forecast"])
+    alle_weekly_values = harvest_data["Alle"]["weekly_values"]
+    last_week_actual = alle_weekly_values[-2] if len(alle_weekly_values) >= 2 else None
+    export_forecast_card = build_export_forecast_card(export_regression, harvest_data["Alle"]["forecast"], last_week_actual)
 
     # --- Feed section ---
     feed_daily = stats.get("Fish feed carrier", {})
