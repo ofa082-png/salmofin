@@ -1,0 +1,20 @@
+name: Fetch License Liens
+on:
+  schedule:
+    - cron: '30 6 1 * *'  # 1st of each month at 6:30am UTC (offset from fetch_licenses)
+  workflow_dispatch:
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests pandas google-cloud-bigquery db-dtypes
+      - name: Run fetch_license_liens.py
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python fetch_license_liens.py
