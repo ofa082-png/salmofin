@@ -12,6 +12,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
@@ -22,8 +24,22 @@ PROJECT_ID  = "salmofin"
 DATASET_ID  = "salmofin"
 LIENS_TABLE = f"{PROJECT_ID}.{DATASET_ID}.license_liens"
 
-BATCH_SIZE  = 100
-WORKERS     = 10
+BATCH_SIZE       = 100
+WORKERS          = 4
+MAX_ERROR_RATE   = 0.01  # abort the reload if more than 1% of licenses failed
+
+
+def make_session() -> requests.Session:
+    session = requests.Session()
+    retry = Retry(
+        total=6,
+        backoff_factor=2,           # 2s, 4s, 8s, 16s, 32s, 64s
+        status_forcelist=[429, 500, 502, 503, 504],
+        respect_retry_after_header=True,
+        allowed_methods=["GET"],
+    )
+    session.mount("https://", HTTPAdapter(max_retries=retry))
+    return session
 
 
 def get_bq_client():
@@ -54,8 +70,8 @@ def fetch_all_license_nrs() -> list:
     return nrs
 
 
-def fetch_liens_for_license(license_nr: str) -> list:
-    resp = requests.get(LIENS_URL.format(license_nr=license_nr), timeout=30)
+def fetch_liens_for_license(session: requests.Session, license_nr: str) -> list:
+    resp = session.get(LIENS_URL.format(license_nr=license_nr), timeout=30)
     resp.raise_for_status()
     data = resp.json()
     ajour_date = data.get("ajourDate")
@@ -83,11 +99,12 @@ def fetch_liens_for_license(license_nr: str) -> list:
 
 def fetch_all_liens(license_nrs: list) -> pd.DataFrame:
     print(f"Fetching liens for {len(license_nrs):,} licenses ({WORKERS} workers)...")
+    session = make_session()
     all_rows = []
     done = 0
     errors = 0
     with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-        futures = {pool.submit(fetch_liens_for_license, nr): nr for nr in license_nrs}
+        futures = {pool.submit(fetch_liens_for_license, session, nr): nr for nr in license_nrs}
         for future in as_completed(futures):
             nr = futures[future]
             try:
@@ -99,7 +116,14 @@ def fetch_all_liens(license_nrs: list) -> pd.DataFrame:
             if done % 500 == 0:
                 print(f"  ...{done:,}/{len(license_nrs):,}")
 
-    print(f"  Done. {len(all_rows):,} lien rows, {errors} errors")
+    error_rate = errors / len(license_nrs) if license_nrs else 0
+    print(f"  Done. {len(all_rows):,} lien rows, {errors} errors ({error_rate:.1%} of licenses)")
+    if error_rate > MAX_ERROR_RATE:
+        raise Exception(
+            f"Error rate {error_rate:.1%} exceeds {MAX_ERROR_RATE:.0%} threshold "
+            f"({errors}/{len(license_nrs)} licenses failed) — aborting before touching BigQuery."
+        )
+
     df = pd.DataFrame(all_rows)
     if len(df) > 0:
         df["ajour_date"]   = pd.to_datetime(df["ajour_date"], utc=True, errors="coerce")
