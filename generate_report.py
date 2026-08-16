@@ -2,7 +2,11 @@
 generate_report.py
 -------------------
 Renders a static HTML fish-health report from BigQuery data and writes
-it to docs/index.html, for GitHub Pages to serve. Nightly script.
+it to docs/fiskehelse.html, for GitHub Pages to serve. Nightly script.
+
+Moved off docs/index.html (2026-08-16) — that path is now the hub
+frontpage (see generate_hub.py), which links here instead of this
+page being the site root.
 """
 
 import os
@@ -12,7 +16,7 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 
 PROJECT_ID = "salmofin"
-OUT_PATH   = os.path.join(os.path.dirname(__file__), "docs", "index.html")
+OUT_PATH   = os.path.join(os.path.dirname(__file__), "docs", "fiskehelse.html")
 
 STATUS_LABEL = {
     "PANKREASSYKDOM": "PD",
@@ -130,6 +134,7 @@ TEMPLATE = """<!doctype html>
       <div style="font-size:13px;color:var(--text-muted)">Uke {week}, {year} · oppdatert {updated}</div>
     </div>
     <div style="display:flex;gap:8px;align-items:baseline;">
+      <a href="index.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">hjem →</a>
       <a href="traffic.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">trafikk →</a>
       <div style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;">kilde: mattilsynet.io</div>
     </div>

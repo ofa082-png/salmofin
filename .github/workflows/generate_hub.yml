@@ -1,0 +1,23 @@
+name: Generate Hub
+on:
+  schedule:
+    - cron: '35 7 * * *'  # after the other three report generators
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Generate hub
+        run: python generate_hub.py
+      - name: Commit updated hub
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Update hub
+          file_pattern: docs/index.html

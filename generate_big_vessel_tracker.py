@@ -267,7 +267,10 @@ TEMPLATE = """<!doctype html>
       <div style="font-size:18px;font-weight:500;">Store fartøy — rutetracker</div>
       <div style="font-size:13px;color:var(--text-muted)">Fartøy ≥{min_tonnes}t · oppdatert {updated}</div>
     </div>
-    <a href="traffic.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">trafikk →</a>
+    <div style="display:flex;gap:6px;">
+      <a href="index.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">hjem →</a>
+      <a href="traffic.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">trafikk →</a>
+    </div>
   </div>
 
   <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Slakterianløp per fartøy</div>
