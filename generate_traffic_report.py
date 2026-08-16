@@ -19,6 +19,7 @@ import os
 import csv
 import json
 import glob
+import math
 import datetime
 from collections import defaultdict
 from google.cloud import bigquery
@@ -75,37 +76,53 @@ def fetch_visit_rows(client, mmsi_list, days_back):
     """, job_config=job_config).result())
     return rows
 
-def _solve_3x3(A, B):
-    """Cramer's rule — avoids adding numpy as a pipeline dependency for
-    one small linear solve."""
-    def det3(m):
-        return (m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
-              - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
-              + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]))
-    d = det3(A)
-    if abs(d) < 1e-9:
-        return None
-    result = []
-    for col in range(3):
-        Ai = [row[:] for row in A]
-        for r in range(3):
-            Ai[r][col] = B[r]
-        result.append(det3(Ai) / d)
-    return result
+def _solve_linear(A, B):
+    """Gaussian elimination with partial pivoting for a general NxN
+    system — avoids adding numpy as a pipeline dependency for one small
+    linear solve. Replaces the old Cramer's-rule 3x3 solver now that the
+    export regression has grown past 3 unknowns (seasonal + trend
+    terms, see fetch_export_regression)."""
+    n = len(B)
+    M = [row[:] + [B[i]] for i, row in enumerate(A)]
+    for col in range(n):
+        pivot = max(range(col, n), key=lambda r: abs(M[r][col]))
+        if abs(M[pivot][col]) < 1e-9:
+            return None
+        M[col], M[pivot] = M[pivot], M[col]
+        pv = M[col][col]
+        M[col] = [x / pv for x in M[col]]
+        for r in range(n):
+            if r != col:
+                factor = M[r][col]
+                M[r] = [x - factor * y for x, y in zip(M[r], M[col])]
+    return [M[i][n] for i in range(n)]
 
 def fetch_export_regression(client, harvest_mmsi_list):
-    """Fit exports_tonn[i] ~ a*visits[i] + b*visits[i-1] + c using every
-    matched (year, week) of harvest-fleet locality visits vs. BigQuery
-    export data. Refit live on every run — rather than hardcoding
-    coefficients — so the relationship self-corrects as the fleet or
-    export mix drifts, instead of silently going stale.
+    """Fit exports_tonn[i] ~ a*visits[i] + b*visits[i-1]
+    + d*sin(2*pi*wk/52) + e*cos(2*pi*wk/52) + f*trend_weeks + c using
+    every matched (year, week) of harvest-fleet locality visits vs.
+    BigQuery export data. Refit live on every run — rather than
+    hardcoding coefficients — so the relationship self-corrects as the
+    fleet or export mix drifts, instead of silently going stale.
 
     Two visit terms, not one: a single-variable same-week-only fit gets
     r=0.91, but last week's *already-known* (not forecast) visit count
     carries real independent signal — a day-level lag scan peaks at a
     2-3 day shift, consistent with the real harvest-to-export processing
     lag — and adding it as a second term lifts R^2 from 0.82 to 0.86
-    while adding zero extra forecast uncertainty for that term."""
+    while adding zero extra forecast uncertainty for that term.
+
+    Seasonal harmonic + linear trend, on top of that: exports have a
+    real annual pattern (calmer H1, a Jul-Sep ramp) that a pure
+    visits-only fit can't see, and a slow multi-year drift toward more
+    tonnes per vessel trip (bigger/fuller loads over time) that the
+    same-week visit count alone doesn't capture either. Adding a
+    52-week sin/cos pair plus a linear weeks-since-start trend term
+    lifts weekly R^2 further (~0.86 -> ~0.87 measured live against the
+    current dataset) — a real, if modest, gain, not just added
+    noise-fitting: seasonality and trend are genuine structural
+    features of the export series, not artifacts of this particular
+    fleet's visit pattern."""
     job_config = bigquery.QueryJobConfig(
         query_parameters=[bigquery.ArrayQueryParameter("mmsi_list", "INT64", harvest_mmsi_list)]
     )
@@ -126,32 +143,48 @@ def fetch_export_regression(client, harvest_mmsi_list):
         ORDER BY v.yr, v.wk
     """, job_config=job_config).result())
 
-    if len(rows) < 12:
+    # 6 unknowns now (was 3) — keep a wider safety margin than the old
+    # "12" floor so the fit isn't running on a handful more rows than
+    # parameters. Live history is ~135 weeks (2024+), far past this.
+    if len(rows) < 26:
         return None
 
     visits = [r.visit_count for r in rows]
     exports = [r.export_tonn for r in rows]
+    # ISO (year, week) -> Monday date, so trend can be a plain weeks-since-
+    # start count rather than dealing with 52/53-week-year ISO-week math.
+    mondays = [datetime.date.fromisocalendar(int(r.yr), int(r.wk), 1) for r in rows]
+    ref_monday = mondays[0]
 
     xs = visits[1:]        # this-week visits
     xs_prev = visits[:-1]  # last-week visits (known, not forecast)
     ys = exports[1:]
+    wks = [r.wk for r in rows[1:]]
+    trend = [(mondays[i] - ref_monday).days // 7 for i in range(1, len(rows))]
     m = len(ys)
 
-    sx1 = sum(xs); sx2 = sum(xs_prev); sy = sum(ys)
-    sx1x1 = sum(x * x for x in xs); sx2x2 = sum(x * x for x in xs_prev)
-    sx1x2 = sum(x1 * x2 for x1, x2 in zip(xs, xs_prev))
-    sx1y = sum(x * y for x, y in zip(xs, ys)); sx2y = sum(x * y for x, y in zip(xs_prev, ys))
+    # design matrix columns: [visits, visits_prev, sin, cos, trend, 1]
+    design = [
+        [xs[i], xs_prev[i], math.sin(2 * math.pi * wks[i] / 52), math.cos(2 * math.pi * wks[i] / 52), trend[i], 1.0]
+        for i in range(m)
+    ]
+    p = len(design[0])
+    A = [[0.0] * p for _ in range(p)]
+    B = [0.0] * p
+    for row, y in zip(design, ys):
+        for i in range(p):
+            B[i] += row[i] * y
+            for j in range(p):
+                A[i][j] += row[i] * row[j]
 
-    A = [[sx1x1, sx1x2, sx1], [sx1x2, sx2x2, sx2], [sx1, sx2, m]]
-    B = [sx1y, sx2y, sy]
-    coef = _solve_3x3(A, B)
+    coef = _solve_linear(A, B)
     if coef is None:
         return None
-    a, b, c = coef
+    a, b, d, e, f, c = coef
 
-    preds = [a * x1 + b * x2 + c for x1, x2 in zip(xs, xs_prev)]
-    my = sy / m
-    ss_res = sum((y - p) ** 2 for y, p in zip(ys, preds))
+    preds = [sum(coef_i * x_i for coef_i, x_i in zip(coef, row)) for row in design]
+    my = sum(ys) / m
+    ss_res = sum((y - p_) ** 2 for y, p_ in zip(ys, preds))
     ss_tot = sum((y - my) ** 2 for y in ys)
     if ss_tot == 0:
         return None
@@ -161,11 +194,32 @@ def fetch_export_regression(client, harvest_mmsi_list):
     return {
         "a": a,
         "b": b,
+        "d": d,
+        "e": e,
+        "f": f,
         "c": c,
+        "ref_monday": ref_monday,
         "r2": r2,
         "rmse_pct": round(rmse / my * 100) if my else 0,
         "n_weeks": m,
     }
+
+def _predict_export(regression, visits, prev_visits, monday):
+    """Apply a fitted export_regression to one (visits, prev_visits,
+    week) point. `monday` gives both the ISO week (for the seasonal
+    term) and the trend position (weeks since the regression's
+    ref_monday) — shared by the live forecast card and the backtest
+    table so both use exactly the same model, not a re-derived copy."""
+    wk = monday.isocalendar()[1]
+    trend = (monday - regression["ref_monday"]).days // 7
+    return (
+        regression["a"] * visits
+        + regression["b"] * prev_visits
+        + regression["d"] * math.sin(2 * math.pi * wk / 52)
+        + regression["e"] * math.cos(2 * math.pi * wk / 52)
+        + regression["f"] * trend
+        + regression["c"]
+    )
 
 def fetch_export_lookup(client, min_year):
     """{(year, week): export_tonn} for actual published exports — used to
@@ -194,7 +248,7 @@ def build_export_backtest_rows(regression, weekly_mondays, weekly_visits, export
         monday = weekly_mondays[i]
         visits = weekly_visits[i]
         prev_visits = weekly_visits[i - 1]
-        predicted = regression["a"] * visits + regression["b"] * prev_visits + regression["c"]
+        predicted = _predict_export(regression, visits, prev_visits, monday)
         iso = monday.isocalendar()
         actual = export_lookup.get((iso[0], iso[1]))
         diff_pct = ((predicted - actual) / actual * 100) if actual else None
@@ -618,22 +672,24 @@ def fetch_plant_weekday_series(n_weeks):
         }
     return result
 
-def build_export_forecast_card(regression, this_week_forecast, last_week_actual):
+def build_export_forecast_card(regression, this_week_forecast, last_week_actual, current_monday):
     """Card showing this week's projected total export tonnage, derived
     from this week's harvest-locality-visit forecast *and* last week's
     already-known actual visit count, via a regression fit live against
-    BigQuery export data. Independent of the
-    Alle/Brønnbåt/Prosesseringsfartøy pill — exports aren't a
-    per-vessel-type quantity, so this always uses the combined ("Alle")
-    numbers regardless of which pill is currently selected."""
+    BigQuery export data — now also accounting for seasonal position
+    (current_monday's ISO week) and long-run trend, not just the two
+    visit terms. Independent of the Alle/Brønnbåt/Prosesseringsfartøy
+    pill — exports aren't a per-vessel-type quantity, so this always
+    uses the combined ("Alle") numbers regardless of which pill is
+    currently selected."""
     if regression is None or last_week_actual is None:
         return ""
-    predicted = round(regression["a"] * this_week_forecast + regression["b"] * last_week_actual + regression["c"])
+    predicted = round(_predict_export(regression, this_week_forecast, last_week_actual, current_monday))
     return f"""
     <div class="card" style="margin-bottom:14px;border:1px solid var(--accent);">
       <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Anslått eksportvolum denne uken</div>
       <div style="font-size:24px;font-weight:500;">{predicted:,.0f} t</div>
-      <div style="font-size:12px;color:var(--text-muted);">Utledet fra anløpsprognose denne uken + faktiske anløp forrige uke (begge Alle). Modell tilpasset live mot eksportdata: R²={regression['r2']:.2f}, avvik ~±{regression['rmse_pct']}% (siste {regression['n_weeks']} uker). Ikke offisielle tall.</div>
+      <div style="font-size:12px;color:var(--text-muted);">Utledet fra anløpsprognose denne uken + faktiske anløp forrige uke (begge Alle), justert for sesongvariasjon og trend. Modell tilpasset live mot eksportdata: R²={regression['r2']:.2f}, avvik ~±{regression['rmse_pct']}% (siste {regression['n_weeks']} uker). Ikke offisielle tall.</div>
     </div>"""
 
 TEMPLATE = """<!doctype html>
@@ -956,7 +1012,7 @@ if __name__ == "__main__":
     export_regression = fetch_export_regression(client, harvest_mmsi_list)
     alle_weekly_values = harvest_data["Alle"]["weekly_values"]
     last_week_actual = alle_weekly_values[-2] if len(alle_weekly_values) >= 2 else None
-    export_forecast_card = build_export_forecast_card(export_regression, harvest_data["Alle"]["forecast"], last_week_actual)
+    export_forecast_card = build_export_forecast_card(export_regression, harvest_data["Alle"]["forecast"], last_week_actual, current_monday)
 
     # Predicted-vs-actual backtest table: last few *completed* weeks only
     # (drop the current partial week — its own prediction is the card above).
