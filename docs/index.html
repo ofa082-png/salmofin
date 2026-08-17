@@ -3,138 +3,177 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fiskehelse — ukesrapport</title>
+<title>salmofin</title>
 <style>
-  :root { --surface-1:#f5f4f0; --surface-2:#ffffff; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781; --border:#e1e0d9; }
+  :root { --surface-1:#f5f4f0; --surface-2:#ffffff; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781; --border:#e1e0d9; --accent:#2a78d6; --text-danger:#a32d2d; --text-success:#008300; }
   @media (prefers-color-scheme: dark) {
     :root { --surface-1:#242422; --surface-2:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781; --border:#2c2c2a; }
   }
   body { background:var(--surface-1); color:var(--text-primary); font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:0; padding:2rem 1rem; }
   .wrap { max-width:680px; margin:0 auto; }
-  table { border-collapse:collapse; }
-  a { color:var(--text-secondary); }
+  a { color:var(--text-secondary); text-decoration:none; }
+  .card { display:block; background:var(--surface-2); border-radius:12px; padding:1rem 1.1rem; border:0.5px solid var(--border); margin-bottom:12px; }
+  .card.placeholder { border-style:dashed; }
+  .grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:12px; }
+  .grid .card { margin-bottom:0; }
+  .tile-header { font-size:13px; color:var(--text-secondary); margin-bottom:6px; }
+  .tile-value { font-size:22px; font-weight:500; margin-bottom:2px; }
+  .tile-delta { font-size:12px; margin-bottom:4px; }
+  .tile-link { font-size:12px; color:var(--text-secondary); }
+  .tile-placeholder { font-size:13px; color:var(--text-muted); }
+  .feed-header { font-size:13px; color:var(--text-secondary); margin-bottom:8px; }
+  .chart-title { font-size:13px; color:var(--text-secondary); margin-bottom:4px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.25rem;">
-    <div>
-      <div style="font-size:18px;font-weight:500;">Fiskehelse — ukesrapport</div>
-      <div style="font-size:13px;color:var(--text-muted)">Uke 34, 2026 · oppdatert 17.08.2026</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:26px;height:26px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:500;">s</div>
+      <div style="font-size:18px;font-weight:500;">salmofin</div>
     </div>
-    <div style="display:flex;gap:8px;align-items:baseline;">
-      <a href="traffic.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">trafikk →</a>
-      <div style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;">kilde: mattilsynet.io</div>
-    </div>
+    <div style="font-size:11px;color:var(--text-muted);">oppdatert 17.08.2026 13:11 UTC</div>
   </div>
 
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;">
-    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Aktive sykdomstilfeller</div>
-      <div style="font-size:24px;font-weight:500;">43</div>
+  <div class="grid">
+    
+    <a href="fiskehelse.html" class="card">
+      <div class="tile-header">🐛 Lakselus og behandling</div>
+      <div class="tile-value">0.14 voksne/fisk</div>
+      <div class="tile-delta" style="color:var(--text-danger)">+2%</div>
+      <div class="tile-link">Nivå og behandlinger →</div>
+    </a>
+    
+    <a href="fiskehelse.html" class="card">
+      <div class="tile-header">🦠 Sykdom</div>
+      <div class="tile-value">43 aktive tilfeller</div>
+      <div class="tile-delta" style="color:var(--text-danger)">+2 nye siste uke</div>
+      <div class="tile-link">Status og dødelighet →</div>
+    </a>
+    
+    <a href="traffic.html" class="card">
+      <div class="tile-header">🚢 Trafikk</div>
+      <div class="tile-value">829 besøk/uke</div>
+      <div class="tile-delta" style="color:var(--text-success)">+7%</div>
+      <div class="tile-link">Wellbåt og prosesseringsfartøy →</div>
+    </a>
+    
+    <a href="traffic.html" class="card">
+      <div class="tile-header">🐟 Slakt og eksport</div>
+      <div class="tile-value">29.2k t</div>
+      <div class="tile-delta" style="color:var(--text-success)">+6%</div>
+      <div class="tile-link">Volum og sesongmodell →</div>
+    </a>
+  </div>
+  
+    <div class="card placeholder">
+      <div class="tile-header">📈 Kapasitetsvekst</div>
+      <div class="tile-placeholder">Kommer snart — netto MTB og selskap</div>
     </div>
-    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Nye siste 14 dager</div>
-      <div style="font-size:24px;font-weight:500;">2</div>
-    </div>
-    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Voksne hunnlus, snitt</div>
-      <div style="font-size:24px;font-weight:500;">0.1367</div>
-    </div>
-    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Behandlinger siste 14 dager</div>
-      <div style="font-size:24px;font-weight:500;">6</div>
-    </div>
-  </div>
 
-  <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Lusenivå, siste 12 uker</div>
-  <div style="position:relative;width:100%;height:140px;margin-bottom:1.75rem;">
-    <canvas id="liceChart" width="640" height="140"></canvas>
-  </div>
-
-  <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Nye og pågående sykdomstilfeller, siste 14 dager</div>
-  <div style="border:0.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.75rem;">
-    <table style="width:100%;font-size:13px;table-layout:fixed;">
-      <tr style="background:var(--surface-2);">
-        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Lokalitet</td>
-        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Sykdom</td>
-        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Status</td>
-        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Dato</td>
-      </tr>
-      
-      <tr style="border-top:0.5px solid var(--border);">
-        <td style="padding:8px 10px;">Fureneset</td>
-        <td style="padding:8px 10px;">PD</td>
-        <td style="padding:8px 10px;"><span style="background:#fac775;color:#633806;font-size:11px;padding:2px 8px;border-radius:4px;">Mistanke</span></td>
-        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">12.08</td>
-      </tr>
-      <tr style="border-top:0.5px solid var(--border);">
-        <td style="padding:8px 10px;">Storvika I Skjerstadfjorden</td>
-        <td style="padding:8px 10px;">INFEKSIØS_LAKSEANEMI</td>
-        <td style="padding:8px 10px;"><span style="background:#fac775;color:#633806;font-size:11px;padding:2px 8px;border-radius:4px;">Mistanke</span></td>
-        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">11.08</td>
-      </tr>
-      <tr style="border-top:0.5px solid var(--border);">
-        <td style="padding:8px 10px;">Mjøsund Vest</td>
-        <td style="padding:8px 10px;">INFEKSIØS_LAKSEANEMI</td>
-        <td style="padding:8px 10px;"><span style="background:#f7c1c1;color:#791f1f;font-size:11px;padding:2px 8px;border-radius:4px;">Bekreftet</span></td>
-        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">05.08</td>
-      </tr>
-      <tr style="border-top:0.5px solid var(--border);">
-        <td style="padding:8px 10px;">Oddane</td>
-        <td style="padding:8px 10px;">PD</td>
-        <td style="padding:8px 10px;"><span style="background:#c0dd97;color:#27500a;font-size:11px;padding:2px 8px;border-radius:4px;">Avsluttet</span></td>
-        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">03.08</td>
-      </tr>
-    </table>
-  </div>
-
-  <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Kart over aktive tilfeller</div>
-  <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:8px;font-size:12px;color:var(--text-secondary);">
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#2a78d6;"></span>PD</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#1baf7a;"></span>ILA</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#eda100;"></span>BKD</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#008300;"></span>Francisellose</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#4a3aa7;"></span>Flere</span>
-  </div>
-  <div id="map" style="width:100%;margin-bottom:1.5rem;"></div>
-
-  <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
-    Data: Mattilsynet offentlig API og BarentsWatch, via salmofin BigQuery-pipeline. Generert automatisk hver natt.
-  </div>
-</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <div class="card">
+    <div class="chart-title">Voksne hunnlus, snitt/uke</div>
+    <svg id="liceChart" viewBox="0 0 560 90" style="width:100%;height:90px" role="img"><title>Trend, siste 12 uker</title></svg>
 <script>
-const liceLabels = ["u23", "u24", "u25", "u26", "u27", "u28", "u29", "u30", "u31", "u32", "u33"];
-const liceValues = [0.0846, 0.098, 0.1076, 0.1161, 0.1163, 0.1138, 0.1116, 0.1294, 0.1378, 0.1408, 0.1367];
-new Chart(document.getElementById('liceChart'), {
-  type: 'line',
-  data: { labels: liceLabels, datasets: [{ data: liceValues, borderColor: '#2a78d6', backgroundColor: 'rgba(42,120,214,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] },
-  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-    scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 11 } }, grid: { display: false } } } }
-});
-
-const sites = [{"id": "12348", "name": "Kåholmen", "lat": 63.617183, "lon": 8.994133, "diseases": ["BAKTERIELL_NYRESYKE"]}, {"id": "45159", "name": "Aukan", "lat": 63.162167, "lon": 8.311933, "diseases": ["FRANCISELLOSE"]}, {"id": "10409", "name": "Kjelneset", "lat": 64.643867, "lon": 11.388867, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "17077", "name": "Trettevik", "lat": 69.5115, "lon": 18.022167, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "31357", "name": "Geitryggen", "lat": 64.751267, "lon": 11.189217, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "31557", "name": "Valøyan", "lat": 63.81835, "lon": 8.463817, "diseases": ["INFEKSIOES_LAKSEANEMI", "PANKREASSYKDOM"]}, {"id": "35377", "name": "Kveitskjeret", "lat": 63.825033, "lon": 8.444633, "diseases": ["INFEKSIOES_LAKSEANEMI", "PANKREASSYKDOM"]}, {"id": "37057", "name": "Mjøsund Vest", "lat": 68.90805, "lon": 17.407817, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "38857", "name": "Vannfjorden", "lat": 71.0171, "lon": 25.390833, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "39537", "name": "Gyltneset", "lat": 64.683817, "lon": 11.36595, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "45198", "name": "Purkholmen", "lat": 64.80645, "lon": 10.565933, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "10041", "name": "Kviksholmen", "lat": 60.054317, "lon": 5.090733, "diseases": ["PANKREASSYKDOM"]}, {"id": "10045", "name": "Eidholmen", "lat": 60.088083, "lon": 5.120633, "diseases": ["PANKREASSYKDOM"]}, {"id": "10232", "name": "Mannbruholmen", "lat": 63.84705, "lon": 8.536867, "diseases": ["PANKREASSYKDOM"]}, {"id": "10311", "name": "Storlia", "lat": 61.203133, "lon": 5.193833, "diseases": ["PANKREASSYKDOM"]}, {"id": "11543", "name": "Buholmen", "lat": 60.020467, "lon": 5.080083, "diseases": ["PANKREASSYKDOM"]}, {"id": "11688", "name": "Portevika", "lat": 61.190667, "lon": 5.081683, "diseases": ["PANKREASSYKDOM"]}, {"id": "12394", "name": "Ørnøya", "lat": 63.760017, "lon": 8.4477, "diseases": ["PANKREASSYKDOM"]}, {"id": "12435", "name": "Grøttingsøy", "lat": 63.87955, "lon": 8.547883, "diseases": ["PANKREASSYKDOM"]}, {"id": "12449", "name": "Tennøya", "lat": 63.805033, "lon": 8.4444, "diseases": ["PANKREASSYKDOM"]}, {"id": "13549", "name": "Løypingneset", "lat": 61.821333, "lon": 5.250533, "diseases": ["PANKREASSYKDOM"]}, {"id": "13562", "name": "Uføro", "lat": 59.87835, "lon": 5.526917, "diseases": ["PANKREASSYKDOM"]}, {"id": "13837", "name": "Verpeide", "lat": 61.902217, "lon": 5.209233, "diseases": ["PANKREASSYKDOM"]}, {"id": "13841", "name": "Brunsvik", "lat": 61.910183, "lon": 5.29085, "diseases": ["PANKREASSYKDOM"]}, {"id": "14039", "name": "Litle Lunnøy", "lat": 60.02005, "lon": 5.169533, "diseases": ["PANKREASSYKDOM"]}, {"id": "14040", "name": "Krigsholmen", "lat": 60.081383, "lon": 5.124117, "diseases": ["PANKREASSYKDOM"]}, {"id": "14042", "name": "Kattholmen", "lat": 63.867683, "lon": 8.677683, "diseases": ["PANKREASSYKDOM"]}, {"id": "20559", "name": "Langskjæra", "lat": 63.8225, "lon": 8.75505, "diseases": ["PANKREASSYKDOM"]}, {"id": "20595", "name": "Kyrholmen S", "lat": 60.161583, "lon": 5.207633, "diseases": ["PANKREASSYKDOM"]}, {"id": "22915", "name": "Kalsøyflu", "lat": 60.038183, "lon": 5.114417, "diseases": ["PANKREASSYKDOM"]}, {"id": "26135", "name": "Kjørsvikgrunn", "lat": 63.457717, "lon": 9.0756, "diseases": ["PANKREASSYKDOM"]}, {"id": "28636", "name": "Rataren", "lat": 63.7813, "lon": 8.521533, "diseases": ["PANKREASSYKDOM"]}, {"id": "32577", "name": "Klammerholmen", "lat": 60.08165, "lon": 5.168567, "diseases": ["PANKREASSYKDOM"]}, {"id": "33077", "name": "Elveneset", "lat": 61.205833, "lon": 5.131717, "diseases": ["PANKREASSYKDOM"]}, {"id": "33737", "name": "Olausskjæret", "lat": 63.7917, "lon": 8.504717, "diseases": ["PANKREASSYKDOM"]}, {"id": "34857", "name": "Salatskjæra", "lat": 63.90485, "lon": 8.589133, "diseases": ["PANKREASSYKDOM"]}, {"id": "37197", "name": "Ruggstein", "lat": 63.770083, "lon": 8.476033, "diseases": ["PANKREASSYKDOM"]}, {"id": "38797", "name": "Oløya N", "lat": 63.852733, "lon": 8.591083, "diseases": ["PANKREASSYKDOM"]}, {"id": "45072", "name": "Bleket", "lat": 61.911667, "lon": 5.092217, "diseases": ["PANKREASSYKDOM"]}, {"id": "45078", "name": "Almbakkevika", "lat": 61.620333, "lon": 5.271967, "diseases": ["PANKREASSYKDOM"]}, {"id": "45211", "name": "Saltskår", "lat": 61.193133, "lon": 4.8148, "diseases": ["PANKREASSYKDOM"]}];
-const diseaseColor = { 'PANKREASSYKDOM': '#2a78d6', 'INFEKSIOES_LAKSEANEMI': '#1baf7a', 'BAKTERIELL_NYRESYKE': '#eda100', 'FRANCISELLOSE': '#008300', 'multi': '#4a3aa7' };
-function colorFor(d) { return d.diseases.length > 1 ? diseaseColor.multi : diseaseColor[d.diseases[0]]; }
-const mw = 640, mh = 620;
-const msvg = d3.select('#map').append('svg').attr('viewBox', `0 0 ${mw} ${mh}`).attr('width', '100%');
-const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
-d3.json('https://cdn.jsdelivr.net/npm/datamaps@0.5.10/src/js/data/nor.topo.json').then(topo => {
-  const geoms = topo.objects.nor.geometries.filter(g => g.id && g.id.startsWith('NO.'));
-  const features = topojson.feature(topo, { type: 'GeometryCollection', geometries: geoms });
-  const projection = d3.geoMercator().fitSize([mw, mh], features);
-  const path = d3.geoPath(projection);
-  msvg.append('g').selectAll('path').data(features.features).join('path')
-    .attr('d', path).attr('fill', isDark ? '#2c2c2a' : '#e1e0d9')
-    .attr('stroke', isDark ? '#1a1a19' : '#fcfcfb').attr('stroke-width', 0.75);
-  msvg.append('g').selectAll('circle').data(sites).join('circle')
-    .attr('cx', d => projection([d.lon, d.lat])[0]).attr('cy', d => projection([d.lon, d.lat])[1])
-    .attr('r', 5).attr('fill', colorFor).attr('fill-opacity', 0.85)
-    .attr('stroke', isDark ? '#1a1a19' : '#fcfcfb').attr('stroke-width', 1.2);
-});
+(function(){
+  var svg = document.getElementById('liceChart');
+  var data = [0.055, 0.07, 0.085, 0.098, 0.108, 0.116, 0.116, 0.114, 0.112, 0.129, 0.138, 0.141];
+  var labels = ["U21", "U22", "U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32"];
+  var w = 560, h = 90, padL = 20, padR = 10, padT = 10, padB = 16;
+  var min = Math.min.apply(null, data), max = Math.max.apply(null, data);
+  var range = (max - min) || 1;
+  var pts = data.map(function(v,i){
+    var x = padL + (i/(data.length-1))*(w-padL-padR);
+    var y = h-padB - ((v-min)/range)*(h-padT-padB);
+    return x.toFixed(1)+','+y.toFixed(1);
+  });
+  var ns = 'http://www.w3.org/2000/svg';
+  var poly = document.createElementNS(ns,'polyline');
+  poly.setAttribute('points', pts.join(' '));
+  poly.setAttribute('fill','none');
+  poly.setAttribute('stroke','#D85A30');
+  poly.setAttribute('stroke-width','2');
+  svg.appendChild(poly);
+  [0, data.length-1].forEach(function(i){
+    var coords = pts[i].split(',');
+    var t = document.createElementNS(ns,'text');
+    t.setAttribute('x',coords[0]); t.setAttribute('y', h-2);
+    t.setAttribute('font-size','9'); t.setAttribute('text-anchor', i===0?'start':'end');
+    t.setAttribute('fill','var(--text-muted)');
+    t.textContent = labels[i];
+    svg.appendChild(t);
+  });
+})();
 </script>
+  </div>
+  <div class="card">
+    <div class="chart-title">Eksport, tonn/uke</div>
+    <svg id="exportChart" viewBox="0 0 560 90" style="width:100%;height:90px" role="img"><title>Trend, siste 12 uker</title></svg>
+<script>
+(function(){
+  var svg = document.getElementById('exportChart');
+  var data = [22902, 19962, 22659, 23180, 26415, 27173, 26763, 26620, 29003, 26558, 27655, 29240];
+  var labels = ["U21", "U22", "U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32"];
+  var w = 560, h = 90, padL = 20, padR = 10, padT = 10, padB = 16;
+  var min = Math.min.apply(null, data), max = Math.max.apply(null, data);
+  var range = (max - min) || 1;
+  var pts = data.map(function(v,i){
+    var x = padL + (i/(data.length-1))*(w-padL-padR);
+    var y = h-padB - ((v-min)/range)*(h-padT-padB);
+    return x.toFixed(1)+','+y.toFixed(1);
+  });
+  var ns = 'http://www.w3.org/2000/svg';
+  var poly = document.createElementNS(ns,'polyline');
+  poly.setAttribute('points', pts.join(' '));
+  poly.setAttribute('fill','none');
+  poly.setAttribute('stroke','#2a78d6');
+  poly.setAttribute('stroke-width','2');
+  svg.appendChild(poly);
+  [0, data.length-1].forEach(function(i){
+    var coords = pts[i].split(',');
+    var t = document.createElementNS(ns,'text');
+    t.setAttribute('x',coords[0]); t.setAttribute('y', h-2);
+    t.setAttribute('font-size','9'); t.setAttribute('text-anchor', i===0?'start':'end');
+    t.setAttribute('fill','var(--text-muted)');
+    t.textContent = labels[i];
+    svg.appendChild(t);
+  });
+})();
+</script>
+  </div>
+
+  
+    <div class="card placeholder">
+      <div class="feed-header">Siste 5 MOM-B</div>
+      <div class="tile-placeholder">Kommer snart</div>
+    </div>
+  
+    <div class="card placeholder">
+      <div class="feed-header">Siste 5 sykdomsoppdateringer</div>
+      <div class="tile-placeholder">Kommer snart</div>
+    </div>
+  
+    <div class="card placeholder">
+      <div class="feed-header">Siste 5 heftelser</div>
+      <div class="tile-placeholder">Kommer snart</div>
+    </div>
+
+  <a href="fiskehelse.html" class="card" style="display:block;margin-bottom:8px;">
+    <div style="font-size:15px;font-weight:500;margin-bottom:2px;">Fiskehelse — ukesrapport →</div>
+    <div style="font-size:12px;color:var(--text-secondary);">Aktive sykdomstilfeller, lusenivå siste 12 uker, kart over pågående saker.</div>
+  </a>
+  <a href="traffic.html" class="card" style="display:block;margin-bottom:8px;">
+    <div style="font-size:15px;font-weight:500;margin-bottom:2px;">Trafikkrapport →</div>
+    <div style="font-size:12px;color:var(--text-secondary);">Slakteaktivitet og eksportvolum, brønnbåt og prosesseringsfartøy.</div>
+  </a>
+  <a href="foring.html" class="card" style="display:block;margin-bottom:8px;">
+    <div style="font-size:15px;font-weight:500;margin-bottom:2px;">Fôringsrapport →</div>
+    <div style="font-size:12px;color:var(--text-secondary);">Fôrbåtanløp og fiskehelseindikator.</div>
+  </a>
+  <a href="big_vessels.html" class="card" style="display:block;">
+    <div style="font-size:15px;font-weight:500;margin-bottom:2px;">Store fartøy — rutetracker →</div>
+    <div style="font-size:12px;color:var(--text-secondary);">Live kart over de største brønnbåtene og prosesseringsfartøyene.</div>
+  </a>
+</div>
 </body>
 </html>

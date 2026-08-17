@@ -1,7 +1,7 @@
-name: Generate Fish Health Report
+name: Generate Foring Report
 on:
   schedule:
-    - cron: '0 7 * * *'  # after the nightly fetch jobs have landed (they run ~5:30-6:15am UTC despite earlier cron times)
+    - cron: '20 7 * * *'  # after generate_traffic_report.yml
   workflow_dispatch:
 permissions:
   contents: write
@@ -16,12 +16,12 @@ jobs:
           python-version: '3.13'
       - name: Install dependencies
         run: pip install google-cloud-bigquery google-auth
-      - name: Generate report
+      - name: Generate foring report
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
-        run: python generate_report.py
+        run: python generate_foring.py
       - name: Commit updated report
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: Update fish health report
-          file_pattern: docs/fiskehelse.html
+          commit_message: Update foring report
+          file_pattern: docs/foring.html
