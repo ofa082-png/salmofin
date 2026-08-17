@@ -24,7 +24,8 @@ from google.oauth2 import service_account
 PROJECT_ID = "salmofin"
 OUT_PATH   = os.path.join(os.path.dirname(__file__), "docs", "fiskehelse.html")
 FLEET_CSV  = os.path.join(os.path.dirname(__file__), "vessel_categories.csv")
-INDICATOR_WEEKS_HISTORY = 12  # matches the lice chart's "siste 12 uker" lookback
+WEEKS_HISTORY = 12  # matches the lice chart's "siste 12 uker" lookback — shared by
+                     # the Fiskehelseindikator and Avlusningsfartøy charts too
 
 STATUS_LABEL = {
     "PANKREASSYKDOM": "PD",
@@ -47,19 +48,20 @@ def get_bq_client():
     )
     return bigquery.Client(credentials=credentials, project=PROJECT_ID)
 
-def load_feed_silage_fleet():
-    """MMSI -> vessel type, restricted to Fish feed carrier / Silage —
-    only used for the Fiskehelseindikator chart below."""
+def load_vessel_fleet(types):
+    """MMSI -> vessel type, restricted to the given vessel_categories.csv
+    Type values — used for the vessel-signal charts below (Fiskehelse-
+    indikator, Avlusningsfartøy)."""
     mmsi_to_type = {}
     with open(FLEET_CSV, encoding="utf-8") as f:
         for row in csv.DictReader(f):
             mmsi = (row.get("MMSI") or "").strip()
             vtype = (row.get("Type") or "").strip()
-            if mmsi.isdigit() and vtype in ("Fish feed carrier", "Silage"):
+            if mmsi.isdigit() and vtype in types:
                 mmsi_to_type[int(mmsi)] = vtype
     return mmsi_to_type
 
-def fetch_feed_silage_visits(client, mmsi_list, days_back):
+def fetch_fleet_visits(client, mmsi_list, days_back):
     job_config = bigquery.QueryJobConfig(
         query_parameters=[bigquery.ArrayQueryParameter("mmsi_list", "INT64", mmsi_list)]
     )
@@ -91,16 +93,23 @@ def build_weekly_series(daily, current_monday, weeks_history, yesterday):
         series.append((f"U{m.isocalendar()[1]}", total))
     return series
 
-def fetch_fiskehelseindikator(client):
-    """Silage/feed vessel visit ratio — a mortality proxy (silage
-    vessels collect dead fish/offal, so more silage activity relative
-    to normal feed-carrier activity is a fairly direct operational
-    readout of mortality). Moved here from generate_foring.py
-    (2026-08-17) — belongs with the rest of the fish-health content,
-    not bundled under the feed-logistics report."""
-    mmsi_to_type = load_feed_silage_fleet()
-    days_back = INDICATOR_WEEKS_HISTORY * 7 + 7
-    rows = fetch_feed_silage_visits(client, list(mmsi_to_type.keys()), days_back)
+def fetch_vessel_signal_charts(client):
+    """Fiskehelseindikator (silage/feed vessel visit ratio, a mortality
+    proxy — silage vessels collect dead fish/offal, so more silage
+    activity relative to normal feed-carrier activity is a fairly
+    direct operational readout of mortality) and Avlusningsfartøy
+    (delousing vessel visits, descriptive only). One shared query
+    covering all three vessel types feeds both charts.
+
+    Fiskehelseindikator moved here from generate_foring.py, and
+    Avlusningsfartøy from generate_traffic_report.py, both 2026-08-17
+    — both are fish-health-adjacent signals that belong with the rest
+    of this page's content, not split across the feed/traffic reports.
+    Both charts share this page's 12-week lookback (WEEKS_HISTORY) and
+    "U23"-style week labels, matching the lice chart above them."""
+    mmsi_to_type = load_vessel_fleet(("Fish feed carrier", "Silage", "Delicing vessel"))
+    days_back = WEEKS_HISTORY * 7 + 7
+    rows = fetch_fleet_visits(client, list(mmsi_to_type.keys()), days_back)
 
     daily_by_type = defaultdict(lambda: defaultdict(int))
     for r in rows:
@@ -112,15 +121,18 @@ def fetch_fiskehelseindikator(client):
     yesterday = today - datetime.timedelta(days=1)
     current_monday = monday_of(yesterday)
 
-    feed_weekly = build_weekly_series(daily_by_type.get("Fish feed carrier", {}), current_monday, INDICATOR_WEEKS_HISTORY, yesterday)
-    silage_weekly = build_weekly_series(daily_by_type.get("Silage", {}), current_monday, INDICATOR_WEEKS_HISTORY, yesterday)
+    feed_weekly = build_weekly_series(daily_by_type.get("Fish feed carrier", {}), current_monday, WEEKS_HISTORY, yesterday)
+    silage_weekly = build_weekly_series(daily_by_type.get("Silage", {}), current_monday, WEEKS_HISTORY, yesterday)
+    delousing_weekly = build_weekly_series(daily_by_type.get("Delicing vessel", {}), current_monday, WEEKS_HISTORY, yesterday)
 
-    labels = [w[0] for w in feed_weekly]
-    ratio_values = [
+    fh_labels = [w[0] for w in feed_weekly]
+    fh_values = [
         round(s[1] / f[1], 3) if f[1] else None
         for f, s in zip(feed_weekly, silage_weekly)
     ]
-    return labels, ratio_values
+    delousing_labels = [w[0] for w in delousing_weekly]
+    delousing_values = [w[1] for w in delousing_weekly]
+    return fh_labels, fh_values, delousing_labels, delousing_values
 
 def fetch_data(client):
     lice_trend = list(client.query("""
@@ -255,6 +267,13 @@ TEMPLATE = """<!doctype html>
   </div>
   <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste punkt er inneværende uke (delvis).</div>
 
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Avlusningsfartøy</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Kun beskrivende — testet mot faktiske avlusningsregistreringer og fanger foreløpig opp ca. 22–26% av dem, så dette er ikke en pålitelig indikator ennå, kun et rått anløpsbilde.</div>
+  <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
+    <canvas id="delousingWeeklyChart" width="640" height="140"></canvas>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste søyle er inneværende uke (delvis).</div>
+
   <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Nye og pågående sykdomstilfeller, siste 14 dager</div>
   <div style="border:0.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.75rem;">
     <table style="width:100%;font-size:13px;table-layout:fixed;">
@@ -279,7 +298,7 @@ TEMPLATE = """<!doctype html>
   <div id="map" style="width:100%;margin-bottom:1.5rem;"></div>
 
   <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
-    Data: Mattilsynet offentlig API og BarentsWatch, via salmofin BigQuery-pipeline. Generert automatisk hver natt.
+    Data: Mattilsynet offentlig API og BarentsWatch, via salmofin BigQuery-pipeline. Vessel-indikatorer: BarentsWatch AIS, kun fartøy i vår flåteliste (vessel_categories.csv). Generert automatisk hver natt.
   </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -300,6 +319,16 @@ new Chart(document.getElementById('fishHealthChart'), {{
   data: {{ labels: {fh_labels_json}, datasets: [
     {{ label: 'Indikator', data: {fh_values_json}, borderColor: '#7a4fc9', backgroundColor: '#7a4fc9', tension: 0.25, pointRadius: 3, spanGaps: true }}
   ] }},
+  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
+    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
+}});
+
+function barColors(labels, partialIdx, base) {{
+  return labels.map((_, i) => i === partialIdx ? base + '80' : base);
+}}
+new Chart(document.getElementById('delousingWeeklyChart'), {{
+  type: 'bar',
+  data: {{ labels: {delousing_labels_json}, datasets: [{{ data: {delousing_values_json}, backgroundColor: barColors({delousing_labels_json}, {delousing_partial_idx}, '#52514e'), borderRadius: 4 }}] }},
   options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
     scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
 }});
@@ -332,7 +361,7 @@ if __name__ == "__main__":
     print("Fetching data from BigQuery...")
     client = get_bq_client()
     lice_trend, kpis, recent, map_rows = fetch_data(client)
-    fh_labels, fh_values = fetch_fiskehelseindikator(client)
+    fh_labels, fh_values, delousing_labels, delousing_values = fetch_vessel_signal_charts(client)
 
     sites = build_sites_json(map_rows)
     table_rows = build_table_rows(recent)
@@ -351,6 +380,9 @@ if __name__ == "__main__":
         lice_values_json=json.dumps([r.avg_lice for r in lice_trend]),
         fh_labels_json=json.dumps(fh_labels),
         fh_values_json=json.dumps(fh_values),
+        delousing_labels_json=json.dumps(delousing_labels),
+        delousing_values_json=json.dumps(delousing_values),
+        delousing_partial_idx=len(delousing_labels) - 1,
         sites_json=json.dumps(sites, ensure_ascii=False),
     )
 
