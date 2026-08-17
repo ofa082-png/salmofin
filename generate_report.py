@@ -7,16 +7,24 @@ it to docs/fiskehelse.html, for GitHub Pages to serve. Nightly script.
 Moved off docs/index.html (2026-08-16) — that path is now the hub
 frontpage (see generate_hub.py), which links here instead of this
 page being the site root.
+
+Fiskehelseindikator section (silage/feed vessel visit ratio, a
+mortality proxy) moved in from generate_foring.py on 2026-08-17 — it's
+a fish-health signal, not feed-logistics, so it belongs here instead.
 """
 
 import os
+import csv
 import json
 import datetime
+from collections import defaultdict
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
 PROJECT_ID = "salmofin"
 OUT_PATH   = os.path.join(os.path.dirname(__file__), "docs", "fiskehelse.html")
+FLEET_CSV  = os.path.join(os.path.dirname(__file__), "vessel_categories.csv")
+INDICATOR_WEEKS_HISTORY = 10
 
 STATUS_LABEL = {
     "PANKREASSYKDOM": "PD",
@@ -38,6 +46,81 @@ def get_bq_client():
         scopes=["https://www.googleapis.com/auth/cloud-platform"]
     )
     return bigquery.Client(credentials=credentials, project=PROJECT_ID)
+
+def load_feed_silage_fleet():
+    """MMSI -> vessel type, restricted to Fish feed carrier / Silage —
+    only used for the Fiskehelseindikator chart below."""
+    mmsi_to_type = {}
+    with open(FLEET_CSV, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            mmsi = (row.get("MMSI") or "").strip()
+            vtype = (row.get("Type") or "").strip()
+            if mmsi.isdigit() and vtype in ("Fish feed carrier", "Silage"):
+                mmsi_to_type[int(mmsi)] = vtype
+    return mmsi_to_type
+
+def fetch_feed_silage_visits(client, mmsi_list, days_back):
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[bigquery.ArrayQueryParameter("mmsi_list", "INT64", mmsi_list)]
+    )
+    return list(client.query(f"""
+        SELECT DATE(startTime) AS visit_date, mmsi
+        FROM salmofin.salmofin.vessel_visits
+        WHERE DATE(startTime) >= DATE_SUB(CURRENT_DATE(), INTERVAL {days_back} DAY)
+          AND DATE(startTime) < CURRENT_DATE()
+          AND mmsi IN UNNEST(@mmsi_list)
+    """, job_config=job_config).result())
+
+def monday_of(d):
+    return d - datetime.timedelta(days=d.weekday())
+
+def week_total(daily, monday, end_date):
+    total = 0
+    d = monday
+    while d <= end_date:
+        total += daily.get(d, 0)
+        d += datetime.timedelta(days=1)
+    return total
+
+def build_weekly_series(daily, current_monday, weeks_history, yesterday):
+    series = []
+    for i in range(weeks_history - 1, -1, -1):
+        m = current_monday - datetime.timedelta(weeks=i)
+        end = yesterday if m == current_monday else m + datetime.timedelta(days=6)
+        total = week_total(daily, m, end) if end >= m else 0
+        series.append((f"U{m.isocalendar()[1]}", total))
+    return series
+
+def fetch_fiskehelseindikator(client):
+    """Silage/feed vessel visit ratio — a mortality proxy (silage
+    vessels collect dead fish/offal, so more silage activity relative
+    to normal feed-carrier activity is a fairly direct operational
+    readout of mortality). Moved here from generate_foring.py
+    (2026-08-17) — belongs with the rest of the fish-health content,
+    not bundled under the feed-logistics report."""
+    mmsi_to_type = load_feed_silage_fleet()
+    days_back = INDICATOR_WEEKS_HISTORY * 7 + 7
+    rows = fetch_feed_silage_visits(client, list(mmsi_to_type.keys()), days_back)
+
+    daily_by_type = defaultdict(lambda: defaultdict(int))
+    for r in rows:
+        vtype = mmsi_to_type.get(r.mmsi)
+        if vtype:
+            daily_by_type[vtype][r.visit_date] += 1
+
+    today = datetime.date.today()
+    yesterday = today - datetime.timedelta(days=1)
+    current_monday = monday_of(yesterday)
+
+    feed_weekly = build_weekly_series(daily_by_type.get("Fish feed carrier", {}), current_monday, INDICATOR_WEEKS_HISTORY, yesterday)
+    silage_weekly = build_weekly_series(daily_by_type.get("Silage", {}), current_monday, INDICATOR_WEEKS_HISTORY, yesterday)
+
+    labels = [w[0] for w in feed_weekly]
+    ratio_values = [
+        round(s[1] / f[1], 3) if f[1] else None
+        for f, s in zip(feed_weekly, silage_weekly)
+    ]
+    return labels, ratio_values
 
 def fetch_data(client):
     lice_trend = list(client.query("""
@@ -165,6 +248,13 @@ TEMPLATE = """<!doctype html>
     <canvas id="liceChart" width="640" height="140"></canvas>
   </div>
 
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Fiskehelseindikator</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Egenutviklet indikator basert på vessel-trafikkmønstre (ensilasje/fôr-anløpsforhold). Stigende verdier kan tyde på økt dødelighet eller helseutfordringer på anleggene.</div>
+  <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
+    <canvas id="fishHealthChart" width="640" height="140"></canvas>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste punkt er inneværende uke (delvis).</div>
+
   <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Nye og pågående sykdomstilfeller, siste 14 dager</div>
   <div style="border:0.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.75rem;">
     <table style="width:100%;font-size:13px;table-layout:fixed;">
@@ -205,6 +295,15 @@ new Chart(document.getElementById('liceChart'), {{
     scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ display: false }} }} }} }}
 }});
 
+new Chart(document.getElementById('fishHealthChart'), {{
+  type: 'line',
+  data: {{ labels: {fh_labels_json}, datasets: [
+    {{ label: 'Indikator', data: {fh_values_json}, borderColor: '#7a4fc9', backgroundColor: '#7a4fc9', tension: 0.25, pointRadius: 3, spanGaps: true }}
+  ] }},
+  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
+    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
+}});
+
 const sites = {sites_json};
 const diseaseColor = {{ 'PANKREASSYKDOM': '#2a78d6', 'INFEKSIOES_LAKSEANEMI': '#1baf7a', 'BAKTERIELL_NYRESYKE': '#eda100', 'FRANCISELLOSE': '#008300', 'multi': '#4a3aa7' }};
 function colorFor(d) {{ return d.diseases.length > 1 ? diseaseColor.multi : diseaseColor[d.diseases[0]]; }}
@@ -233,6 +332,7 @@ if __name__ == "__main__":
     print("Fetching data from BigQuery...")
     client = get_bq_client()
     lice_trend, kpis, recent, map_rows = fetch_data(client)
+    fh_labels, fh_values = fetch_fiskehelseindikator(client)
 
     sites = build_sites_json(map_rows)
     table_rows = build_table_rows(recent)
@@ -249,6 +349,8 @@ if __name__ == "__main__":
         table_rows=table_rows,
         lice_labels_json=json.dumps([f"u{r.Uke}" for r in lice_trend]),
         lice_values_json=json.dumps([r.avg_lice for r in lice_trend]),
+        fh_labels_json=json.dumps(fh_labels),
+        fh_values_json=json.dumps(fh_values),
         sites_json=json.dumps(sites, ensure_ascii=False),
     )
 

@@ -9,10 +9,11 @@ harvest-logistics one.
 
 Sections:
   A. Fôring — feed carrier locality visits, weekly + forecast.
-  B. Fiskehelseindikator — silage/feed visit ratio, a mortality proxy
-     (silage vessels collect dead fish/offal, so more silage activity
-     relative to normal feed-carrier activity is a fairly direct
-     operational readout of mortality — see project notes).
+
+The "Fiskehelseindikator" section (silage/feed visit ratio, a mortality
+proxy) that used to live here moved to generate_report.py/fiskehelse.html
+on 2026-08-17 — it's a fish-health signal, not a feed-logistics one, so
+it belongs with the rest of the health content instead of this page.
 
 Writes docs/foring.html.
 """
@@ -44,13 +45,15 @@ def get_bq_client():
     return bigquery.Client(credentials=credentials, project=PROJECT_ID)
 
 def load_fleet():
-    """MMSI -> vessel type, restricted to Fish feed carrier / Silage."""
+    """MMSI -> vessel type, restricted to Fish feed carrier. (Silage was
+    only needed for the Fiskehelseindikator section, which moved to
+    generate_report.py 2026-08-17 — no longer fetched here.)"""
     mmsi_to_type = {}
     with open(FLEET_CSV, encoding="utf-8") as f:
         for row in csv.DictReader(f):
             mmsi = (row.get("MMSI") or "").strip()
             vtype = (row.get("Type") or "").strip()
-            if mmsi.isdigit() and vtype in ("Fish feed carrier", "Silage"):
+            if mmsi.isdigit() and vtype == "Fish feed carrier":
                 mmsi_to_type[int(mmsi)] = vtype
     return mmsi_to_type
 
@@ -205,15 +208,6 @@ TEMPLATE = """<!doctype html>
     <div style="font-size:11px;color:var(--text-muted);">Siste søyle er inneværende uke (delvis).</div>
   </section>
 
-  <section>
-    <div class="section-title">Fiskehelseindikator</div>
-    <div class="section-sub">Egenutviklet indikator basert på vessel-trafikkmønstre (ensilasje/fôr-anløpsforhold). Stigende verdier kan tyde på økt dødelighet eller helseutfordringer på anleggene.</div>
-    <div style="position:relative;width:100%;height:170px;margin-bottom:4px;">
-      <canvas id="fishHealthChart" width="640" height="170"></canvas>
-    </div>
-    <div style="font-size:11px;color:var(--text-muted);">Siste punkt er inneværende uke (delvis).</div>
-  </section>
-
   <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
     Lokalitetsanløp: BarentsWatch AIS, kun fartøy i vår flåteliste (vessel_categories.csv). Anslag hele uken bruker gjennomsnittlig ukentlig fremdriftsmønster fra de siste {pacing_weeks} fullførte ukene. Via salmofin BigQuery-pipeline.
   </div>
@@ -230,18 +224,6 @@ new Chart(document.getElementById('feedChart'), {{
   options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
     scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
 }});
-
-new Chart(document.getElementById('fishHealthChart'), {{
-  type: 'line',
-  data: {{ labels: {feed_weekly_labels_json}, datasets: [
-    {{ label: 'Indikator', data: {ratio_weekly_values_json}, borderColor: '#7a4fc9', backgroundColor: '#7a4fc9', tension: 0.25, pointRadius: 3, spanGaps: true }}
-  ] }},
-  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
-    scales: {{
-      y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }},
-      x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }}
-    }} }}
-}});
 </script>
 </body>
 </html>
@@ -249,7 +231,7 @@ new Chart(document.getElementById('fishHealthChart'), {{
 
 if __name__ == "__main__":
     mmsi_to_type = load_fleet()
-    print(f"  {len(mmsi_to_type)} feed/silage vessels in vessel_categories.csv")
+    print(f"  {len(mmsi_to_type)} feed vessels in vessel_categories.csv")
 
     days_back = (WEEKS_HISTORY + PACING_WEEKS) * 7
     client = get_bq_client()
@@ -264,14 +246,6 @@ if __name__ == "__main__":
     feed_daily = stats.get("Fish feed carrier", {})
     feed_data = build_group_data(feed_daily, current_monday, yesterday, two_days_ago)
 
-    silage_daily = stats.get("Silage", {})
-    silage_weekly = build_weekly_series(silage_daily, current_monday, WEEKS_HISTORY, yesterday)
-    silage_weekly_values = [w[1] for w in silage_weekly]
-    ratio_weekly_values = [
-        round(s / f, 3) if f else None
-        for s, f in zip(silage_weekly_values, feed_data["weekly_values"])
-    ]
-
     now = datetime.datetime.now(datetime.timezone.utc)
     html = TEMPLATE.format(
         yesterday_label=yesterday.strftime("%d.%m.%Y"),
@@ -285,7 +259,6 @@ if __name__ == "__main__":
         feed_weekly_labels_json=json.dumps(feed_data["weekly_labels"]),
         feed_weekly_values_json=json.dumps(feed_data["weekly_values"]),
         feed_partial_idx=feed_data["weekly_partial_idx"],
-        ratio_weekly_values_json=json.dumps(ratio_weekly_values),
         pacing_weeks=PACING_WEEKS,
     )
 
