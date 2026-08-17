@@ -2,15 +2,18 @@
 generate_traffic_report.py
 ---------------------------
 Renders a weekly-focused vessel traffic report for traders/exporters,
-scoped to the fleet in vessel_categories.csv. Sections:
+scoped to Wellboat + Processing vessel — the harvest-signal fleet —
+in vessel_categories.csv. Sections:
 
   A/B. Harvest signal — Wellboat + Processing vessel locality visits
        (vessel_visits) and harvest-plant deliveries (harvest_plant_visits
        CSVs), with a weekday-pacing forecast for the current week.
-  C.   Fôring — feed carrier locality visits, same weekly/forecast treatment.
-  D.   Fôr vs. ensilasje — feed vs. silage visits overlaid, to spot
-       silage ramping up without a matching rise in feed (event- rather
-       than production-driven activity).
+  C.   Avlusningsfartøy — delousing vessel visits, descriptive only.
+
+Feed carrier + silage traffic moved to generate_foring.py (2026-08-16)
+— that's a production-intensity signal, not a harvest-logistics one,
+so it didn't belong bundled in here just because it shares the same
+AIS data source.
 
 Writes docs/traffic.html.
 """
@@ -724,6 +727,7 @@ TEMPLATE = """<!doctype html>
     </div>
     <div style="display:flex;gap:6px;">
       <a href="index.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">hjem →</a>
+      <a href="foring.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">fôring →</a>
       <a href="big_vessels.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">store fartøy →</a>
       <a href="fiskehelse.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">fiskehelse →</a>
     </div>
@@ -798,37 +802,6 @@ TEMPLATE = """<!doctype html>
         <tbody id="plantRows"></tbody>
       </table>
     </div>
-  </section>
-
-  <section>
-    <div class="section-title">Fôring</div>
-    <div class="section-sub">Fôrbåtanløp ved lokaliteter, ukentlig. BarentsWatch AIS.</div>
-
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px;">
-      <div class="card">
-        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Hittil denne uken</div>
-        <div style="font-size:24px;font-weight:500;">{feed_wtd_visits}</div>
-        <div style="font-size:12px;color:{feed_wtd_diff_color};">{feed_wtd_diff_label} vs. samme periode forrige uke</div>
-      </div>
-      <div class="card">
-        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Anslag hele uken</div>
-        <div style="font-size:24px;font-weight:500;">{feed_forecast}</div>
-        <div style="font-size:12px;color:var(--text-muted);">basert på {feed_pace_pct}% typisk fremdrift til {yesterday_weekday}</div>
-      </div>
-    </div>
-    <div style="position:relative;width:100%;height:150px;margin-bottom:4px;">
-      <canvas id="feedChart" width="640" height="150"></canvas>
-    </div>
-    <div style="font-size:11px;color:var(--text-muted);">Siste søyle er inneværende uke (delvis).</div>
-  </section>
-
-  <section>
-    <div class="section-title">Fiskehelseindikator</div>
-    <div class="section-sub">Egenutviklet indikator basert på vessel-trafikkmønstre. Stigende verdier kan tyde på økt dødelighet eller helseutfordringer på anleggene.</div>
-    <div style="position:relative;width:100%;height:170px;margin-bottom:4px;">
-      <canvas id="fishHealthChart" width="640" height="170"></canvas>
-    </div>
-    <div style="font-size:11px;color:var(--text-muted);">Siste punkt er inneværende uke (delvis).</div>
   </section>
 
   <section>
@@ -927,25 +900,6 @@ document.querySelectorAll('#harvestPills .pill').forEach(el => {{
 }});
 showHarvest('Alle');
 
-new Chart(document.getElementById('feedChart'), {{
-  type: 'bar',
-  data: {{ labels: {feed_weekly_labels_json}, datasets: [{{ data: {feed_weekly_values_json}, backgroundColor: barColors({feed_weekly_labels_json}, {feed_partial_idx}, '#2a78d6'), borderRadius: 4 }}] }},
-  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
-    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
-}});
-
-new Chart(document.getElementById('fishHealthChart'), {{
-  type: 'line',
-  data: {{ labels: {feed_weekly_labels_json}, datasets: [
-    {{ label: 'Indikator', data: {ratio_weekly_values_json}, borderColor: '#7a4fc9', backgroundColor: '#7a4fc9', tension: 0.25, pointRadius: 3, spanGaps: true }}
-  ] }},
-  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
-    scales: {{
-      y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }},
-      x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }}
-    }} }}
-}});
-
 new Chart(document.getElementById('delousingWeeklyChart'), {{
   type: 'bar',
   data: {{ labels: {delousing_weekly_labels_json}, datasets: [{{ data: {delousing_weekly_values_json}, backgroundColor: barColors({delousing_weekly_labels_json}, {delousing_partial_idx}, '#52514e'), borderRadius: 4 }}] }},
@@ -1028,19 +982,6 @@ if __name__ == "__main__":
         )
         export_backtest_section = build_export_backtest_section(backtest_rows)
 
-    # --- Feed section ---
-    feed_daily = stats.get("Fish feed carrier", {})
-    feed_data = build_harvest_group_data(feed_daily, current_monday, yesterday, two_days_ago)
-
-    # --- Silage (for feed vs. silage overlay) ---
-    silage_daily = stats.get("Silage", {})
-    silage_weekly = build_weekly_series(silage_daily, current_monday, WEEKS_HISTORY, yesterday)
-    silage_weekly_values = [w[1] for w in silage_weekly]
-    ratio_weekly_values = [
-        round(s / f, 3) if f else None
-        for s, f in zip(silage_weekly_values, feed_data["weekly_values"])
-    ]
-
     # --- Delousing vessels (descriptive only — see correlation caveat) ---
     delousing_daily = stats.get("Delicing vessel", {})
     delousing_weekly = build_weekly_series(delousing_daily, current_monday, WEEKS_HISTORY, yesterday)
@@ -1059,15 +1000,6 @@ if __name__ == "__main__":
         plant_week=plant_week or "-",
         plant_weeks_history=PLANT_WEEKS_HISTORY,
         plant_matrix_weeks=PLANT_MATRIX_WEEKS,
-        feed_wtd_visits=feed_data["wtd_visits"],
-        feed_wtd_diff_label=feed_data["wtd_diff_label"],
-        feed_wtd_diff_color=feed_data["wtd_diff_color"],
-        feed_forecast=feed_data["forecast"],
-        feed_pace_pct=feed_data["pace_pct"],
-        feed_weekly_labels_json=json.dumps(feed_data["weekly_labels"]),
-        feed_weekly_values_json=json.dumps(feed_data["weekly_values"]),
-        feed_partial_idx=feed_data["weekly_partial_idx"],
-        ratio_weekly_values_json=json.dumps(ratio_weekly_values),
         delousing_weekly_labels_json=json.dumps([w[0] for w in delousing_weekly]),
         delousing_weekly_values_json=json.dumps([w[1] for w in delousing_weekly]),
         delousing_partial_idx=len(delousing_weekly) - 1,
@@ -1081,4 +1013,3 @@ if __name__ == "__main__":
     print(f"Wrote {OUT_PATH} ({len(html):,} chars)")
     print(f"Harvest (Alle): WTD={harvest_data['Alle']['wtd_visits']} forecast={harvest_data['Alle']['forecast']} ({harvest_data['Alle']['pace_pct']}% typical pace)")
     print(f"Plant last week ({plant_week}): {harvest_data['Alle']['plant_last_week']} ({harvest_data['Alle']['plant_diff_label']} vs prev week)")
-    print(f"Feed: WTD={feed_data['wtd_visits']} forecast={feed_data['forecast']}")

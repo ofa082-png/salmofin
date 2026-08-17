@@ -29,8 +29,14 @@ PAGES = [
     {
         "href": "traffic.html",
         "title": "Trafikkrapport",
-        "sub": "Vessel- og anleggstrafikk",
-        "desc": "Slakteaktivitet, fôring og eksportvolum — anløpsprognose for inneværende uke og anslått eksporttonnasje, justert for sesongvariasjon og trend.",
+        "sub": "Brønnbåt og prosesseringsfartøy",
+        "desc": "Slakteaktivitet og eksportvolum — anløpsprognose for inneværende uke og anslått eksporttonnasje, justert for sesongvariasjon og trend.",
+    },
+    {
+        "href": "foring.html",
+        "title": "Fôringsrapport",
+        "sub": "Fôr- og ensilasjefartøy",
+        "desc": "Fôrbåtanløp ved lokaliteter og en egenutviklet fiskehelseindikator basert på ensilasje/fôr-anløpsforhold.",
     },
     {
         "href": "big_vessels.html",

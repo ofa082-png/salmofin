@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fôringsrapport — fôr- og ensilasjefartøy</title>
+<style>
+  :root { --surface-1:#f5f4f0; --surface-2:#ffffff; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781; --border:#e1e0d9; --accent:#2a78d6; --accent2:#d68a2a; }
+  @media (prefers-color-scheme: dark) {
+    :root { --surface-1:#242422; --surface-2:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781; --border:#2c2c2a; }
+  }
+  body { background:var(--surface-1); color:var(--text-primary); font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:0; padding:2rem 1rem; }
+  .wrap { max-width:680px; margin:0 auto; }
+  a { color:var(--text-secondary); }
+  .card { background:var(--surface-2); border-radius:8px; padding:1rem; }
+  .section-title { font-size:16px; font-weight:500; margin-bottom:2px; }
+  .section-sub { font-size:12px; color:var(--text-muted); margin-bottom:10px; }
+  section { margin-bottom:2.25rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.5rem;">
+    <div>
+      <div style="font-size:18px;font-weight:500;">Fôringsrapport</div>
+      <div style="font-size:13px;color:var(--text-muted)">Data t.o.m. 16.08.2026 · oppdatert 17.08.2026 11:45 UTC</div>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <a href="index.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">hjem →</a>
+      <a href="traffic.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">trafikk →</a>
+      <a href="fiskehelse.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">fiskehelse →</a>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-title">Fôring</div>
+    <div class="section-sub">Fôrbåtanløp ved lokaliteter, ukentlig. BarentsWatch AIS.</div>
+
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px;">
+      <div class="card">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Hittil denne uken</div>
+        <div style="font-size:24px;font-weight:500;">471</div>
+        <div style="font-size:12px;color:#008300;">+3% vs. samme periode forrige uke</div>
+      </div>
+      <div class="card">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Anslag hele uken</div>
+        <div style="font-size:24px;font-weight:500;">471</div>
+        <div style="font-size:12px;color:var(--text-muted);">basert på 100% typisk fremdrift til søndag</div>
+      </div>
+    </div>
+    <div style="position:relative;width:100%;height:150px;margin-bottom:4px;">
+      <canvas id="feedChart" width="640" height="150"></canvas>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);">Siste søyle er inneværende uke (delvis).</div>
+  </section>
+
+  <section>
+    <div class="section-title">Fiskehelseindikator</div>
+    <div class="section-sub">Egenutviklet indikator basert på vessel-trafikkmønstre (ensilasje/fôr-anløpsforhold). Stigende verdier kan tyde på økt dødelighet eller helseutfordringer på anleggene.</div>
+    <div style="position:relative;width:100%;height:170px;margin-bottom:4px;">
+      <canvas id="fishHealthChart" width="640" height="170"></canvas>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);">Siste punkt er inneværende uke (delvis).</div>
+  </section>
+
+  <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
+    Lokalitetsanløp: BarentsWatch AIS, kun fartøy i vår flåteliste (vessel_categories.csv). Anslag hele uken bruker gjennomsnittlig ukentlig fremdriftsmønster fra de siste 8 fullførte ukene. Via salmofin BigQuery-pipeline.
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+function barColors(labels, partialIdx, base) {
+  return labels.map((_, i) => i === partialIdx ? base + '80' : base);
+}
+
+new Chart(document.getElementById('feedChart'), {
+  type: 'bar',
+  data: { labels: ["U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33"], datasets: [{ data: [440, 412, 456, 477, 444, 478, 477, 478, 456, 471], backgroundColor: barColors(["U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33"], 9, '#2a78d6'), borderRadius: 4 }] },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+    scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 10 } }, grid: { display: false } } } }
+});
+
+new Chart(document.getElementById('fishHealthChart'), {
+  type: 'line',
+  data: { labels: ["U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33"], datasets: [
+    { label: 'Indikator', data: [0.305, 0.199, 0.213, 0.182, 0.23, 0.203, 0.189, 0.174, 0.25, 0.221], borderColor: '#7a4fc9', backgroundColor: '#7a4fc9', tension: 0.25, pointRadius: 3, spanGaps: true }
+  ] },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+    scales: {
+      y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } },
+      x: { ticks: { color: '#898781', font: { size: 10 } }, grid: { display: false } }
+    } }
+});
+</script>
+</body>
+</html>
