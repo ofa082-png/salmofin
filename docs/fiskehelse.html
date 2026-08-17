@@ -116,7 +116,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <script>
-const liceLabels = ["u23", "u24", "u25", "u26", "u27", "u28", "u29", "u30", "u31", "u32", "u33"];
+const liceLabels = ["U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33"];
 const liceValues = [0.0846, 0.098, 0.1076, 0.1161, 0.1163, 0.1138, 0.1116, 0.1294, 0.1378, 0.1408, 0.1367];
 new Chart(document.getElementById('liceChart'), {
   type: 'line',
@@ -127,8 +127,8 @@ new Chart(document.getElementById('liceChart'), {
 
 new Chart(document.getElementById('fishHealthChart'), {
   type: 'line',
-  data: { labels: ["U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33"], datasets: [
-    { label: 'Indikator', data: [0.305, 0.199, 0.213, 0.182, 0.23, 0.203, 0.189, 0.174, 0.25, 0.221], borderColor: '#7a4fc9', backgroundColor: '#7a4fc9', tension: 0.25, pointRadius: 3, spanGaps: true }
+  data: { labels: ["U22", "U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33"], datasets: [
+    { label: 'Indikator', data: [0.232, 0.237, 0.305, 0.199, 0.213, 0.182, 0.23, 0.203, 0.189, 0.174, 0.25, 0.221], borderColor: '#7a4fc9', backgroundColor: '#7a4fc9', tension: 0.25, pointRadius: 3, spanGaps: true }
   ] },
   options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
     scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 10 } }, grid: { display: false } } } }

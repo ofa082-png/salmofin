@@ -24,7 +24,7 @@ from google.oauth2 import service_account
 PROJECT_ID = "salmofin"
 OUT_PATH   = os.path.join(os.path.dirname(__file__), "docs", "fiskehelse.html")
 FLEET_CSV  = os.path.join(os.path.dirname(__file__), "vessel_categories.csv")
-INDICATOR_WEEKS_HISTORY = 10
+INDICATOR_WEEKS_HISTORY = 12  # matches the lice chart's "siste 12 uker" lookback
 
 STATUS_LABEL = {
     "PANKREASSYKDOM": "PD",
@@ -347,7 +347,7 @@ if __name__ == "__main__":
         avg_lice_latest=lice_trend[-1].avg_lice if lice_trend else "–",
         treatments_14d=kpis.treatments_14d,
         table_rows=table_rows,
-        lice_labels_json=json.dumps([f"u{r.Uke}" for r in lice_trend]),
+        lice_labels_json=json.dumps([f"U{r.Uke}" for r in lice_trend]),
         lice_values_json=json.dumps([r.avg_lice for r in lice_trend]),
         fh_labels_json=json.dumps(fh_labels),
         fh_values_json=json.dumps(fh_values),
