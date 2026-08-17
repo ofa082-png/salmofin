@@ -5,55 +5,175 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>salmofin</title>
 <style>
-  :root { --surface-1:#f5f4f0; --surface-2:#ffffff; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781; --border:#e1e0d9; --accent:#2a78d6; --accent2:#d68a2a; }
+  :root { --surface-1:#f5f4f0; --surface-2:#ffffff; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781; --border:#e1e0d9; --accent:#2a78d6; --text-danger:#a32d2d; --text-success:#008300; }
   @media (prefers-color-scheme: dark) {
     :root { --surface-1:#242422; --surface-2:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781; --border:#2c2c2a; }
   }
   body { background:var(--surface-1); color:var(--text-primary); font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:0; padding:2rem 1rem; }
   .wrap { max-width:680px; margin:0 auto; }
-  a { color:var(--text-secondary); }
-  .card { background:var(--surface-2); border-radius:8px; padding:1rem 1.1rem; border:0.5px solid var(--border); }
-  .card:hover { border-color:var(--accent); }
+  a { color:var(--text-secondary); text-decoration:none; }
+  .card { display:block; background:var(--surface-2); border-radius:12px; padding:1rem 1.1rem; border:0.5px solid var(--border); margin-bottom:12px; }
+  .card.placeholder { border-style:dashed; }
+  .grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:12px; }
+  .grid .card { margin-bottom:0; }
+  .tile-header { font-size:13px; color:var(--text-secondary); margin-bottom:6px; }
+  .tile-value { font-size:22px; font-weight:500; margin-bottom:2px; }
+  .tile-delta { font-size:12px; margin-bottom:4px; }
+  .tile-link { font-size:12px; color:var(--text-secondary); }
+  .tile-placeholder { font-size:13px; color:var(--text-muted); }
+  .feed-header { font-size:13px; color:var(--text-secondary); margin-bottom:8px; }
+  .chart-title { font-size:13px; color:var(--text-secondary); margin-bottom:4px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.75rem;">
-    <div style="width:26px;height:26px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:500;">s</div>
-    <div style="font-size:18px;font-weight:500;">salmofin</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:26px;height:26px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:500;">s</div>
+      <div style="font-size:18px;font-weight:500;">salmofin</div>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);">oppdatert 17.08.2026 13:11 UTC</div>
+  </div>
+
+  <div class="grid">
+    
+    <a href="fiskehelse.html" class="card">
+      <div class="tile-header">🐛 Lakselus og behandling</div>
+      <div class="tile-value">0.14 voksne/fisk</div>
+      <div class="tile-delta" style="color:var(--text-danger)">+2%</div>
+      <div class="tile-link">Nivå og behandlinger →</div>
+    </a>
+    
+    <a href="fiskehelse.html" class="card">
+      <div class="tile-header">🦠 Sykdom</div>
+      <div class="tile-value">43 aktive tilfeller</div>
+      <div class="tile-delta" style="color:var(--text-danger)">+2 nye siste uke</div>
+      <div class="tile-link">Status og dødelighet →</div>
+    </a>
+    
+    <a href="traffic.html" class="card">
+      <div class="tile-header">🚢 Trafikk</div>
+      <div class="tile-value">829 besøk/uke</div>
+      <div class="tile-delta" style="color:var(--text-success)">+7%</div>
+      <div class="tile-link">Wellbåt og prosesseringsfartøy →</div>
+    </a>
+    
+    <a href="traffic.html" class="card">
+      <div class="tile-header">🐟 Slakt og eksport</div>
+      <div class="tile-value">29.2k t</div>
+      <div class="tile-delta" style="color:var(--text-success)">+6%</div>
+      <div class="tile-link">Volum og sesongmodell →</div>
+    </a>
+  </div>
+  
+    <div class="card placeholder">
+      <div class="tile-header">📈 Kapasitetsvekst</div>
+      <div class="tile-placeholder">Kommer snart — netto MTB og selskap</div>
+    </div>
+
+  <div class="card">
+    <div class="chart-title">Voksne hunnlus, snitt/uke</div>
+    <svg id="liceChart" viewBox="0 0 560 90" style="width:100%;height:90px" role="img"><title>Trend, siste 12 uker</title></svg>
+<script>
+(function(){
+  var svg = document.getElementById('liceChart');
+  var data = [0.055, 0.07, 0.085, 0.098, 0.108, 0.116, 0.116, 0.114, 0.112, 0.129, 0.138, 0.141];
+  var labels = ["U21", "U22", "U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32"];
+  var w = 560, h = 90, padL = 20, padR = 10, padT = 10, padB = 16;
+  var min = Math.min.apply(null, data), max = Math.max.apply(null, data);
+  var range = (max - min) || 1;
+  var pts = data.map(function(v,i){
+    var x = padL + (i/(data.length-1))*(w-padL-padR);
+    var y = h-padB - ((v-min)/range)*(h-padT-padB);
+    return x.toFixed(1)+','+y.toFixed(1);
+  });
+  var ns = 'http://www.w3.org/2000/svg';
+  var poly = document.createElementNS(ns,'polyline');
+  poly.setAttribute('points', pts.join(' '));
+  poly.setAttribute('fill','none');
+  poly.setAttribute('stroke','#D85A30');
+  poly.setAttribute('stroke-width','2');
+  svg.appendChild(poly);
+  [0, data.length-1].forEach(function(i){
+    var coords = pts[i].split(',');
+    var t = document.createElementNS(ns,'text');
+    t.setAttribute('x',coords[0]); t.setAttribute('y', h-2);
+    t.setAttribute('font-size','9'); t.setAttribute('text-anchor', i===0?'start':'end');
+    t.setAttribute('fill','var(--text-muted)');
+    t.textContent = labels[i];
+    svg.appendChild(t);
+  });
+})();
+</script>
+  </div>
+  <div class="card">
+    <div class="chart-title">Eksport, tonn/uke</div>
+    <svg id="exportChart" viewBox="0 0 560 90" style="width:100%;height:90px" role="img"><title>Trend, siste 12 uker</title></svg>
+<script>
+(function(){
+  var svg = document.getElementById('exportChart');
+  var data = [22902, 19962, 22659, 23180, 26415, 27173, 26763, 26620, 29003, 26558, 27655, 29240];
+  var labels = ["U21", "U22", "U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32"];
+  var w = 560, h = 90, padL = 20, padR = 10, padT = 10, padB = 16;
+  var min = Math.min.apply(null, data), max = Math.max.apply(null, data);
+  var range = (max - min) || 1;
+  var pts = data.map(function(v,i){
+    var x = padL + (i/(data.length-1))*(w-padL-padR);
+    var y = h-padB - ((v-min)/range)*(h-padT-padB);
+    return x.toFixed(1)+','+y.toFixed(1);
+  });
+  var ns = 'http://www.w3.org/2000/svg';
+  var poly = document.createElementNS(ns,'polyline');
+  poly.setAttribute('points', pts.join(' '));
+  poly.setAttribute('fill','none');
+  poly.setAttribute('stroke','#2a78d6');
+  poly.setAttribute('stroke-width','2');
+  svg.appendChild(poly);
+  [0, data.length-1].forEach(function(i){
+    var coords = pts[i].split(',');
+    var t = document.createElementNS(ns,'text');
+    t.setAttribute('x',coords[0]); t.setAttribute('y', h-2);
+    t.setAttribute('font-size','9'); t.setAttribute('text-anchor', i===0?'start':'end');
+    t.setAttribute('fill','var(--text-muted)');
+    t.textContent = labels[i];
+    svg.appendChild(t);
+  });
+})();
+</script>
   </div>
 
   
-    <a href="fiskehelse.html" class="card" style="display:block;text-decoration:none;color:inherit;margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
-        <div style="font-size:16px;font-weight:500;">Fiskehelse</div>
-        <div style="font-size:12px;color:var(--text-muted);">Ukesrapport →</div>
-      </div>
-      <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Aktive sykdomstilfeller, lusenivå siste 12 uker, og kart over pågående saker. Oppdateres hver natt.</div>
-    </a>
-    <a href="traffic.html" class="card" style="display:block;text-decoration:none;color:inherit;margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
-        <div style="font-size:16px;font-weight:500;">Trafikkrapport</div>
-        <div style="font-size:12px;color:var(--text-muted);">Brønnbåt og prosesseringsfartøy →</div>
-      </div>
-      <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Slakteaktivitet og eksportvolum — anløpsprognose for inneværende uke og anslått eksporttonnasje, justert for sesongvariasjon og trend.</div>
-    </a>
-    <a href="foring.html" class="card" style="display:block;text-decoration:none;color:inherit;margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
-        <div style="font-size:16px;font-weight:500;">Fôringsrapport</div>
-        <div style="font-size:12px;color:var(--text-muted);">Fôr- og ensilasjefartøy →</div>
-      </div>
-      <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Fôrbåtanløp ved lokaliteter og en egenutviklet fiskehelseindikator basert på ensilasje/fôr-anløpsforhold.</div>
-    </a>
-    <a href="big_vessels.html" class="card" style="display:block;text-decoration:none;color:inherit;margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
-        <div style="font-size:16px;font-weight:500;">Store fartøy</div>
-        <div style="font-size:12px;color:var(--text-muted);">Rutetracker →</div>
-      </div>
-      <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Live kart over de største brønnbåtene og prosesseringsfartøyene i drift.</div>
-    </a>
+    <div class="card placeholder">
+      <div class="feed-header">Siste 5 MOM-B</div>
+      <div class="tile-placeholder">Kommer snart</div>
+    </div>
+  
+    <div class="card placeholder">
+      <div class="feed-header">Siste 5 sykdomsoppdateringer</div>
+      <div class="tile-placeholder">Kommer snart</div>
+    </div>
+  
+    <div class="card placeholder">
+      <div class="feed-header">Siste 5 heftelser</div>
+      <div class="tile-placeholder">Kommer snart</div>
+    </div>
 
-  <div style="font-size:11px;color:var(--text-muted);margin-top:1.5rem;">Oppdatert 2026-08-17</div>
+  <a href="fiskehelse.html" class="card" style="display:block;margin-bottom:8px;">
+    <div style="font-size:15px;font-weight:500;margin-bottom:2px;">Fiskehelse — ukesrapport →</div>
+    <div style="font-size:12px;color:var(--text-secondary);">Aktive sykdomstilfeller, lusenivå siste 12 uker, kart over pågående saker.</div>
+  </a>
+  <a href="traffic.html" class="card" style="display:block;margin-bottom:8px;">
+    <div style="font-size:15px;font-weight:500;margin-bottom:2px;">Trafikkrapport →</div>
+    <div style="font-size:12px;color:var(--text-secondary);">Slakteaktivitet og eksportvolum, brønnbåt og prosesseringsfartøy.</div>
+  </a>
+  <a href="foring.html" class="card" style="display:block;margin-bottom:8px;">
+    <div style="font-size:15px;font-weight:500;margin-bottom:2px;">Fôringsrapport →</div>
+    <div style="font-size:12px;color:var(--text-secondary);">Fôrbåtanløp og fiskehelseindikator.</div>
+  </a>
+  <a href="big_vessels.html" class="card" style="display:block;">
+    <div style="font-size:15px;font-weight:500;margin-bottom:2px;">Store fartøy — rutetracker →</div>
+    <div style="font-size:12px;color:var(--text-secondary);">Live kart over de største brønnbåtene og prosesseringsfartøyene.</div>
+  </a>
 </div>
 </body>
 </html>
