@@ -138,52 +138,84 @@ def fetch_vessel_signal_charts(client):
     delousing_values = [w[1] for w in delousing_weekly]
     return fh_labels, fh_values, delousing_labels, delousing_values
 
-def fetch_mortality(client):
-    """National monthly mortality risk, computed from Fiskeridirektoratet's
-    biomass table (Dodfisk_stk/Behfisk_stk, Artsid='LAKS') using
-    Veterinærinstituttets own published formula: dM_t = dead_t / N_bar_t,
-    N_bar_t = (stock[t-1] + stock[t]) / 2 (stock is an end-of-month
-    snapshot — confirmed by reconciling it against the flow fields),
-    R_t = 1 - e^(-dM_t).
+def fetch_mortality_and_losses(client):
+    """National monthly mortality risk PLUS the other three Fiskeridirektoratet
+    tap (loss) categories, all from one query against the biomass table
+    (Artsid='LAKS') — dødfisk (mortality), utkast (slaughter rejects),
+    rømming (escapes), annet (other/predators/theft).
 
-    This is an internal proxy, not the official Veterinærinstituttet
-    figure — confirmed (2026-08-17/18) to sit ~3-5pp below their
-    published annual number every year, because they average per-
-    locality rates and per-locality raw data isn't public, while this
+    Mortality uses Veterinærinstituttets own published formula: dM_t =
+    dead_t / N_bar_t, N_bar_t = (stock[t-1] + stock[t]) / 2 (stock is an
+    end-of-month snapshot — confirmed by reconciling it against the flow
+    fields), R_t = 1 - e^(-dM_t). Internal proxy, not the official
+    Veterinærinstituttet figure — confirmed (2026-08-17/18) to sit ~3-5pp
+    below their published annual number every year, because they average
+    per-locality rates and per-locality raw data isn't public, while this
     pools nationally from Fiskeridirektoratet's PO-level public data.
     Chose this over ingesting Veterinærinstituttet's own public API
     (apps.vetinst.no/salmonid-mortality-public-api) because that only
     updates quarterly and would be staler than every other metric on
-    this page — see project notes for the full tradeoff (2026-08-18)."""
+    this page — see project notes for the full tradeoff (2026-08-18).
+
+    Utkast (discard) rate = Utkast_stk / Uttak_stk per month, same
+    formula already used in the standalone `utkast_trend` artifact
+    (2026-08-18) — kept consistent rather than switching to the more
+    technically-precise Utkast/(Uttak+Utkast) denominator used later in
+    that same session's harvest-volume estimate, since the two are
+    within ~1% of each other at these magnitudes and matching the
+    already-published chart matters more than the small precision gain.
+
+    Rømming (escapes) and Annet (other) are both consistently near-zero
+    nationally (~0.0-0.05% of harvest) — not worth full trend charts,
+    so returned as a simple 12-month total instead."""
     rows = list(client.query("""
         SELECT Ar, Maaned_kode,
           SUM(Behfisk_stk) AS behfisk,
-          SUM(Dodfisk_stk) AS dodfisk
+          SUM(Dodfisk_stk) AS dodfisk,
+          SUM(Uttak_stk) AS uttak,
+          SUM(Utkast_stk) AS utkast,
+          SUM(Romming_stk) AS romming,
+          SUM(Andre_stk) AS andre
         FROM salmofin.salmofin.biomass
         WHERE Artsid = 'LAKS'
         GROUP BY Ar, Maaned_kode
         ORDER BY Ar, Maaned_kode
     """).result())
-    data = [(r.Ar, r.Maaned_kode, r.behfisk, r.dodfisk) for r in rows]
+    data = [(r.Ar, r.Maaned_kode, r.behfisk, r.dodfisk, r.uttak, r.utkast, r.romming, r.andre) for r in rows]
 
     monthly = []
     for i in range(1, len(data)):
-        ar, mnd, n_t, m_t = data[i]
+        ar, mnd, n_t, m_t, uttak, utkast, romming, andre = data[i]
         n_bar = (data[i - 1][2] + n_t) / 2
         dM = m_t / n_bar if n_bar else 0
         R = (1 - math.exp(-dM)) * 100
-        monthly.append((ar, mnd, R))
+        discard_pct = (utkast / uttak * 100) if uttak else 0
+        monthly.append((ar, mnd, R, discard_pct, romming, andre))
 
     last = monthly[-MORTALITY_MONTHS_HISTORY:]
     if len(last) < 2:
-        return None
-    current, prior = last[-1][2], last[-2][2]
-    return {
-        "labels": [NO_MONTH_SHORT[mnd - 1] for _, mnd, _ in last],
-        "values": [round(r, 3) for _, _, r in last],
-        "current": round(current, 2),
-        "delta_pp": round(current - prior, 2),
+        return None, None
+
+    mort_current, mort_prior = last[-1][2], last[-2][2]
+    mortality = {
+        "labels": [NO_MONTH_SHORT[mnd - 1] for _, mnd, _, _, _, _ in last],
+        "values": [round(r, 3) for _, _, r, _, _, _ in last],
+        "current": round(mort_current, 2),
+        "delta_pp": round(mort_current - mort_prior, 2),
     }
+
+    discard_current, discard_prior = last[-1][3], last[-2][3]
+    romming_12mo = sum(r[4] for r in last)
+    andre_12mo = sum(r[5] for r in last)
+    losses = {
+        "labels": mortality["labels"],
+        "values": [round(r, 3) for _, _, _, r, _, _ in last],
+        "current": round(discard_current, 2),
+        "delta_pp": round(discard_current - discard_prior, 2),
+        "romming_12mo": romming_12mo,
+        "andre_12mo": andre_12mo,
+    }
+    return mortality, losses
 
 def fetch_data(client):
     lice_trend = list(client.query("""
@@ -318,6 +350,14 @@ TEMPLATE = """<!doctype html>
   </div>
   <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste måned kan justeres når Fiskeridirektoratet publiserer korrigerte tall.</div>
 
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Utkast ved slakt</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Andel av slaktet fisk som kasseres (kjønnsmodning, defekter, sår). Siste måned: <b style="color:var(--text-primary)">{discard_current}%</b> ({discard_delta_label} vs. forrige måned). Har falt betydelig siden 2018 (se fotnote) — henger ikke tett sammen med dødelighet måned for måned, men begge har bedret seg over tid.</div>
+  <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
+    <canvas id="discardChart" width="640" height="140"></canvas>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Øvrige tapskategorier, siste 12 mnd: rømming {romming_12mo} fisk, annet (predatorer, tyveri m.m.) {andre_12mo} fisk — begge marginale nasjonalt (typisk under 0,05 % av produksjonen).</div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste måned kan justeres når Fiskeridirektoratet publiserer korrigerte tall.</div>
+
   <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Fiskehelseindikator</div>
   <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Egenutviklet indikator basert på vessel-trafikkmønstre (ensilasje/fôr-anløpsforhold). Stigende verdier kan tyde på økt dødelighet eller helseutfordringer på anleggene.</div>
   <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
@@ -356,7 +396,7 @@ TEMPLATE = """<!doctype html>
   <div id="map" style="width:100%;margin-bottom:1.5rem;"></div>
 
   <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
-    Data: Mattilsynet offentlig API og BarentsWatch, via salmofin BigQuery-pipeline. Vessel-indikatorer: BarentsWatch AIS, kun fartøy i vår flåteliste (vessel_categories.csv). Dødelighet: Fiskeridirektoratets biomassestatistikk, beregnet med Veterinærinstituttets formel (dødelighetsrisiko = 1−e^(−dødfisk/gjennomsnittlig bestand)) — egen beregning, oppdatert månedlig; avviker noe fra Veterinærinstituttets egne (kvartalsvise) offisielle tall siden de midler per lokalitet og vi ikke har tilgang til lokalitetsdata. Generert automatisk hver natt.
+    Data: Mattilsynet offentlig API og BarentsWatch, via salmofin BigQuery-pipeline. Vessel-indikatorer: BarentsWatch AIS, kun fartøy i vår flåteliste (vessel_categories.csv). Dødelighet: Fiskeridirektoratets biomassestatistikk, beregnet med Veterinærinstituttets formel (dødelighetsrisiko = 1−e^(−dødfisk/gjennomsnittlig bestand)) — egen beregning, oppdatert månedlig; avviker noe fra Veterinærinstituttets egne (kvartalsvise) offisielle tall siden de midler per lokalitet og vi ikke har tilgang til lokalitetsdata. Utkast: andel av Uttak_stk (samme kilde og periode). Generert automatisk hver natt.
   </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -376,6 +416,15 @@ new Chart(document.getElementById('mortalityChart'), {{
   type: 'line',
   data: {{ labels: {mortality_labels_json}, datasets: [
     {{ data: {mortality_values_json}, borderColor: '#c1392b', backgroundColor: 'rgba(193,57,43,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }}
+  ] }},
+  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
+    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ display: false }} }} }} }}
+}});
+
+new Chart(document.getElementById('discardChart'), {{
+  type: 'line',
+  data: {{ labels: {discard_labels_json}, datasets: [
+    {{ data: {discard_values_json}, borderColor: '#eb6834', backgroundColor: 'rgba(235,104,52,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }}
   ] }},
   options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
     scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ display: false }} }} }} }}
@@ -429,7 +478,7 @@ if __name__ == "__main__":
     client = get_bq_client()
     lice_trend, kpis, recent, map_rows = fetch_data(client)
     fh_labels, fh_values, delousing_labels, delousing_values = fetch_vessel_signal_charts(client)
-    mortality = fetch_mortality(client)
+    mortality, losses = fetch_mortality_and_losses(client)
 
     sites = build_sites_json(map_rows)
     table_rows = build_table_rows(recent)
@@ -450,6 +499,12 @@ if __name__ == "__main__":
         mortality_delta_label=(f"{'+' if mortality['delta_pp'] >= 0 else ''}{mortality['delta_pp']}pp" if mortality else "–"),
         mortality_labels_json=json.dumps(mortality["labels"] if mortality else []),
         mortality_values_json=json.dumps(mortality["values"] if mortality else []),
+        discard_current=losses["current"] if losses else "–",
+        discard_delta_label=(f"{'+' if losses['delta_pp'] >= 0 else ''}{losses['delta_pp']}pp" if losses else "–"),
+        discard_labels_json=json.dumps(losses["labels"] if losses else []),
+        discard_values_json=json.dumps(losses["values"] if losses else []),
+        romming_12mo=f"{losses['romming_12mo']:,}" if losses else "–",
+        andre_12mo=f"{losses['andre_12mo']:,}" if losses else "–",
         fh_labels_json=json.dumps(fh_labels),
         fh_values_json=json.dumps(fh_values),
         delousing_labels_json=json.dumps(delousing_labels),

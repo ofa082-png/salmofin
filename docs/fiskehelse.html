@@ -61,6 +61,14 @@
   </div>
   <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste måned kan justeres når Fiskeridirektoratet publiserer korrigerte tall.</div>
 
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Utkast ved slakt</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Andel av slaktet fisk som kasseres (kjønnsmodning, defekter, sår). Siste måned: <b style="color:var(--text-primary)">0.68%</b> (-0.15pp vs. forrige måned). Har falt betydelig siden 2018 (se fotnote) — henger ikke tett sammen med dødelighet måned for måned, men begge har bedret seg over tid.</div>
+  <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
+    <canvas id="discardChart" width="640" height="140"></canvas>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Øvrige tapskategorier, siste 12 mnd: rømming 136 fisk, annet (predatorer, tyveri m.m.) 0 fisk — begge marginale nasjonalt (typisk under 0,05 % av produksjonen).</div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste måned kan justeres når Fiskeridirektoratet publiserer korrigerte tall.</div>
+
   <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Fiskehelseindikator</div>
   <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Egenutviklet indikator basert på vessel-trafikkmønstre (ensilasje/fôr-anløpsforhold). Stigende verdier kan tyde på økt dødelighet eller helseutfordringer på anleggene.</div>
   <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
@@ -129,7 +137,7 @@
   <div id="map" style="width:100%;margin-bottom:1.5rem;"></div>
 
   <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
-    Data: Mattilsynet offentlig API og BarentsWatch, via salmofin BigQuery-pipeline. Vessel-indikatorer: BarentsWatch AIS, kun fartøy i vår flåteliste (vessel_categories.csv). Dødelighet: Fiskeridirektoratets biomassestatistikk, beregnet med Veterinærinstituttets formel (dødelighetsrisiko = 1−e^(−dødfisk/gjennomsnittlig bestand)) — egen beregning, oppdatert månedlig; avviker noe fra Veterinærinstituttets egne (kvartalsvise) offisielle tall siden de midler per lokalitet og vi ikke har tilgang til lokalitetsdata. Generert automatisk hver natt.
+    Data: Mattilsynet offentlig API og BarentsWatch, via salmofin BigQuery-pipeline. Vessel-indikatorer: BarentsWatch AIS, kun fartøy i vår flåteliste (vessel_categories.csv). Dødelighet: Fiskeridirektoratets biomassestatistikk, beregnet med Veterinærinstituttets formel (dødelighetsrisiko = 1−e^(−dødfisk/gjennomsnittlig bestand)) — egen beregning, oppdatert månedlig; avviker noe fra Veterinærinstituttets egne (kvartalsvise) offisielle tall siden de midler per lokalitet og vi ikke har tilgang til lokalitetsdata. Utkast: andel av Uttak_stk (samme kilde og periode). Generert automatisk hver natt.
   </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -149,6 +157,15 @@ new Chart(document.getElementById('mortalityChart'), {
   type: 'line',
   data: { labels: ["Jul", "Aug", "Sep", "Okt", "Nov", "Des", "Jan", "Feb", "Mar", "Apr", "Mai", "Jun"], datasets: [
     { data: [0.791, 1.093, 1.066, 1.251, 1.09, 0.858, 0.805, 0.636, 1.116, 0.749, 0.598, 0.514], borderColor: '#c1392b', backgroundColor: 'rgba(193,57,43,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }
+  ] },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+    scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 11 } }, grid: { display: false } } } }
+});
+
+new Chart(document.getElementById('discardChart'), {
+  type: 'line',
+  data: { labels: ["Jul", "Aug", "Sep", "Okt", "Nov", "Des", "Jan", "Feb", "Mar", "Apr", "Mai", "Jun"], datasets: [
+    { data: [0.84, 0.643, 0.519, 0.558, 0.752, 0.823, 1.07, 0.732, 0.712, 0.478, 0.832, 0.679], borderColor: '#eb6834', backgroundColor: 'rgba(235,104,52,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }
   ] },
   options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
     scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 11 } }, grid: { display: false } } } }
