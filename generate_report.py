@@ -16,6 +16,7 @@ a fish-health signal, not feed-logistics, so it belongs here instead.
 import os
 import csv
 import json
+import math
 import datetime
 from collections import defaultdict
 from google.cloud import bigquery
@@ -26,6 +27,9 @@ OUT_PATH   = os.path.join(os.path.dirname(__file__), "docs", "fiskehelse.html")
 FLEET_CSV  = os.path.join(os.path.dirname(__file__), "vessel_categories.csv")
 WEEKS_HISTORY = 12  # matches the lice chart's "siste 12 uker" lookback — shared by
                      # the Fiskehelseindikator and Avlusningsfartøy charts too
+MORTALITY_MONTHS_HISTORY = 12
+
+NO_MONTH_SHORT = ["Jan","Feb","Mar","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Des"]
 
 STATUS_LABEL = {
     "PANKREASSYKDOM": "PD",
@@ -133,6 +137,53 @@ def fetch_vessel_signal_charts(client):
     delousing_labels = [w[0] for w in delousing_weekly]
     delousing_values = [w[1] for w in delousing_weekly]
     return fh_labels, fh_values, delousing_labels, delousing_values
+
+def fetch_mortality(client):
+    """National monthly mortality risk, computed from Fiskeridirektoratet's
+    biomass table (Dodfisk_stk/Behfisk_stk, Artsid='LAKS') using
+    Veterinærinstituttets own published formula: dM_t = dead_t / N_bar_t,
+    N_bar_t = (stock[t-1] + stock[t]) / 2 (stock is an end-of-month
+    snapshot — confirmed by reconciling it against the flow fields),
+    R_t = 1 - e^(-dM_t).
+
+    This is an internal proxy, not the official Veterinærinstituttet
+    figure — confirmed (2026-08-17/18) to sit ~3-5pp below their
+    published annual number every year, because they average per-
+    locality rates and per-locality raw data isn't public, while this
+    pools nationally from Fiskeridirektoratet's PO-level public data.
+    Chose this over ingesting Veterinærinstituttet's own public API
+    (apps.vetinst.no/salmonid-mortality-public-api) because that only
+    updates quarterly and would be staler than every other metric on
+    this page — see project notes for the full tradeoff (2026-08-18)."""
+    rows = list(client.query("""
+        SELECT Ar, Maaned_kode,
+          SUM(Behfisk_stk) AS behfisk,
+          SUM(Dodfisk_stk) AS dodfisk
+        FROM salmofin.salmofin.biomass
+        WHERE Artsid = 'LAKS'
+        GROUP BY Ar, Maaned_kode
+        ORDER BY Ar, Maaned_kode
+    """).result())
+    data = [(r.Ar, r.Maaned_kode, r.behfisk, r.dodfisk) for r in rows]
+
+    monthly = []
+    for i in range(1, len(data)):
+        ar, mnd, n_t, m_t = data[i]
+        n_bar = (data[i - 1][2] + n_t) / 2
+        dM = m_t / n_bar if n_bar else 0
+        R = (1 - math.exp(-dM)) * 100
+        monthly.append((ar, mnd, R))
+
+    last = monthly[-MORTALITY_MONTHS_HISTORY:]
+    if len(last) < 2:
+        return None
+    current, prior = last[-1][2], last[-2][2]
+    return {
+        "labels": [NO_MONTH_SHORT[mnd - 1] for _, mnd, _ in last],
+        "values": [round(r, 3) for _, _, r in last],
+        "current": round(current, 2),
+        "delta_pp": round(current - prior, 2),
+    }
 
 def fetch_data(client):
     lice_trend = list(client.query("""
@@ -260,6 +311,13 @@ TEMPLATE = """<!doctype html>
     <canvas id="liceChart" width="640" height="140"></canvas>
   </div>
 
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Dødelighet</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Beregnet dødelighetsrisiko, nasjonalt, Veterinærinstituttets formel anvendt på Fiskeridirektoratets biomassedata. Siste måned: <b style="color:var(--text-primary)">{mortality_current}%</b> ({mortality_delta_label} vs. forrige måned). Intern proxy — ikke identisk med Veterinærinstituttets offisielle (kvartalsvis oppdaterte) tall, se fotnote.</div>
+  <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
+    <canvas id="mortalityChart" width="640" height="140"></canvas>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste måned kan justeres når Fiskeridirektoratet publiserer korrigerte tall.</div>
+
   <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Fiskehelseindikator</div>
   <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Egenutviklet indikator basert på vessel-trafikkmønstre (ensilasje/fôr-anløpsforhold). Stigende verdier kan tyde på økt dødelighet eller helseutfordringer på anleggene.</div>
   <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
@@ -298,7 +356,7 @@ TEMPLATE = """<!doctype html>
   <div id="map" style="width:100%;margin-bottom:1.5rem;"></div>
 
   <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
-    Data: Mattilsynet offentlig API og BarentsWatch, via salmofin BigQuery-pipeline. Vessel-indikatorer: BarentsWatch AIS, kun fartøy i vår flåteliste (vessel_categories.csv). Generert automatisk hver natt.
+    Data: Mattilsynet offentlig API og BarentsWatch, via salmofin BigQuery-pipeline. Vessel-indikatorer: BarentsWatch AIS, kun fartøy i vår flåteliste (vessel_categories.csv). Dødelighet: Fiskeridirektoratets biomassestatistikk, beregnet med Veterinærinstituttets formel (dødelighetsrisiko = 1−e^(−dødfisk/gjennomsnittlig bestand)) — egen beregning, oppdatert månedlig; avviker noe fra Veterinærinstituttets egne (kvartalsvise) offisielle tall siden de midler per lokalitet og vi ikke har tilgang til lokalitetsdata. Generert automatisk hver natt.
   </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -310,6 +368,15 @@ const liceValues = {lice_values_json};
 new Chart(document.getElementById('liceChart'), {{
   type: 'line',
   data: {{ labels: liceLabels, datasets: [{{ data: liceValues, borderColor: '#2a78d6', backgroundColor: 'rgba(42,120,214,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }}] }},
+  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
+    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ display: false }} }} }} }}
+}});
+
+new Chart(document.getElementById('mortalityChart'), {{
+  type: 'line',
+  data: {{ labels: {mortality_labels_json}, datasets: [
+    {{ data: {mortality_values_json}, borderColor: '#c1392b', backgroundColor: 'rgba(193,57,43,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }}
+  ] }},
   options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
     scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ display: false }} }} }} }}
 }});
@@ -362,6 +429,7 @@ if __name__ == "__main__":
     client = get_bq_client()
     lice_trend, kpis, recent, map_rows = fetch_data(client)
     fh_labels, fh_values, delousing_labels, delousing_values = fetch_vessel_signal_charts(client)
+    mortality = fetch_mortality(client)
 
     sites = build_sites_json(map_rows)
     table_rows = build_table_rows(recent)
@@ -378,6 +446,10 @@ if __name__ == "__main__":
         table_rows=table_rows,
         lice_labels_json=json.dumps([f"U{r.Uke}" for r in lice_trend]),
         lice_values_json=json.dumps([r.avg_lice for r in lice_trend]),
+        mortality_current=mortality["current"] if mortality else "–",
+        mortality_delta_label=(f"{'+' if mortality['delta_pp'] >= 0 else ''}{mortality['delta_pp']}pp" if mortality else "–"),
+        mortality_labels_json=json.dumps(mortality["labels"] if mortality else []),
+        mortality_values_json=json.dumps(mortality["values"] if mortality else []),
         fh_labels_json=json.dumps(fh_labels),
         fh_values_json=json.dumps(fh_values),
         delousing_labels_json=json.dumps(delousing_labels),
