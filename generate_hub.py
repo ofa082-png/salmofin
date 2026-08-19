@@ -1,12 +1,13 @@
 """
 generate_hub.py
 ----------------
-Renders the salmofin frontpage — six tiles matching the health/traffic/
-feed/export/capacity areas of the project, two trend charts, and three
-"last 5" feeds. Not every section has a live data source wired up yet:
+Renders the salmofin frontpage — seven tiles matching the health/
+traffic/feed/export/capacity areas of the project, two trend charts,
+and three "last 5" feeds. Not every section has a live data source
+wired up yet:
 
-  - Lakselus, Sykdom, Trafikk, Slakt og eksport, Fôring tiles: real,
-    BigQuery-backed, refit live every run.
+  - Lakselus, Sykdom, Dødelighet, Trafikk, Slakt og eksport, Fôring
+    tiles: real, BigQuery-backed, refit live every run.
   - Kapasitetsvekst tile, and the MOM-B / sykdomsoppdateringer /
     heftelser "last 5" panels: intentionally left as empty placeholders
     (2026-08-17) — the underlying pipelines (aqua_applications/licenses
@@ -19,17 +20,21 @@ feed/export/capacity areas of the project, two trend charts, and three
   with the tiles; Store fartøy/big_vessels.html is on hold, not linked
   from the hub for now).
 
-  Lakselus tile now points at lakselus.html, not fiskehelse.html
-  (2026-08-19) — those two pages were split apart (see
-  generate_lakselus.py's docstring), Sykdom still points at
-  fiskehelse.html. Trafikk and Slakt og eksport still both point at
-  traffic.html — that redundancy is a separate, not-yet-done item.
+  Lakselus tile points at lakselus.html, Sykdom at fiskehelse.html,
+  Dødelighet at dodelighet.html (2026-08-19, added same session those
+  three pages finished splitting apart — see each generate_*.py's
+  docstring). All six main tiles now live in one 2-col/3-row grid
+  (Fôring moved in from its own standalone card below the grid, so the
+  6 tiles read as one coherent health->business flow instead of 4+1).
+  Trafikk and Slakt og eksport still both point at traffic.html — that
+  redundancy is a separate, not-yet-done item.
 
 Writes docs/index.html.
 """
 
 import os
 import json
+import math
 import datetime
 from google.cloud import bigquery
 from google.oauth2 import service_account
@@ -55,7 +60,7 @@ def diff_label(val, unit="%", signed_word=None):
     return f"{sign}{val:.0f}{unit}"
 
 def diff_color_bad_if_up(val):
-    """Lakselus, Sykdom: more is worse."""
+    """Lakselus, Sykdom, Dødelighet: more is worse."""
     return "var(--text-danger)" if val > 0 else ("var(--text-success)" if val < 0 else "var(--text-muted)")
 
 def diff_color_good_if_up(val):
@@ -91,6 +96,33 @@ def fetch_lice(client):
         "delta_color": diff_color_bad_if_up(delta_pct),
         "trend_labels": [f"U{r.Uke}" for r in trend],
         "trend_values": [round(r.avg_lice, 3) for r in trend],
+    }
+
+def fetch_dodelighet(client):
+    """National monthly mortality risk, current month vs prior month —
+    same Veterinærinstituttet formula (dM=dead/N̄, R=1-e^-dM) as
+    generate_dodelighet.py, duplicated here rather than imported,
+    matching this hub's existing self-contained-per-tile convention
+    (fetch_lice/fetch_sykdom already duplicate their own source logic
+    too)."""
+    rows = list(client.query("""
+        SELECT Ar, Maaned_kode, SUM(Behfisk_stk) AS beh, SUM(Dodfisk_stk) AS dod
+        FROM salmofin.salmofin.biomass
+        WHERE Artsid = 'LAKS'
+        GROUP BY Ar, Maaned_kode ORDER BY Ar, Maaned_kode
+    """).result())
+    if len(rows) < 3:
+        return None
+    monthly = []
+    for i in range(1, len(rows)):
+        n_bar = (rows[i - 1].beh + rows[i].beh) / 2
+        dM = rows[i].dod / n_bar if n_bar else 0
+        monthly.append((1 - math.exp(-dM)) * 100)
+    current, prior = monthly[-1], monthly[-2]
+    return {
+        "value": round(current, 2),
+        "delta_label": f"{'+' if current - prior >= 0 else ''}{current - prior:.2f}pp",
+        "delta_color": diff_color_bad_if_up(current - prior),
     }
 
 def fetch_sykdom(client):
@@ -226,10 +258,11 @@ def build_sparkline_svg(chart_id, labels, values, color):
 
 TILES = [
     {"icon": "🐛", "title": "Lakselus og behandling", "unit": " voksne/fisk", "href": "lakselus.html", "linktext": "Nivå og behandlinger"},
-    {"icon": "🦠", "title": "Sykdom", "unit": "", "suffix": " aktive tilfeller", "href": "fiskehelse.html", "linktext": "Status og dødelighet"},
+    {"icon": "🦠", "title": "Sykdom", "unit": "", "suffix": " aktive tilfeller", "href": "fiskehelse.html", "linktext": "Status og sykdomstilfeller"},
+    {"icon": "💀", "title": "Dødelighet", "unit": "%", "href": "dodelighet.html", "linktext": "Dødelighet og utkast"},
     {"icon": "🚢", "title": "Trafikk", "unit": "", "suffix": " besøk/uke", "href": "traffic.html", "linktext": "Wellbåt og prosesseringsfartøy"},
     {"icon": "🐟", "title": "Slakt og eksport", "unit": "", "suffix": "", "href": "traffic.html", "linktext": "Volum og sesongmodell"},
-    {"icon": "🌾", "title": "Fôring", "unit": "", "suffix": " besøk/uke", "href": "foring.html", "linktext": "Fôrbåtanløp og fiskehelseindikator"},
+    {"icon": "🌾", "title": "Fôring", "unit": "", "suffix": " besøk/uke", "href": "foring.html", "linktext": "Fôrbåtanløp"},
 ]
 
 def build_tile(key, data, tile):
@@ -241,7 +274,7 @@ def build_tile(key, data, tile):
     </div>"""
     if key == "export":
         val_str = f"{data['value']/1000:.1f}k t"
-    elif key == "lakselus":
+    elif key in ("lakselus", "dodelighet"):
         val_str = f"{data['value']}{tile['unit']}"
     else:
         val_str = f"{data['value']:,.0f}{tile.get('suffix','')}"
@@ -299,10 +332,11 @@ TEMPLATE = """<!doctype html>
   <div class="grid">
     {tile_lakselus}
     {tile_sykdom}
+    {tile_dodelighet}
     {tile_trafikk}
     {tile_export}
+    {tile_foring}
   </div>
-  {tile_foring}
   {tile_kapasitet}
 
   <div class="card">
@@ -327,6 +361,7 @@ if __name__ == "__main__":
 
     lice = fetch_lice(client)
     sykdom = fetch_sykdom(client)
+    dodelighet = fetch_dodelighet(client)
     trafikk = fetch_trafikk(client)
     export = fetch_export(client)
     foring = fetch_foring(client)
@@ -336,9 +371,10 @@ if __name__ == "__main__":
         updated=now.strftime("%d.%m.%Y %H:%M UTC"),
         tile_lakselus=build_tile("lakselus", lice, TILES[0]),
         tile_sykdom=build_tile("sykdom", sykdom, TILES[1]),
-        tile_trafikk=build_tile("trafikk", trafikk, TILES[2]),
-        tile_export=build_tile("export", export, TILES[3]),
-        tile_foring=build_tile("foring", foring, TILES[4]),
+        tile_dodelighet=build_tile("dodelighet", dodelighet, TILES[2]),
+        tile_trafikk=build_tile("trafikk", trafikk, TILES[3]),
+        tile_export=build_tile("export", export, TILES[4]),
+        tile_foring=build_tile("foring", foring, TILES[5]),
         tile_kapasitet=f"""
     <div class="card placeholder">
       <div class="tile-header">📈 Kapasitetsvekst</div>
@@ -357,6 +393,7 @@ if __name__ == "__main__":
     print(f"Wrote {OUT_PATH} ({len(html):,} chars)")
     print(f"Lakselus: {lice}")
     print(f"Sykdom: {sykdom}")
+    print(f"Dødelighet: {dodelighet}")
     print(f"Trafikk: {trafikk}")
     print(f"Export: {export}")
     print(f"Foring: {foring}")

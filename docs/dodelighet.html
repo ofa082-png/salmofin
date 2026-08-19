@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dødelighet — ukesrapport</title>
+<style>
+  :root { --surface-1:#f5f4f0; --surface-2:#ffffff; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781; --border:#e1e0d9; }
+  @media (prefers-color-scheme: dark) {
+    :root { --surface-1:#242422; --surface-2:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781; --border:#2c2c2a; }
+  }
+  body { background:var(--surface-1); color:var(--text-primary); font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:0; padding:2rem 1rem; }
+  .wrap { max-width:680px; margin:0 auto; }
+  a { color:var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.25rem;">
+    <div>
+      <div style="font-size:18px;font-weight:500;">Dødelighet — ukesrapport</div>
+      <div style="font-size:13px;color:var(--text-muted)">Uke 34, 2026 · oppdatert 19.08.2026</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:baseline;">
+      <a href="index.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">hjem →</a>
+      <a href="fiskehelse.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">sykdom →</a>
+      <a href="lakselus.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">lakselus →</a>
+      <div style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;">kilde: Fiskeridirektoratet</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;">
+    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Dødelighet, siste måned</div>
+      <div style="font-size:24px;font-weight:500;">0.51%</div>
+      <div style="font-size:12px;color:#1baf7a;margin-top:2px;">-0.08pp vs. forrige mnd</div>
+    </div>
+    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Dødelighet, hittil i år</div>
+      <div style="font-size:24px;font-weight:500;">4.34%</div>
+    </div>
+    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Utkast, siste måned</div>
+      <div style="font-size:24px;font-weight:500;">0.68%</div>
+    </div>
+    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Rømming, siste 12 mnd</div>
+      <div style="font-size:24px;font-weight:500;">136 fisk</div>
+    </div>
+  </div>
+
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Dødelighet</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Beregnet dødelighetsrisiko, nasjonalt, Veterinærinstituttets formel anvendt på Fiskeridirektoratets biomassedata. Siste måned: <b style="color:var(--text-primary)">0.51%</b> (-0.08pp vs. forrige måned). Intern proxy — ikke identisk med Veterinærinstituttets offisielle (kvartalsvis oppdaterte) tall, se fotnote.</div>
+  <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
+    <canvas id="mortalityChart" width="640" height="140"></canvas>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste måned kan justeres når Fiskeridirektoratet publiserer korrigerte tall.</div>
+
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Utkast ved slakt</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Andel av slaktet fisk som kasseres (kjønnsmodning, defekter, sår). Siste måned: <b style="color:var(--text-primary)">0.68%</b> (-0.15pp vs. forrige måned). Har falt betydelig siden 2018 (se fotnote) — henger ikke tett sammen med dødelighet måned for måned, men begge har bedret seg over tid.</div>
+  <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
+    <canvas id="discardChart" width="640" height="140"></canvas>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Øvrige tapskategorier, siste 12 mnd: rømming 136 fisk, annet (predatorer, tyveri m.m.) 0 fisk — begge marginale nasjonalt (typisk under 0,05 % av produksjonen).</div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste måned kan justeres når Fiskeridirektoratet publiserer korrigerte tall.</div>
+
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Dødelighet, kumulativt gjennom året</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Samme formel og datagrunnlag som over, men nullstilt 1. januar hvert år — viser om 2026 ligger bedre eller dårligere an enn tidligere år på samme tidspunkt i sesongen.</div>
+  <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;font-size:11px;color:var(--text-secondary);">
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#c1392b;"></span>2026 (så langt)</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#2a78d6;"></span>2025 (siste fulle år)</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#eda100;"></span>2023 (verst på rekord)</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#89878180;"></span>Øvrige år</span>
+  </div>
+  <div style="position:relative;width:100%;height:180px;margin-bottom:1.75rem;">
+    <canvas id="mortalityYearChart" width="640" height="180"></canvas>
+  </div>
+
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Dødelighet per årsklasse, kumulativt etter alder</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Samme formel, gruppert på utsettsår (årsklasse) i stedet for kalenderår — alder 0 måneder ≈ desember året før utsett. Kurvene stopper når årsklassens nasjonale bestand har falt under 10 % av toppen (dvs. i praksis nedslaktet) — uten dette blåser kumulativ risiko kunstig opp mot slutten, se fotnote.</div>
+  <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;font-size:11px;color:var(--text-secondary);">
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#c1392b;"></span>2025 (pågår)</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#2a78d6;"></span>2024 (siste nedslaktede)</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#eda100;"></span>2018 (verst på rekord)</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#89878180;"></span>Øvrige årsklasser</span>
+  </div>
+  <div style="position:relative;width:100%;height:180px;margin-bottom:4px;">
+    <canvas id="mortalityCohortChart" width="640" height="180"></canvas>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">10 %-avkuttingen er en egen metodikkvalg for denne siden, ikke en del av Veterinærinstituttets formel — uten den divideres døde fisk mot en krympende resterende bestand (stamfisk/restpartier) mot slutten av syklusen, som kunstig driver risikoen mot 100 %.</div>
+
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Fiskehelseindikator</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Egenutviklet indikator basert på vessel-trafikkmønstre (ensilasje/fôr-anløpsforhold). Stigende verdier kan tyde på økt dødelighet eller helseutfordringer på anleggene.</div>
+  <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
+    <canvas id="fishHealthChart" width="640" height="140"></canvas>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste punkt er inneværende uke (delvis).</div>
+
+  <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
+    Data: Fiskeridirektoratets biomassestatistikk og BarentsWatch AIS (kun fartøy i vår flåteliste, vessel_categories.csv), via salmofin BigQuery-pipeline. Dødelighet: beregnet med Veterinærinstituttets formel (dødelighetsrisiko = 1−e^(−dødfisk/gjennomsnittlig bestand)) — egen beregning, oppdatert månedlig; avviker noe fra Veterinærinstituttets egne (kvartalsvise) offisielle tall siden de midler per lokalitet og vi ikke har tilgang til lokalitetsdata. Utkast: andel av Uttak_stk (samme kilde og periode). Generert automatisk hver natt.
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+new Chart(document.getElementById('mortalityChart'), {
+  type: 'line',
+  data: { labels: ["Jul", "Aug", "Sep", "Okt", "Nov", "Des", "Jan", "Feb", "Mar", "Apr", "Mai", "Jun"], datasets: [
+    { data: [0.791, 1.093, 1.066, 1.251, 1.09, 0.858, 0.805, 0.636, 1.116, 0.749, 0.598, 0.514], borderColor: '#c1392b', backgroundColor: 'rgba(193,57,43,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }
+  ] },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+    scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 11 } }, grid: { display: false } } } }
+});
+
+new Chart(document.getElementById('discardChart'), {
+  type: 'line',
+  data: { labels: ["Jul", "Aug", "Sep", "Okt", "Nov", "Des", "Jan", "Feb", "Mar", "Apr", "Mai", "Jun"], datasets: [
+    { data: [0.84, 0.643, 0.519, 0.558, 0.752, 0.823, 1.07, 0.732, 0.712, 0.478, 0.832, 0.679], borderColor: '#eb6834', backgroundColor: 'rgba(235,104,52,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }
+  ] },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+    scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 11 } }, grid: { display: false } } } }
+});
+
+function highlightColor(h) { return h === 'current' ? '#c1392b' : h === 'recent' ? '#2a78d6' : h === 'worst' ? '#eda100' : '#89878180'; }
+
+const yearSeries = [{"year": 2018, "values": [1.22, 2.06, 3.06, 4.57, 5.5, 6.31, 7.19, 8.04, 8.84, 9.49, 10.29, 10.95], "highlight": null}, {"year": 2019, "values": [0.92, 1.77, 2.6, 3.49, 6.39, 7.21, 7.9, 8.68, 9.56, 10.37, 11.17, 12.02], "highlight": null}, {"year": 2020, "values": [1.1, 2.14, 3.33, 4.48, 5.48, 6.23, 6.86, 7.81, 8.68, 9.69, 10.55, 11.47], "highlight": null}, {"year": 2021, "values": [1.08, 2.32, 3.54, 4.8, 5.95, 6.91, 7.68, 8.5, 9.34, 10.18, 10.92, 11.83], "highlight": null}, {"year": 2022, "values": [1.06, 2.26, 3.55, 4.64, 5.79, 6.56, 7.23, 8.13, 9.17, 10.16, 11.1, 12.16], "highlight": null}, {"year": 2023, "values": [1.32, 2.52, 3.71, 4.71, 5.88, 6.79, 7.47, 8.35, 9.57, 10.45, 11.5, 12.99], "highlight": "worst"}, {"year": 2024, "values": [1.4, 2.94, 4.02, 4.91, 5.66, 6.31, 6.86, 7.86, 9.12, 10.01, 10.93, 11.76], "highlight": null}, {"year": 2025, "values": [1.03, 2.08, 2.9, 3.69, 4.85, 5.71, 6.46, 7.48, 8.46, 9.61, 10.59, 11.36], "highlight": "recent"}, {"year": 2026, "values": [0.81, 1.44, 2.54, 3.27, 3.84, 4.34, null, null, null, null, null, null], "highlight": "current"}];
+new Chart(document.getElementById('mortalityYearChart'), {
+  type: 'line',
+  data: { labels: ["Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Des"], datasets: yearSeries.map(s => ({
+    label: String(s.year), data: s.values, spanGaps: false,
+    borderColor: highlightColor(s.highlight), backgroundColor: highlightColor(s.highlight),
+    borderWidth: s.highlight ? 2 : 1, borderDash: s.highlight === 'current' ? [4,3] : [],
+    tension: 0.25, pointRadius: 0, order: s.highlight ? 1 : 2
+  })) },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+    scales: { y: { ticks: { color: '#898781', font: { size: 11 }, callback: v => v + '%' }, grid: { color: '#e1e0d9' } },
+               x: { ticks: { color: '#898781', font: { size: 11 } }, grid: { display: false } } } }
+});
+
+const cohortSeries = [{"cohort": 2018, "points": [{"age": 1, "r": 8.71}, {"age": 2, "r": 12.18}, {"age": 3, "r": 16.48}, {"age": 4, "r": 21.91}, {"age": 5, "r": 23.05}, {"age": 6, "r": 23.5}, {"age": 7, "r": 23.9}, {"age": 8, "r": 24.4}, {"age": 9, "r": 24.85}, {"age": 10, "r": 25.23}, {"age": 11, "r": 25.9}, {"age": 12, "r": 26.32}, {"age": 13, "r": 26.94}, {"age": 14, "r": 27.52}, {"age": 15, "r": 28.04}, {"age": 16, "r": 28.64}, {"age": 17, "r": 30.94}, {"age": 18, "r": 31.57}, {"age": 19, "r": 32.24}, {"age": 20, "r": 32.96}, {"age": 21, "r": 33.88}, {"age": 22, "r": 34.73}, {"age": 23, "r": 35.66}, {"age": 24, "r": 36.69}, {"age": 25, "r": 37.77}, {"age": 26, "r": 38.75}, {"age": 27, "r": 39.72}], "completed": true, "highlight": "worst"}, {"cohort": 2019, "points": [{"age": 1, "r": 3.76}, {"age": 2, "r": 4.83}, {"age": 3, "r": 6.06}, {"age": 4, "r": 7.16}, {"age": 5, "r": 9.48}, {"age": 6, "r": 10.2}, {"age": 7, "r": 10.54}, {"age": 8, "r": 11.1}, {"age": 9, "r": 11.65}, {"age": 10, "r": 12.25}, {"age": 11, "r": 12.85}, {"age": 12, "r": 13.49}, {"age": 13, "r": 14.3}, {"age": 14, "r": 15.05}, {"age": 15, "r": 15.95}, {"age": 16, "r": 16.8}, {"age": 17, "r": 17.51}, {"age": 18, "r": 18.25}, {"age": 19, "r": 18.93}, {"age": 20, "r": 19.87}, {"age": 21, "r": 20.98}, {"age": 22, "r": 22.18}, {"age": 23, "r": 23.36}, {"age": 24, "r": 24.51}, {"age": 25, "r": 25.74}, {"age": 26, "r": 26.82}], "completed": true, "highlight": null}, {"cohort": 2020, "points": [{"age": 1, "r": 1.74}, {"age": 2, "r": 4.32}, {"age": 3, "r": 6.6}, {"age": 4, "r": 8.4}, {"age": 5, "r": 9.82}, {"age": 6, "r": 10.34}, {"age": 7, "r": 10.73}, {"age": 8, "r": 11.52}, {"age": 9, "r": 12.06}, {"age": 10, "r": 12.84}, {"age": 11, "r": 13.47}, {"age": 12, "r": 14.23}, {"age": 13, "r": 14.99}, {"age": 14, "r": 15.75}, {"age": 15, "r": 16.67}, {"age": 16, "r": 17.55}, {"age": 17, "r": 18.38}, {"age": 18, "r": 19.36}, {"age": 19, "r": 20.16}, {"age": 20, "r": 21.14}, {"age": 21, "r": 22.22}, {"age": 22, "r": 23.35}, {"age": 23, "r": 24.34}, {"age": 24, "r": 25.41}, {"age": 25, "r": 26.35}, {"age": 26, "r": 27.21}], "completed": true, "highlight": null}, {"cohort": 2021, "points": [{"age": 1, "r": 2.96}, {"age": 2, "r": 9.23}, {"age": 3, "r": 11.05}, {"age": 4, "r": 13.23}, {"age": 5, "r": 14.74}, {"age": 6, "r": 15.24}, {"age": 7, "r": 15.77}, {"age": 8, "r": 16.22}, {"age": 9, "r": 16.71}, {"age": 10, "r": 17.26}, {"age": 11, "r": 17.79}, {"age": 12, "r": 18.54}, {"age": 13, "r": 19.34}, {"age": 14, "r": 20.24}, {"age": 15, "r": 21.29}, {"age": 16, "r": 22.12}, {"age": 17, "r": 23.0}, {"age": 18, "r": 23.63}, {"age": 19, "r": 24.24}, {"age": 20, "r": 25.31}, {"age": 21, "r": 26.56}, {"age": 22, "r": 27.77}, {"age": 23, "r": 28.91}, {"age": 24, "r": 30.08}, {"age": 25, "r": 31.13}, {"age": 26, "r": 32.17}], "completed": true, "highlight": null}, {"cohort": 2022, "points": [{"age": 1, "r": 2.01}, {"age": 2, "r": 5.22}, {"age": 3, "r": 6.57}, {"age": 4, "r": 8.05}, {"age": 5, "r": 9.41}, {"age": 6, "r": 10.19}, {"age": 7, "r": 10.72}, {"age": 8, "r": 11.18}, {"age": 9, "r": 11.83}, {"age": 10, "r": 12.53}, {"age": 11, "r": 13.28}, {"age": 12, "r": 14.2}, {"age": 13, "r": 15.29}, {"age": 14, "r": 16.29}, {"age": 15, "r": 17.27}, {"age": 16, "r": 18.07}, {"age": 17, "r": 18.88}, {"age": 18, "r": 19.71}, {"age": 19, "r": 20.45}, {"age": 20, "r": 21.55}, {"age": 21, "r": 23.2}, {"age": 22, "r": 24.37}, {"age": 23, "r": 25.52}, {"age": 24, "r": 26.77}, {"age": 25, "r": 28.03}, {"age": 26, "r": 29.32}], "completed": true, "highlight": null}, {"cohort": 2023, "points": [{"age": 1, "r": 1.54}, {"age": 2, "r": 2.58}, {"age": 3, "r": 3.96}, {"age": 4, "r": 5.14}, {"age": 5, "r": 6.91}, {"age": 6, "r": 7.75}, {"age": 7, "r": 8.16}, {"age": 8, "r": 8.64}, {"age": 9, "r": 9.33}, {"age": 10, "r": 9.95}, {"age": 11, "r": 10.89}, {"age": 12, "r": 12.38}, {"age": 13, "r": 13.54}, {"age": 14, "r": 14.83}, {"age": 15, "r": 15.75}, {"age": 16, "r": 16.43}, {"age": 17, "r": 16.99}, {"age": 18, "r": 17.48}, {"age": 19, "r": 18.02}, {"age": 20, "r": 19.16}, {"age": 21, "r": 20.65}, {"age": 22, "r": 21.68}, {"age": 23, "r": 22.86}, {"age": 24, "r": 23.78}, {"age": 25, "r": 24.61}, {"age": 26, "r": 25.32}], "completed": true, "highlight": null}, {"cohort": 2024, "points": [{"age": 1, "r": 2.42}, {"age": 2, "r": 5.89}, {"age": 3, "r": 7.16}, {"age": 4, "r": 8.73}, {"age": 5, "r": 9.69}, {"age": 6, "r": 10.48}, {"age": 7, "r": 10.91}, {"age": 8, "r": 11.55}, {"age": 9, "r": 12.41}, {"age": 10, "r": 13.11}, {"age": 11, "r": 13.84}, {"age": 12, "r": 14.58}, {"age": 13, "r": 15.44}, {"age": 14, "r": 16.37}, {"age": 15, "r": 17.05}, {"age": 16, "r": 17.71}, {"age": 17, "r": 18.57}, {"age": 18, "r": 19.39}, {"age": 19, "r": 20.23}, {"age": 20, "r": 21.35}, {"age": 21, "r": 22.48}, {"age": 22, "r": 23.59}, {"age": 23, "r": 24.35}, {"age": 24, "r": 25.08}, {"age": 25, "r": 25.86}, {"age": 26, "r": 26.47}], "completed": true, "highlight": "recent"}, {"cohort": 2025, "points": [{"age": 1, "r": 1.36}, {"age": 2, "r": 2.01}, {"age": 3, "r": 2.89}, {"age": 4, "r": 3.71}, {"age": 5, "r": 5.17}, {"age": 6, "r": 5.84}, {"age": 7, "r": 6.25}, {"age": 8, "r": 6.99}, {"age": 9, "r": 7.75}, {"age": 10, "r": 8.82}, {"age": 11, "r": 9.84}, {"age": 12, "r": 10.59}, {"age": 13, "r": 11.25}, {"age": 14, "r": 11.79}, {"age": 15, "r": 12.79}, {"age": 16, "r": 13.37}, {"age": 17, "r": 13.89}, {"age": 18, "r": 14.37}], "completed": false, "highlight": "current"}, {"cohort": 2026, "points": [{"age": 1, "r": 4.18}, {"age": 2, "r": 4.81}, {"age": 3, "r": 5.53}, {"age": 4, "r": 6.71}, {"age": 5, "r": 7.25}, {"age": 6, "r": 7.64}], "completed": false, "highlight": null}];
+new Chart(document.getElementById('mortalityCohortChart'), {
+  type: 'line',
+  data: { datasets: cohortSeries.map(s => ({
+    label: String(s.cohort), data: s.points.map(p => ({ x: p.age, y: p.r })),
+    borderColor: highlightColor(s.highlight), backgroundColor: highlightColor(s.highlight),
+    borderWidth: s.highlight ? 2 : 1, borderDash: s.highlight === 'current' ? [4,3] : [],
+    tension: 0.25, pointRadius: 0, order: s.highlight ? 1 : 2
+  })) },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+    scales: { y: { ticks: { color: '#898781', font: { size: 11 }, callback: v => v + '%' }, grid: { color: '#e1e0d9' } },
+               x: { type: 'linear', title: { display: true, text: 'Måneder siden smoltutsett', color: '#898781', font: { size: 11 } },
+                    ticks: { color: '#898781', font: { size: 11 } }, grid: { display: false } } } }
+});
+
+new Chart(document.getElementById('fishHealthChart'), {
+  type: 'line',
+  data: { labels: ["U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34"], datasets: [
+    { label: 'Indikator', data: [0.237, 0.305, 0.199, 0.213, 0.182, 0.23, 0.203, 0.189, 0.174, 0.25, 0.22, 0.178], borderColor: '#7a4fc9', backgroundColor: '#7a4fc9', tension: 0.25, pointRadius: 3, spanGaps: true }
+  ] },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+    scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 10 } }, grid: { display: false } } } }
+});
+</script>
+</body>
+</html>
