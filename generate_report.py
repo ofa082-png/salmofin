@@ -11,6 +11,14 @@ page being the site root.
 Fiskehelseindikator section (silage/feed vessel visit ratio, a
 mortality proxy) moved in from generate_foring.py on 2026-08-17 — it's
 a fish-health signal, not feed-logistics, so it belongs here instead.
+
+Scope narrowed to mortality + disease only on 2026-08-19 — Lusenivå
+and Avlusningsfartøy (lice level + delousing vessel traffic) moved out
+to generate_lakselus.py/lakselus.html, since this page was growing
+bloated bundling two conceptually separate signals (lice pressure vs.
+mortality/disease) together. Fiskehelseindikator stays here even
+though it's vessel-traffic-derived, since what it's a *proxy for* is
+mortality, not lice.
 """
 
 import os
@@ -25,8 +33,7 @@ from google.oauth2 import service_account
 PROJECT_ID = "salmofin"
 OUT_PATH   = os.path.join(os.path.dirname(__file__), "docs", "fiskehelse.html")
 FLEET_CSV  = os.path.join(os.path.dirname(__file__), "vessel_categories.csv")
-WEEKS_HISTORY = 12  # matches the lice chart's "siste 12 uker" lookback — shared by
-                     # the Fiskehelseindikator and Avlusningsfartøy charts too
+WEEKS_HISTORY = 12  # lookback for the Fiskehelseindikator chart, "siste 12 uker"
 MORTALITY_MONTHS_HISTORY = 12
 
 NO_MONTH_SHORT = ["Jan","Feb","Mar","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Des"]
@@ -54,8 +61,7 @@ def get_bq_client():
 
 def load_vessel_fleet(types):
     """MMSI -> vessel type, restricted to the given vessel_categories.csv
-    Type values — used for the vessel-signal charts below (Fiskehelse-
-    indikator, Avlusningsfartøy)."""
+    Type values — used for the Fiskehelseindikator chart below."""
     mmsi_to_type = {}
     with open(FLEET_CSV, encoding="utf-8") as f:
         for row in csv.DictReader(f):
@@ -101,17 +107,17 @@ def fetch_vessel_signal_charts(client):
     """Fiskehelseindikator (silage/feed vessel visit ratio, a mortality
     proxy — silage vessels collect dead fish/offal, so more silage
     activity relative to normal feed-carrier activity is a fairly
-    direct operational readout of mortality) and Avlusningsfartøy
-    (delousing vessel visits, descriptive only). One shared query
-    covering all three vessel types feeds both charts.
+    direct operational readout of mortality), moved here from
+    generate_foring.py on 2026-08-17 since it's a fish-health signal,
+    not a feed-logistics one.
 
-    Fiskehelseindikator moved here from generate_foring.py, and
-    Avlusningsfartøy from generate_traffic_report.py, both 2026-08-17
-    — both are fish-health-adjacent signals that belong with the rest
-    of this page's content, not split across the feed/traffic reports.
-    Both charts share this page's 12-week lookback (WEEKS_HISTORY) and
-    "U23"-style week labels, matching the lice chart above them."""
-    mmsi_to_type = load_vessel_fleet(("Fish feed carrier", "Silage", "Delicing vessel"))
+    Avlusningsfartøy (delousing vessel visits) used to live on this
+    page too but moved out to generate_lakselus.py/lakselus.html on
+    2026-08-19 — lice/treatment content, not mortality/disease, so it
+    doesn't belong on this page per the fiskehelse/lakselus split (see
+    that script's docstring). This function now only queries the two
+    vessel types this page actually needs."""
+    mmsi_to_type = load_vessel_fleet(("Fish feed carrier", "Silage"))
     days_back = WEEKS_HISTORY * 7 + 7
     rows = fetch_fleet_visits(client, list(mmsi_to_type.keys()), days_back)
 
@@ -127,16 +133,13 @@ def fetch_vessel_signal_charts(client):
 
     feed_weekly = build_weekly_series(daily_by_type.get("Fish feed carrier", {}), current_monday, WEEKS_HISTORY, yesterday)
     silage_weekly = build_weekly_series(daily_by_type.get("Silage", {}), current_monday, WEEKS_HISTORY, yesterday)
-    delousing_weekly = build_weekly_series(daily_by_type.get("Delicing vessel", {}), current_monday, WEEKS_HISTORY, yesterday)
 
     fh_labels = [w[0] for w in feed_weekly]
     fh_values = [
         round(s[1] / f[1], 3) if f[1] else None
         for f, s in zip(feed_weekly, silage_weekly)
     ]
-    delousing_labels = [w[0] for w in delousing_weekly]
-    delousing_values = [w[1] for w in delousing_weekly]
-    return fh_labels, fh_values, delousing_labels, delousing_values
+    return fh_labels, fh_values
 
 def fetch_mortality_and_losses(client):
     """National monthly mortality risk PLUS the other three Fiskeridirektoratet
@@ -334,25 +337,12 @@ def fetch_mortality_history(client):
     )
 
 def fetch_data(client):
-    lice_trend = list(client.query("""
-        SELECT Uke, ROUND(AVG(Voksne_hunnlus),4) AS avg_lice
-        FROM salmofin.salmofin.lice_bw
-        WHERE Ar = EXTRACT(YEAR FROM CURRENT_DATE())
-          AND Uke BETWEEN EXTRACT(ISOWEEK FROM CURRENT_DATE()) - 11
-                       AND EXTRACT(ISOWEEK FROM CURRENT_DATE())
-          AND Voksne_hunnlus IS NOT NULL
-        GROUP BY Uke ORDER BY Uke
-    """).result())
-
     kpis = list(client.query("""
         SELECT
           (SELECT COUNT(*) FROM salmofin.salmofin.mattilsynet_helsestatus) AS active_cases,
           (SELECT COUNT(DISTINCT lokalitetsnummer) FROM salmofin.salmofin.mattilsynet_helsestatus) AS active_localities,
           (SELECT COUNT(DISTINCT id) FROM salmofin.salmofin.mattilsynet_disease
-             WHERE opprettet >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY)) AS new_cases_14d,
-          (SELECT COUNT(*) FROM salmofin.salmofin.treatments
-             WHERE Ar = EXTRACT(YEAR FROM CURRENT_DATE())
-               AND Uke IN (EXTRACT(ISOWEEK FROM CURRENT_DATE()) - 1, EXTRACT(ISOWEEK FROM CURRENT_DATE()))) AS treatments_14d
+             WHERE opprettet >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY)) AS new_cases_14d
     """).result())[0]
 
     recent = list(client.query("""
@@ -375,7 +365,7 @@ def fetch_data(client):
         WHERE l.latitude IS NOT NULL
     """).result())
 
-    return lice_trend, kpis, recent, map_rows
+    return kpis, recent, map_rows
 
 def build_sites_json(map_rows):
     by_site = {}
@@ -429,6 +419,7 @@ TEMPLATE = """<!doctype html>
     </div>
     <div style="display:flex;gap:8px;align-items:baseline;">
       <a href="index.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">hjem →</a>
+      <a href="lakselus.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">lakselus →</a>
       <a href="traffic.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">trafikk →</a>
       <a href="foring.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">fôring →</a>
       <div style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;">kilde: mattilsynet.io</div>
@@ -445,18 +436,13 @@ TEMPLATE = """<!doctype html>
       <div style="font-size:24px;font-weight:500;">{new_cases_14d}</div>
     </div>
     <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Voksne hunnlus, snitt</div>
-      <div style="font-size:24px;font-weight:500;">{avg_lice_latest}</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Dødelighet, siste måned</div>
+      <div style="font-size:24px;font-weight:500;">{mortality_current}%</div>
     </div>
     <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Behandlinger siste 14 dager</div>
-      <div style="font-size:24px;font-weight:500;">{treatments_14d}</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Utkast, siste måned</div>
+      <div style="font-size:24px;font-weight:500;">{discard_current}%</div>
     </div>
-  </div>
-
-  <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Lusenivå, siste 12 uker</div>
-  <div style="position:relative;width:100%;height:140px;margin-bottom:1.75rem;">
-    <canvas id="liceChart" width="640" height="140"></canvas>
   </div>
 
   <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Dødelighet</div>
@@ -506,13 +492,6 @@ TEMPLATE = """<!doctype html>
   </div>
   <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste punkt er inneværende uke (delvis).</div>
 
-  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Avlusningsfartøy</div>
-  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Kun beskrivende — testet mot faktiske avlusningsregistreringer og fanger foreløpig opp ca. 22–26% av dem, så dette er ikke en pålitelig indikator ennå, kun et rått anløpsbilde.</div>
-  <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
-    <canvas id="delousingWeeklyChart" width="640" height="140"></canvas>
-  </div>
-  <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste søyle er inneværende uke (delvis).</div>
-
   <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Nye og pågående sykdomstilfeller, siste 14 dager</div>
   <div style="border:0.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.75rem;">
     <table style="width:100%;font-size:13px;table-layout:fixed;">
@@ -544,15 +523,6 @@ TEMPLATE = """<!doctype html>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <script>
-const liceLabels = {lice_labels_json};
-const liceValues = {lice_values_json};
-new Chart(document.getElementById('liceChart'), {{
-  type: 'line',
-  data: {{ labels: liceLabels, datasets: [{{ data: liceValues, borderColor: '#2a78d6', backgroundColor: 'rgba(42,120,214,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }}] }},
-  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
-    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ display: false }} }} }} }}
-}});
-
 new Chart(document.getElementById('mortalityChart'), {{
   type: 'line',
   data: {{ labels: {mortality_labels_json}, datasets: [
@@ -598,7 +568,7 @@ new Chart(document.getElementById('mortalityCohortChart'), {{
   }})) }},
   options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
     scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }}, callback: v => v + '%' }}, grid: {{ color: '#e1e0d9' }} }},
-               x: {{ type: 'linear', title: {{ display: true, text: 'Måneder siden yngelutsett', color: '#898781', font: {{ size: 11 }} }},
+               x: {{ type: 'linear', title: {{ display: true, text: 'Måneder siden smoltutsett', color: '#898781', font: {{ size: 11 }} }},
                     ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ display: false }} }} }} }}
 }});
 
@@ -607,16 +577,6 @@ new Chart(document.getElementById('fishHealthChart'), {{
   data: {{ labels: {fh_labels_json}, datasets: [
     {{ label: 'Indikator', data: {fh_values_json}, borderColor: '#7a4fc9', backgroundColor: '#7a4fc9', tension: 0.25, pointRadius: 3, spanGaps: true }}
   ] }},
-  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
-    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
-}});
-
-function barColors(labels, partialIdx, base) {{
-  return labels.map((_, i) => i === partialIdx ? base + '80' : base);
-}}
-new Chart(document.getElementById('delousingWeeklyChart'), {{
-  type: 'bar',
-  data: {{ labels: {delousing_labels_json}, datasets: [{{ data: {delousing_values_json}, backgroundColor: barColors({delousing_labels_json}, {delousing_partial_idx}, '#52514e'), borderRadius: 4 }}] }},
   options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
     scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
 }});
@@ -648,8 +608,8 @@ d3.json('https://cdn.jsdelivr.net/npm/datamaps@0.5.10/src/js/data/nor.topo.json'
 if __name__ == "__main__":
     print("Fetching data from BigQuery...")
     client = get_bq_client()
-    lice_trend, kpis, recent, map_rows = fetch_data(client)
-    fh_labels, fh_values, delousing_labels, delousing_values = fetch_vessel_signal_charts(client)
+    kpis, recent, map_rows = fetch_data(client)
+    fh_labels, fh_values = fetch_vessel_signal_charts(client)
     mortality, losses = fetch_mortality_and_losses(client)
     mort_year, mort_cohort = fetch_mortality_history(client)
 
@@ -666,11 +626,7 @@ if __name__ == "__main__":
         updated=now.strftime("%d.%m.%Y"),
         active_cases=kpis.active_cases,
         new_cases_14d=kpis.new_cases_14d,
-        avg_lice_latest=lice_trend[-1].avg_lice if lice_trend else "–",
-        treatments_14d=kpis.treatments_14d,
         table_rows=table_rows,
-        lice_labels_json=json.dumps([f"U{r.Uke}" for r in lice_trend]),
-        lice_values_json=json.dumps([r.avg_lice for r in lice_trend]),
         mortality_current=mortality["current"] if mortality else "–",
         mortality_delta_label=(f"{'+' if mortality['delta_pp'] >= 0 else ''}{mortality['delta_pp']}pp" if mortality else "–"),
         mortality_labels_json=json.dumps(mortality["labels"] if mortality else []),
@@ -683,9 +639,6 @@ if __name__ == "__main__":
         andre_12mo=f"{losses['andre_12mo']:,}" if losses else "–",
         fh_labels_json=json.dumps(fh_labels),
         fh_values_json=json.dumps(fh_values),
-        delousing_labels_json=json.dumps(delousing_labels),
-        delousing_values_json=json.dumps(delousing_values),
-        delousing_partial_idx=len(delousing_labels) - 1,
         sites_json=json.dumps(sites, ensure_ascii=False),
         mort_year_labels_json=json.dumps(mort_year["labels"]),
         mort_year_series_json=json.dumps(mort_year["series"]),

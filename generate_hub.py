@@ -19,6 +19,12 @@ feed/export/capacity areas of the project, two trend charts, and three
   with the tiles; Store fartøy/big_vessels.html is on hold, not linked
   from the hub for now).
 
+  Lakselus tile now points at lakselus.html, not fiskehelse.html
+  (2026-08-19) — those two pages were split apart (see
+  generate_lakselus.py's docstring), Sykdom still points at
+  fiskehelse.html. Trafikk and Slakt og eksport still both point at
+  traffic.html — that redundancy is a separate, not-yet-done item.
+
 Writes docs/index.html.
 """
 
@@ -219,7 +225,7 @@ def build_sparkline_svg(chart_id, labels, values, color):
 </script>"""
 
 TILES = [
-    {"icon": "🐛", "title": "Lakselus og behandling", "unit": " voksne/fisk", "href": "fiskehelse.html", "linktext": "Nivå og behandlinger"},
+    {"icon": "🐛", "title": "Lakselus og behandling", "unit": " voksne/fisk", "href": "lakselus.html", "linktext": "Nivå og behandlinger"},
     {"icon": "🦠", "title": "Sykdom", "unit": "", "suffix": " aktive tilfeller", "href": "fiskehelse.html", "linktext": "Status og dødelighet"},
     {"icon": "🚢", "title": "Trafikk", "unit": "", "suffix": " besøk/uke", "href": "traffic.html", "linktext": "Wellbåt og prosesseringsfartøy"},
     {"icon": "🐟", "title": "Slakt og eksport", "unit": "", "suffix": "", "href": "traffic.html", "linktext": "Volum og sesongmodell"},

@@ -15,6 +15,7 @@ on:
       - "Fetch Salmofin Data"
       - "Fetch Salmon Export"
       - "Generate Fish Health Report"
+      - "Generate Lakselus Report"
       - "Generate Traffic Report"
       - "Generate Big Vessel Tracker"
       - "Harvest Plant Vessel Visits"

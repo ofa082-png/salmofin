@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lakselus — ukesrapport</title>
+<style>
+  :root { --surface-1:#f5f4f0; --surface-2:#ffffff; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781; --border:#e1e0d9; }
+  @media (prefers-color-scheme: dark) {
+    :root { --surface-1:#242422; --surface-2:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781; --border:#2c2c2a; }
+  }
+  body { background:var(--surface-1); color:var(--text-primary); font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:0; padding:2rem 1rem; }
+  .wrap { max-width:680px; margin:0 auto; }
+  a { color:var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.25rem;">
+    <div>
+      <div style="font-size:18px;font-weight:500;">Lakselus — ukesrapport</div>
+      <div style="font-size:13px;color:var(--text-muted)">Uke 34, 2026 · oppdatert 19.08.2026</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:baseline;">
+      <a href="index.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">hjem →</a>
+      <a href="fiskehelse.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">fiskehelse →</a>
+      <div style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;">kilde: BarentsWatch</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;">
+    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Voksne hunnlus, snitt</div>
+      <div style="font-size:24px;font-weight:500;">0.0781</div>
+    </div>
+    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Over lusegrense, siste uke</div>
+      <div style="font-size:24px;font-weight:500;">0.6%</div>
+    </div>
+    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Lokaliteter talt, siste uke</div>
+      <div style="font-size:24px;font-weight:500;">528</div>
+    </div>
+    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Behandlinger siste 14 dager</div>
+      <div style="font-size:24px;font-weight:500;">110</div>
+    </div>
+  </div>
+
+  <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Lusenivå, siste 12 uker</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Voksne hunnlus, snitt per lokalitet, nasjonalt.</div>
+  <div style="position:relative;width:100%;height:140px;margin-bottom:1.75rem;">
+    <canvas id="liceChart" width="640" height="140"></canvas>
+  </div>
+
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Avlusningsfartøy</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Kun beskrivende — testet mot faktiske avlusningsregistreringer og fanger foreløpig opp ca. 22–26% av dem, så dette er ikke en pålitelig indikator ennå, kun et rått anløpsbilde.</div>
+  <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
+    <canvas id="delousingWeeklyChart" width="640" height="140"></canvas>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste søyle er inneværende uke (delvis).</div>
+
+  <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
+    Data: BarentsWatch (lakselus, behandlinger), via salmofin BigQuery-pipeline. Vessel-indikator: BarentsWatch AIS, kun fartøy i vår flåteliste (vessel_categories.csv). "Over lusegrense"/"lokaliteter talt" gjelder siste avsluttede uke (inneværende uke er ikke ferdig rapportert ennå). Generert automatisk hver natt.
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+new Chart(document.getElementById('liceChart'), {
+  type: 'line',
+  data: { labels: ["U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34"], datasets: [{ data: [0.0846, 0.098, 0.1076, 0.1161, 0.1163, 0.1138, 0.1116, 0.1294, 0.1376, 0.1411, 0.134, 0.0781], borderColor: '#2a78d6', backgroundColor: 'rgba(42,120,214,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+    scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 11 } }, grid: { display: false } } } }
+});
+
+function barColors(labels, partialIdx, base) {
+  return labels.map((_, i) => i === partialIdx ? base + '80' : base);
+}
+new Chart(document.getElementById('delousingWeeklyChart'), {
+  type: 'bar',
+  data: { labels: ["U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34"], datasets: [{ data: [21, 40, 34, 37, 41, 32, 32, 27, 48, 48, 34, 5], backgroundColor: barColors(["U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34"], 11, '#52514e'), borderRadius: 4 }] },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+    scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 10 } }, grid: { display: false } } } }
+});
+</script>
+</body>
+</html>

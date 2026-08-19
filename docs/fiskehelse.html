@@ -24,6 +24,7 @@
     </div>
     <div style="display:flex;gap:8px;align-items:baseline;">
       <a href="index.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">hjem →</a>
+      <a href="lakselus.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">lakselus →</a>
       <a href="traffic.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">trafikk →</a>
       <a href="foring.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">fôring →</a>
       <div style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;">kilde: mattilsynet.io</div>
@@ -40,18 +41,13 @@
       <div style="font-size:24px;font-weight:500;">2</div>
     </div>
     <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Voksne hunnlus, snitt</div>
-      <div style="font-size:24px;font-weight:500;">0.0781</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Dødelighet, siste måned</div>
+      <div style="font-size:24px;font-weight:500;">0.51%</div>
     </div>
     <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Behandlinger siste 14 dager</div>
-      <div style="font-size:24px;font-weight:500;">110</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Utkast, siste måned</div>
+      <div style="font-size:24px;font-weight:500;">0.68%</div>
     </div>
-  </div>
-
-  <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Lusenivå, siste 12 uker</div>
-  <div style="position:relative;width:100%;height:140px;margin-bottom:1.75rem;">
-    <canvas id="liceChart" width="640" height="140"></canvas>
   </div>
 
   <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Dødelighet</div>
@@ -100,13 +96,6 @@
     <canvas id="fishHealthChart" width="640" height="140"></canvas>
   </div>
   <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste punkt er inneværende uke (delvis).</div>
-
-  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Avlusningsfartøy</div>
-  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Kun beskrivende — testet mot faktiske avlusningsregistreringer og fanger foreløpig opp ca. 22–26% av dem, så dette er ikke en pålitelig indikator ennå, kun et rått anløpsbilde.</div>
-  <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
-    <canvas id="delousingWeeklyChart" width="640" height="140"></canvas>
-  </div>
-  <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste søyle er inneværende uke (delvis).</div>
 
   <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Nye og pågående sykdomstilfeller, siste 14 dager</div>
   <div style="border:0.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.75rem;">
@@ -175,15 +164,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <script>
-const liceLabels = ["U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34"];
-const liceValues = [0.0846, 0.098, 0.1076, 0.1161, 0.1163, 0.1138, 0.1116, 0.1294, 0.1376, 0.1411, 0.134, 0.0781];
-new Chart(document.getElementById('liceChart'), {
-  type: 'line',
-  data: { labels: liceLabels, datasets: [{ data: liceValues, borderColor: '#2a78d6', backgroundColor: 'rgba(42,120,214,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] },
-  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-    scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 11 } }, grid: { display: false } } } }
-});
-
 new Chart(document.getElementById('mortalityChart'), {
   type: 'line',
   data: { labels: ["Jul", "Aug", "Sep", "Okt", "Nov", "Des", "Jan", "Feb", "Mar", "Apr", "Mai", "Jun"], datasets: [
@@ -229,7 +209,7 @@ new Chart(document.getElementById('mortalityCohortChart'), {
   })) },
   options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
     scales: { y: { ticks: { color: '#898781', font: { size: 11 }, callback: v => v + '%' }, grid: { color: '#e1e0d9' } },
-               x: { type: 'linear', title: { display: true, text: 'Måneder siden yngelutsett', color: '#898781', font: { size: 11 } },
+               x: { type: 'linear', title: { display: true, text: 'Måneder siden smoltutsett', color: '#898781', font: { size: 11 } },
                     ticks: { color: '#898781', font: { size: 11 } }, grid: { display: false } } } }
 });
 
@@ -238,16 +218,6 @@ new Chart(document.getElementById('fishHealthChart'), {
   data: { labels: ["U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34"], datasets: [
     { label: 'Indikator', data: [0.237, 0.305, 0.199, 0.213, 0.182, 0.23, 0.203, 0.189, 0.174, 0.25, 0.22, 0.178], borderColor: '#7a4fc9', backgroundColor: '#7a4fc9', tension: 0.25, pointRadius: 3, spanGaps: true }
   ] },
-  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-    scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 10 } }, grid: { display: false } } } }
-});
-
-function barColors(labels, partialIdx, base) {
-  return labels.map((_, i) => i === partialIdx ? base + '80' : base);
-}
-new Chart(document.getElementById('delousingWeeklyChart'), {
-  type: 'bar',
-  data: { labels: ["U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34"], datasets: [{ data: [21, 40, 34, 37, 41, 32, 32, 27, 48, 48, 34, 5], backgroundColor: barColors(["U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34"], 11, '#52514e'), borderRadius: 4 }] },
   options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
     scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 10 } }, grid: { display: false } } } }
 });
