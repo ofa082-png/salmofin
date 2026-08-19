@@ -8,12 +8,13 @@ in vessel_categories.csv. Sections:
   A/B. Harvest signal — Wellboat + Processing vessel locality visits
        (vessel_visits) and harvest-plant deliveries (harvest_plant_visits
        CSVs), with a weekday-pacing forecast for the current week.
-  C.   Avlusningsfartøy — delousing vessel visits, descriptive only.
 
 Feed carrier + silage traffic moved to generate_foring.py (2026-08-16)
 — that's a production-intensity signal, not a harvest-logistics one,
 so it didn't belong bundled in here just because it shares the same
-AIS data source.
+AIS data source. Avlusningsfartøy (delousing vessel visits) moved to
+generate_report.py/fiskehelse.html (2026-08-17) for the same reason —
+it's a fish-health-adjacent signal, not harvest-logistics.
 
 Writes docs/traffic.html.
 """
@@ -804,15 +805,6 @@ TEMPLATE = """<!doctype html>
     </div>
   </section>
 
-  <section>
-    <div class="section-title">Avlusningsfartøy</div>
-    <div class="section-sub">Kun beskrivende — testet mot faktiske avlusningsregistreringer og fanger foreløpig opp ca. 22–26% av dem, så dette er ikke en pålitelig indikator ennå, kun et rått anløpsbilde.</div>
-    <div style="position:relative;width:100%;height:150px;margin-bottom:4px;">
-      <canvas id="delousingWeeklyChart" width="640" height="150"></canvas>
-    </div>
-    <div style="font-size:11px;color:var(--text-muted);">Siste søyle er inneværende uke (delvis).</div>
-  </section>
-
   <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
     Lokalitetsanløp: BarentsWatch AIS, kun fartøy i vår flåteliste (vessel_categories.csv). Slakterianløp: BarentsWatch fiskehelse, oppdatert ukentlig for forrige fullførte uke. Anslag hele uken bruker gjennomsnittlig ukentlig fremdriftsmønster fra de siste {pacing_weeks} fullførte ukene. Via salmofin BigQuery-pipeline.
   </div>
@@ -899,13 +891,6 @@ document.querySelectorAll('#harvestPills .pill').forEach(el => {{
   el.addEventListener('click', () => showHarvest(el.dataset.type));
 }});
 showHarvest('Alle');
-
-new Chart(document.getElementById('delousingWeeklyChart'), {{
-  type: 'bar',
-  data: {{ labels: {delousing_weekly_labels_json}, datasets: [{{ data: {delousing_weekly_values_json}, backgroundColor: barColors({delousing_weekly_labels_json}, {delousing_partial_idx}, '#52514e'), borderRadius: 4 }}] }},
-  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
-    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
-}});
 </script>
 </body>
 </html>
@@ -982,10 +967,6 @@ if __name__ == "__main__":
         )
         export_backtest_section = build_export_backtest_section(backtest_rows)
 
-    # --- Delousing vessels (descriptive only — see correlation caveat) ---
-    delousing_daily = stats.get("Delicing vessel", {})
-    delousing_weekly = build_weekly_series(delousing_daily, current_monday, WEEKS_HISTORY, yesterday)
-
     now = datetime.datetime.now(datetime.timezone.utc)
     html = TEMPLATE.format(
         yesterday_label=yesterday.strftime("%d.%m.%Y"),
@@ -1000,9 +981,6 @@ if __name__ == "__main__":
         plant_week=plant_week or "-",
         plant_weeks_history=PLANT_WEEKS_HISTORY,
         plant_matrix_weeks=PLANT_MATRIX_WEEKS,
-        delousing_weekly_labels_json=json.dumps([w[0] for w in delousing_weekly]),
-        delousing_weekly_values_json=json.dumps([w[1] for w in delousing_weekly]),
-        delousing_partial_idx=len(delousing_weekly) - 1,
         no_weekday_short_json=json.dumps(NO_WEEKDAY_SHORT),
         pacing_weeks=PACING_WEEKS,
     )

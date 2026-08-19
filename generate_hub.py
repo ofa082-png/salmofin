@@ -1,18 +1,29 @@
 """
 generate_hub.py
 ----------------
-Renders the salmofin frontpage — five tiles matching the health/traffic/
-export/capacity areas of the project, two trend charts, and three "last
-5" feeds. Not every section has a live data source wired up yet:
+Renders the salmofin frontpage — six tiles matching the health/traffic/
+feed/export/capacity areas of the project, two trend charts, and three
+"last 5" feeds. Not every section has a live data source wired up yet:
 
-  - Lakselus, Sykdom, Trafikk, Slakt og eksport tiles: real, BigQuery-
-    backed, refit live every run.
+  - Lakselus, Sykdom, Trafikk, Slakt og eksport, Fôring tiles: real,
+    BigQuery-backed, refit live every run.
   - Kapasitetsvekst tile, and the MOM-B / sykdomsoppdateringer /
     heftelser "last 5" panels: intentionally left as empty placeholders
     (2026-08-17) — the underlying pipelines (aqua_applications/licenses
     for capacity, env_reports/mattilsynet_disease/license_liens for the
     feeds) exist but aren't wired into a generator yet. Fill in one at
     a time rather than all at once.
+
+  All navigation lives in the KPI tiles/charts above — deliberately no
+  bottom link-card nav block (removed 2026-08-17, was fully redundant
+  with the tiles; Store fartøy/big_vessels.html is on hold, not linked
+  from the hub for now).
+
+  Lakselus tile now points at lakselus.html, not fiskehelse.html
+  (2026-08-19) — those two pages were split apart (see
+  generate_lakselus.py's docstring), Sykdom still points at
+  fiskehelse.html. Trafikk and Slakt og eksport still both point at
+  traffic.html — that redundancy is a separate, not-yet-done item.
 
 Writes docs/index.html.
 """
@@ -132,6 +143,29 @@ def fetch_trafikk(client):
         "delta_color": diff_color_good_if_up(delta_pct),
     }
 
+def fetch_foring(client):
+    """Feed carrier locality visits, last complete week vs the week
+    before — same fleet-filter/comparison shape as fetch_trafikk, just
+    scoped to 'Fish feed carrier' instead of wellboat/processing. This
+    promotes foring.html from a link-card to a real KPI tile."""
+    rows = list(client.query("""
+        SELECT EXTRACT(ISOYEAR FROM vv.startTime) AS yr, EXTRACT(ISOWEEK FROM vv.startTime) AS wk, COUNT(*) AS visits
+        FROM salmofin.salmofin.vessel_visits vv
+        JOIN salmofin.salmofin.vessel_categories vc ON vv.mmsi = vc.MMSI
+        WHERE TRIM(vc.Type) = 'Fish feed carrier'
+        GROUP BY yr, wk ORDER BY yr DESC, wk DESC LIMIT 4
+    """).result())
+    pairs = _last_complete_weeks([(r.yr, r.wk, r.visits) for r in rows], 2)
+    if len(pairs) < 2:
+        return None
+    prior, current = pairs
+    delta_pct = (current[2] - prior[2]) / prior[2] * 100 if prior[2] else 0
+    return {
+        "value": current[2],
+        "delta_label": diff_label(delta_pct),
+        "delta_color": diff_color_good_if_up(delta_pct),
+    }
+
 def fetch_export(client):
     """Actual export tonnage, last complete week vs the week before, plus
     a 12-week trend. Deliberately the simple real-vs-real comparison, not
@@ -191,10 +225,11 @@ def build_sparkline_svg(chart_id, labels, values, color):
 </script>"""
 
 TILES = [
-    {"icon": "🐛", "title": "Lakselus og behandling", "unit": " voksne/fisk", "href": "fiskehelse.html", "linktext": "Nivå og behandlinger"},
+    {"icon": "🐛", "title": "Lakselus og behandling", "unit": " voksne/fisk", "href": "lakselus.html", "linktext": "Nivå og behandlinger"},
     {"icon": "🦠", "title": "Sykdom", "unit": "", "suffix": " aktive tilfeller", "href": "fiskehelse.html", "linktext": "Status og dødelighet"},
     {"icon": "🚢", "title": "Trafikk", "unit": "", "suffix": " besøk/uke", "href": "traffic.html", "linktext": "Wellbåt og prosesseringsfartøy"},
     {"icon": "🐟", "title": "Slakt og eksport", "unit": "", "suffix": "", "href": "traffic.html", "linktext": "Volum og sesongmodell"},
+    {"icon": "🌾", "title": "Fôring", "unit": "", "suffix": " besøk/uke", "href": "foring.html", "linktext": "Fôrbåtanløp og fiskehelseindikator"},
 ]
 
 def build_tile(key, data, tile):
@@ -267,6 +302,7 @@ TEMPLATE = """<!doctype html>
     {tile_trafikk}
     {tile_export}
   </div>
+  {tile_foring}
   {tile_kapasitet}
 
   <div class="card">
@@ -281,23 +317,6 @@ TEMPLATE = """<!doctype html>
   {feed_momb}
   {feed_sykdom}
   {feed_liens}
-
-  <a href="fiskehelse.html" class="card" style="display:block;margin-bottom:8px;">
-    <div style="font-size:15px;font-weight:500;margin-bottom:2px;">Fiskehelse — ukesrapport →</div>
-    <div style="font-size:12px;color:var(--text-secondary);">Aktive sykdomstilfeller, lusenivå siste 12 uker, kart over pågående saker.</div>
-  </a>
-  <a href="traffic.html" class="card" style="display:block;margin-bottom:8px;">
-    <div style="font-size:15px;font-weight:500;margin-bottom:2px;">Trafikkrapport →</div>
-    <div style="font-size:12px;color:var(--text-secondary);">Slakteaktivitet og eksportvolum, brønnbåt og prosesseringsfartøy.</div>
-  </a>
-  <a href="foring.html" class="card" style="display:block;margin-bottom:8px;">
-    <div style="font-size:15px;font-weight:500;margin-bottom:2px;">Fôringsrapport →</div>
-    <div style="font-size:12px;color:var(--text-secondary);">Fôrbåtanløp og fiskehelseindikator.</div>
-  </a>
-  <a href="big_vessels.html" class="card" style="display:block;">
-    <div style="font-size:15px;font-weight:500;margin-bottom:2px;">Store fartøy — rutetracker →</div>
-    <div style="font-size:12px;color:var(--text-secondary);">Live kart over de største brønnbåtene og prosesseringsfartøyene.</div>
-  </a>
 </div>
 </body>
 </html>
@@ -310,6 +329,7 @@ if __name__ == "__main__":
     sykdom = fetch_sykdom(client)
     trafikk = fetch_trafikk(client)
     export = fetch_export(client)
+    foring = fetch_foring(client)
 
     now = datetime.datetime.now(datetime.timezone.utc)
     html = TEMPLATE.format(
@@ -318,6 +338,7 @@ if __name__ == "__main__":
         tile_sykdom=build_tile("sykdom", sykdom, TILES[1]),
         tile_trafikk=build_tile("trafikk", trafikk, TILES[2]),
         tile_export=build_tile("export", export, TILES[3]),
+        tile_foring=build_tile("foring", foring, TILES[4]),
         tile_kapasitet=f"""
     <div class="card placeholder">
       <div class="tile-header">📈 Kapasitetsvekst</div>
@@ -338,3 +359,4 @@ if __name__ == "__main__":
     print(f"Sykdom: {sykdom}")
     print(f"Trafikk: {trafikk}")
     print(f"Export: {export}")
+    print(f"Foring: {foring}")
