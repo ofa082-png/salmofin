@@ -217,6 +217,122 @@ def fetch_mortality_and_losses(client):
     }
     return mortality, losses
 
+COHORT_FIRST_YEAR = 2018  # earlier Utsettsar cohorts are too thin/sparse to trust nationally
+
+def fetch_mortality_history(client):
+    """Two longer-horizon dødelighet views, both built on the same
+    Veterinærinstituttet risk formula as fetch_mortality_and_losses but
+    over the biomass table's full history (2017-) instead of a rolling
+    12 months:
+
+    1. year_cumulative — within-calendar-year cumulative risk (resets
+       each January), one line per year, so this year's trajectory can
+       be read against past years at the same point in the season.
+
+    2. cohort_cumulative — cumulative risk by age-in-months-since-stocking
+       (age 0 = December of Utsettsar-1, since national stocking ramps up
+       from about there), one line per year-class (Utsettsar), so a
+       generation's whole-lifecycle mortality can be compared across
+       generations regardless of calendar year.
+
+    Cohort curves are truncated once a generation's national stock falls
+    below 10% of its own peak (checked only *after* the peak, so the
+    stocking ramp-up isn't mistaken for the harvest-out tail). Without
+    this, the curve for an almost-fully-harvested generation keeps
+    dividing by the tiny remaining broodstock/leftover population, and
+    normal-looking absolute death counts against that shrunk denominator
+    blow the cumulative risk up towards 100% — an artifact of the
+    formula, not a real mortality signal (found 2026-08-19: raw curves
+    for older cohorts spiked to 90%+ by month 48, far above anything in
+    the official annual figures, before this fix)."""
+    year_rows = list(client.query("""
+        SELECT Ar, Maaned_kode, SUM(Behfisk_stk) AS beh, SUM(Dodfisk_stk) AS dod
+        FROM salmofin.salmofin.biomass
+        WHERE Artsid = 'LAKS'
+        GROUP BY Ar, Maaned_kode ORDER BY Ar, Maaned_kode
+    """).result())
+    year_rows = [(r.Ar, r.Maaned_kode, r.beh, r.dod) for r in year_rows]
+
+    by_year = defaultdict(dict)
+    for i in range(1, len(year_rows)):
+        ar, mnd, beh, dod = year_rows[i]
+        if ar < COHORT_FIRST_YEAR:
+            continue
+        n_bar = (year_rows[i - 1][2] + beh) / 2
+        dM = dod / n_bar if n_bar else 0
+        by_year[ar][mnd] = dM
+
+    current_year = max(by_year)
+    year_series = []
+    for ar in sorted(by_year):
+        cum, values = 0, []
+        for mnd in range(1, 13):
+            if mnd not in by_year[ar]:
+                values.append(None)
+                continue
+            cum += by_year[ar][mnd]
+            values.append(round((1 - math.exp(-cum)) * 100, 2))
+        year_series.append({"year": ar, "values": values})
+
+    complete_years = {s["year"]: s["values"][11] for s in year_series if s["year"] != current_year and s["values"][11] is not None}
+    worst_year = max(complete_years, key=complete_years.get) if complete_years else None
+    recent_complete_year = max(complete_years) if complete_years else None
+    for s in year_series:
+        s["highlight"] = ("current" if s["year"] == current_year else
+                           "worst" if s["year"] == worst_year else
+                           "recent" if s["year"] == recent_complete_year else None)
+
+    cohort_rows = list(client.query(f"""
+        SELECT Utsettsar, Ar, Maaned_kode, SUM(Behfisk_stk) AS beh, SUM(Dodfisk_stk) AS dod
+        FROM salmofin.salmofin.biomass
+        WHERE Artsid = 'LAKS' AND Utsettsar >= {COHORT_FIRST_YEAR}
+        GROUP BY Utsettsar, Ar, Maaned_kode ORDER BY Utsettsar, Ar, Maaned_kode
+    """).result())
+    by_cohort = defaultdict(list)
+    for r in cohort_rows:
+        by_cohort[r.Utsettsar].append((r.Ar, r.Maaned_kode, r.beh, r.dod))
+
+    cohort_series, cohort_final = [], {}
+    for utsettsar, rows in sorted(by_cohort.items()):
+        if len(rows) < 6:
+            continue  # too new / too little history to plot a meaningful curve
+        peak_idx = max(range(len(rows)), key=lambda i: rows[i][2])
+        peak = rows[peak_idx][2]
+        thresh = 0.1 * peak
+        base_ym = rows[0][0] * 12 + rows[0][1]
+        cum, points, completed = 0, [], False
+        for i in range(1, len(rows)):
+            ar, mnd, beh, dod = rows[i]
+            if i > peak_idx and beh < thresh:
+                completed = True
+                break
+            n_bar = (rows[i - 1][2] + beh) / 2
+            dM = dod / n_bar if n_bar else 0
+            cum += dM
+            age = ar * 12 + mnd - base_ym
+            points.append({"age": age, "r": round((1 - math.exp(-cum)) * 100, 2)})
+        if not points:
+            continue
+        cohort_series.append({"cohort": utsettsar, "points": points, "completed": completed})
+        if completed:
+            cohort_final[utsettsar] = points[-1]["r"]
+
+    worst_cohort = max(cohort_final, key=cohort_final.get) if cohort_final else None
+    recent_complete_cohort = max(cohort_final) if cohort_final else None
+    # "current" needs a real trajectory (>=12mo) to be worth highlighting — a
+    # brand-new cohort with only a couple of months would otherwise outrank
+    # a more informative one just for being more recent
+    current_cohort = max((s["cohort"] for s in cohort_series if not s["completed"] and len(s["points"]) >= 12), default=None)
+    for s in cohort_series:
+        s["highlight"] = ("worst" if s["cohort"] == worst_cohort else
+                           "recent" if s["cohort"] == recent_complete_cohort else
+                           "current" if s["cohort"] == current_cohort else None)
+
+    return (
+        {"labels": NO_MONTH_SHORT, "series": year_series},
+        {"series": cohort_series},
+    )
+
 def fetch_data(client):
     lice_trend = list(client.query("""
         SELECT Uke, ROUND(AVG(Voksne_hunnlus),4) AS avg_lice
@@ -358,6 +474,31 @@ TEMPLATE = """<!doctype html>
   <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Øvrige tapskategorier, siste 12 mnd: rømming {romming_12mo} fisk, annet (predatorer, tyveri m.m.) {andre_12mo} fisk — begge marginale nasjonalt (typisk under 0,05 % av produksjonen).</div>
   <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste måned kan justeres når Fiskeridirektoratet publiserer korrigerte tall.</div>
 
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Dødelighet, kumulativt gjennom året</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Samme formel og datagrunnlag som over, men nullstilt 1. januar hvert år — viser om {mort_year_current} ligger bedre eller dårligere an enn tidligere år på samme tidspunkt i sesongen.</div>
+  <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;font-size:11px;color:var(--text-secondary);">
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#c1392b;"></span>{mort_year_current} (så langt)</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#2a78d6;"></span>{mort_year_recent} (siste fulle år)</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#eda100;"></span>{mort_year_worst} (verst på rekord)</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#89878180;"></span>Øvrige år</span>
+  </div>
+  <div style="position:relative;width:100%;height:180px;margin-bottom:1.75rem;">
+    <canvas id="mortalityYearChart" width="640" height="180"></canvas>
+  </div>
+
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Dødelighet per årsklasse, kumulativt etter alder</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Samme formel, gruppert på utsettsår (årsklasse) i stedet for kalenderår — alder 0 måneder ≈ desember året før utsett. Kurvene stopper når årsklassens nasjonale bestand har falt under 10 % av toppen (dvs. i praksis nedslaktet) — uten dette blåser kumulativ risiko kunstig opp mot slutten, se fotnote.</div>
+  <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;font-size:11px;color:var(--text-secondary);">
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#c1392b;"></span>{cohort_current} (pågår)</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#2a78d6;"></span>{cohort_recent} (siste nedslaktede)</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#eda100;"></span>{cohort_worst} (verst på rekord)</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#89878180;"></span>Øvrige årsklasser</span>
+  </div>
+  <div style="position:relative;width:100%;height:180px;margin-bottom:4px;">
+    <canvas id="mortalityCohortChart" width="640" height="180"></canvas>
+  </div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">10 %-avkuttingen er en egen metodikkvalg for denne siden, ikke en del av Veterinærinstituttets formel — uten den divideres døde fisk mot en krympende resterende bestand (stamfisk/restpartier) mot slutten av syklusen, som kunstig driver risikoen mot 100 %.</div>
+
   <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Fiskehelseindikator</div>
   <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Egenutviklet indikator basert på vessel-trafikkmønstre (ensilasje/fôr-anløpsforhold). Stigende verdier kan tyde på økt dødelighet eller helseutfordringer på anleggene.</div>
   <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
@@ -430,6 +571,37 @@ new Chart(document.getElementById('discardChart'), {{
     scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ display: false }} }} }} }}
 }});
 
+function highlightColor(h) {{ return h === 'current' ? '#c1392b' : h === 'recent' ? '#2a78d6' : h === 'worst' ? '#eda100' : '#89878180'; }}
+
+const yearSeries = {mort_year_series_json};
+new Chart(document.getElementById('mortalityYearChart'), {{
+  type: 'line',
+  data: {{ labels: {mort_year_labels_json}, datasets: yearSeries.map(s => ({{
+    label: String(s.year), data: s.values, spanGaps: false,
+    borderColor: highlightColor(s.highlight), backgroundColor: highlightColor(s.highlight),
+    borderWidth: s.highlight ? 2 : 1, borderDash: s.highlight === 'current' ? [4,3] : [],
+    tension: 0.25, pointRadius: 0, order: s.highlight ? 1 : 2
+  }})) }},
+  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
+    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }}, callback: v => v + '%' }}, grid: {{ color: '#e1e0d9' }} }},
+               x: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ display: false }} }} }} }}
+}});
+
+const cohortSeries = {mort_cohort_series_json};
+new Chart(document.getElementById('mortalityCohortChart'), {{
+  type: 'line',
+  data: {{ datasets: cohortSeries.map(s => ({{
+    label: String(s.cohort), data: s.points.map(p => ({{ x: p.age, y: p.r }})),
+    borderColor: highlightColor(s.highlight), backgroundColor: highlightColor(s.highlight),
+    borderWidth: s.highlight ? 2 : 1, borderDash: s.highlight === 'current' ? [4,3] : [],
+    tension: 0.25, pointRadius: 0, order: s.highlight ? 1 : 2
+  }})) }},
+  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
+    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }}, callback: v => v + '%' }}, grid: {{ color: '#e1e0d9' }} }},
+               x: {{ type: 'linear', title: {{ display: true, text: 'Måneder siden yngelutsett', color: '#898781', font: {{ size: 11 }} }},
+                    ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ display: false }} }} }} }}
+}});
+
 new Chart(document.getElementById('fishHealthChart'), {{
   type: 'line',
   data: {{ labels: {fh_labels_json}, datasets: [
@@ -479,10 +651,14 @@ if __name__ == "__main__":
     lice_trend, kpis, recent, map_rows = fetch_data(client)
     fh_labels, fh_values, delousing_labels, delousing_values = fetch_vessel_signal_charts(client)
     mortality, losses = fetch_mortality_and_losses(client)
+    mort_year, mort_cohort = fetch_mortality_history(client)
 
     sites = build_sites_json(map_rows)
     table_rows = build_table_rows(recent)
     now = datetime.datetime.now(datetime.timezone.utc)
+
+    def find_highlight(series, key, label):
+        return next((s[key] for s in series if s["highlight"] == label), "–")
 
     html = TEMPLATE.format(
         week=now.isocalendar()[1],
@@ -511,6 +687,15 @@ if __name__ == "__main__":
         delousing_values_json=json.dumps(delousing_values),
         delousing_partial_idx=len(delousing_labels) - 1,
         sites_json=json.dumps(sites, ensure_ascii=False),
+        mort_year_labels_json=json.dumps(mort_year["labels"]),
+        mort_year_series_json=json.dumps(mort_year["series"]),
+        mort_year_current=find_highlight(mort_year["series"], "year", "current"),
+        mort_year_recent=find_highlight(mort_year["series"], "year", "recent"),
+        mort_year_worst=find_highlight(mort_year["series"], "year", "worst"),
+        mort_cohort_series_json=json.dumps(mort_cohort["series"]),
+        cohort_current=find_highlight(mort_cohort["series"], "cohort", "current"),
+        cohort_recent=find_highlight(mort_cohort["series"], "cohort", "recent"),
+        cohort_worst=find_highlight(mort_cohort["series"], "cohort", "worst"),
     )
 
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
