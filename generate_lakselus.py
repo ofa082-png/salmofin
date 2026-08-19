@@ -102,8 +102,18 @@ def fetch_delousing_chart(client):
     return [w[0] for w in weekly], [w[1] for w in weekly]
 
 def fetch_lice_data(client):
+    """All three BarentsWatch lice life stages, not just adult female
+    lice: Fastsittende_lus (fastsittende/attached — youngest, pre-mobile
+    stage), Lus_i_bevegelige_stadier (bevegelige/mobile — juvenile,
+    free-moving but not yet reproductive), Voksne_hunnlus (voksne
+    hunnlus — adult female, the one the legal limit and every other
+    chart on this page is based on). All three sit in a comparable
+    0.05-0.5 range nationally, so one shared y-axis works fine."""
     lice_trend = list(client.query("""
-        SELECT Uke, ROUND(AVG(Voksne_hunnlus),4) AS avg_lice
+        SELECT Uke,
+          ROUND(AVG(Voksne_hunnlus),4) AS avg_lice,
+          ROUND(AVG(Lus_i_bevegelige_stadier),4) AS avg_mobile,
+          ROUND(AVG(Fastsittende_lus),4) AS avg_attached
         FROM salmofin.salmofin.lice_bw
         WHERE Ar = EXTRACT(YEAR FROM CURRENT_DATE())
           AND Uke BETWEEN EXTRACT(ISOWEEK FROM CURRENT_DATE()) - 11
@@ -133,6 +143,50 @@ def fetch_lice_data(client):
     """).result())[0]
 
     return lice_trend, kpis
+
+LICE_YOY_FIRST_YEAR = 2020  # matches this project's usual "recent years only" window for
+                             # year-comparison charts (e.g. omraadeoversikt's 5yr avg) —
+                             # lice_bw actually goes back to 2012, but collection/reporting
+                             # has likely shifted enough over 14 years that older years
+                             # aren't a fair comparison to the current regime
+
+def fetch_lice_yoy(client):
+    """Weekly adult-female-lice average by ISO week, one line per year,
+    same current/recent-complete/worst-on-record + muted-rest highlight
+    pattern used for the mortality year-comparison chart on
+    fiskehelse.html — reused here for visual consistency across the
+    site, not just because it's convenient."""
+    rows = list(client.query(f"""
+        SELECT Ar, Uke, ROUND(AVG(Voksne_hunnlus),4) AS avg_lice
+        FROM salmofin.salmofin.lice_bw
+        WHERE Voksne_hunnlus IS NOT NULL AND Ar >= {LICE_YOY_FIRST_YEAR}
+        GROUP BY Ar, Uke ORDER BY Ar, Uke
+    """).result())
+
+    by_year = defaultdict(dict)
+    for r in rows:
+        by_year[r.Ar][r.Uke] = r.avg_lice
+
+    current_year = max(by_year)
+    year_series = []
+    for ar in sorted(by_year):
+        values = [by_year[ar].get(wk) for wk in range(1, 53)]
+        year_series.append({"year": ar, "values": values})
+
+    yearly_avg = {ar: (sum(v for v in s["values"] if v is not None) / max(1, sum(1 for v in s["values"] if v is not None)))
+                  for ar, s in zip(sorted(by_year), year_series)}
+    complete = {ar: avg for ar, avg in yearly_avg.items() if ar != current_year}
+    worst_year = max(complete, key=complete.get) if complete else None
+    recent_complete_year = max(complete) if complete else None
+    if worst_year == recent_complete_year and len(complete) > 1:
+        others = {y: v for y, v in complete.items() if y != recent_complete_year}
+        worst_year = max(others, key=others.get)
+    for s in year_series:
+        s["highlight"] = ("current" if s["year"] == current_year else
+                           "worst" if s["year"] == worst_year else
+                           "recent" if s["year"] == recent_complete_year else None)
+
+    return {"labels": [f"U{w}" for w in range(1, 53)], "series": year_series}
 
 TEMPLATE = """<!doctype html>
 <html lang="no">
@@ -183,10 +237,27 @@ TEMPLATE = """<!doctype html>
     </div>
   </div>
 
-  <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Lusenivå, siste 12 uker</div>
-  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Voksne hunnlus, snitt per lokalitet, nasjonalt.</div>
-  <div style="position:relative;width:100%;height:140px;margin-bottom:1.75rem;">
-    <canvas id="liceChart" width="640" height="140"></canvas>
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Lusenivå, siste 12 uker</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Snitt per lokalitet, nasjonalt, alle tre stadier — fastsittende (yngst) → bevegelige → voksne hunnlus (eneste stadiet lusegrensen gjelder for).</div>
+  <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;font-size:11px;color:var(--text-secondary);">
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#eda100;"></span>Fastsittende</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#1baf7a;"></span>Bevegelige</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#2a78d6;"></span>Voksne hunnlus</span>
+  </div>
+  <div style="position:relative;width:100%;height:160px;margin-bottom:1.75rem;">
+    <canvas id="liceChart" width="640" height="160"></canvas>
+  </div>
+
+  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Voksne hunnlus, år for år</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Snitt per uke, nasjonalt — viser om {lice_year_current} ligger over eller under tidligere år på samme tidspunkt i sesongen.</div>
+  <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;font-size:11px;color:var(--text-secondary);">
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#c1392b;"></span>{lice_year_current} (så langt)</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#2a78d6;"></span>{lice_year_recent} (siste fulle år)</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#eda100;"></span>{lice_year_worst} (verst på rekord)</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#89878180;"></span>Øvrige år</span>
+  </div>
+  <div style="position:relative;width:100%;height:180px;margin-bottom:1.75rem;">
+    <canvas id="liceYoyChart" width="640" height="180"></canvas>
   </div>
 
   <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Avlusningsfartøy</div>
@@ -204,9 +275,28 @@ TEMPLATE = """<!doctype html>
 <script>
 new Chart(document.getElementById('liceChart'), {{
   type: 'line',
-  data: {{ labels: {lice_labels_json}, datasets: [{{ data: {lice_values_json}, borderColor: '#2a78d6', backgroundColor: 'rgba(42,120,214,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }}] }},
+  data: {{ labels: {lice_labels_json}, datasets: [
+    {{ label: 'Fastsittende', data: {lice_attached_json}, borderColor: '#eda100', backgroundColor: '#eda100', fill: false, tension: 0.3, pointRadius: 0, borderWidth: 2 }},
+    {{ label: 'Bevegelige', data: {lice_mobile_json}, borderColor: '#1baf7a', backgroundColor: '#1baf7a', fill: false, tension: 0.3, pointRadius: 0, borderWidth: 2 }},
+    {{ label: 'Voksne hunnlus', data: {lice_values_json}, borderColor: '#2a78d6', backgroundColor: 'rgba(42,120,214,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }}
+  ] }},
   options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
     scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ display: false }} }} }} }}
+}});
+
+function highlightColor(h) {{ return h === 'current' ? '#c1392b' : h === 'recent' ? '#2a78d6' : h === 'worst' ? '#eda100' : '#89878180'; }}
+const liceYoySeries = {lice_yoy_series_json};
+new Chart(document.getElementById('liceYoyChart'), {{
+  type: 'line',
+  data: {{ labels: {lice_yoy_labels_json}, datasets: liceYoySeries.map(s => ({{
+    label: String(s.year), data: s.values, spanGaps: false,
+    borderColor: highlightColor(s.highlight), backgroundColor: highlightColor(s.highlight),
+    borderWidth: s.highlight ? 2 : 1, borderDash: s.highlight === 'current' ? [4,3] : [],
+    tension: 0.25, pointRadius: 0, order: s.highlight ? 1 : 2
+  }})) }},
+  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
+    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }},
+               x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }}, maxTicksLimit: 13 }}, grid: {{ display: false }} }} }} }}
 }});
 
 function barColors(labels, partialIdx, base) {{
@@ -227,8 +317,12 @@ if __name__ == "__main__":
     print("Fetching data from BigQuery...")
     client = get_bq_client()
     lice_trend, kpis = fetch_lice_data(client)
+    lice_yoy = fetch_lice_yoy(client)
     delousing_labels, delousing_values = fetch_delousing_chart(client)
     now = datetime.datetime.now(datetime.timezone.utc)
+
+    def find_highlight(series, key, label):
+        return next((s[key] for s in series if s["highlight"] == label), "–")
 
     html = TEMPLATE.format(
         week=now.isocalendar()[1],
@@ -240,6 +334,13 @@ if __name__ == "__main__":
         treatments_14d=kpis.treatments_14d,
         lice_labels_json=json.dumps([f"U{r.Uke}" for r in lice_trend]),
         lice_values_json=json.dumps([r.avg_lice for r in lice_trend]),
+        lice_mobile_json=json.dumps([r.avg_mobile for r in lice_trend]),
+        lice_attached_json=json.dumps([r.avg_attached for r in lice_trend]),
+        lice_yoy_labels_json=json.dumps(lice_yoy["labels"]),
+        lice_yoy_series_json=json.dumps(lice_yoy["series"]),
+        lice_year_current=find_highlight(lice_yoy["series"], "year", "current"),
+        lice_year_recent=find_highlight(lice_yoy["series"], "year", "recent"),
+        lice_year_worst=find_highlight(lice_yoy["series"], "year", "worst"),
         delousing_labels_json=json.dumps(delousing_labels),
         delousing_values_json=json.dumps(delousing_values),
         delousing_partial_idx=len(delousing_labels) - 1,

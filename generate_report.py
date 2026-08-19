@@ -280,6 +280,11 @@ def fetch_mortality_history(client):
     complete_years = {s["year"]: s["values"][11] for s in year_series if s["year"] != current_year and s["values"][11] is not None}
     worst_year = max(complete_years, key=complete_years.get) if complete_years else None
     recent_complete_year = max(complete_years) if complete_years else None
+    if worst_year == recent_complete_year and len(complete_years) > 1:
+        # they'd otherwise collide on one highlight slot and the other
+        # goes unlabeled — fall back to the runner-up worst year instead
+        others = {y: v for y, v in complete_years.items() if y != recent_complete_year}
+        worst_year = max(others, key=others.get)
     for s in year_series:
         s["highlight"] = ("current" if s["year"] == current_year else
                            "worst" if s["year"] == worst_year else
@@ -322,6 +327,9 @@ def fetch_mortality_history(client):
 
     worst_cohort = max(cohort_final, key=cohort_final.get) if cohort_final else None
     recent_complete_cohort = max(cohort_final) if cohort_final else None
+    if worst_cohort == recent_complete_cohort and len(cohort_final) > 1:
+        others = {c: v for c, v in cohort_final.items() if c != recent_complete_cohort}
+        worst_cohort = max(others, key=others.get)
     # "current" needs a real trajectory (>=12mo) to be worth highlighting — a
     # brand-new cohort with only a couple of months would otherwise outrank
     # a more informative one just for being more recent
@@ -438,6 +446,7 @@ TEMPLATE = """<!doctype html>
     <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
       <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Dødelighet, siste måned</div>
       <div style="font-size:24px;font-weight:500;">{mortality_current}%</div>
+      <div style="font-size:12px;color:{mortality_delta_color};margin-top:2px;">{mortality_delta_label} vs. forrige mnd</div>
     </div>
     <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
       <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Utkast, siste måned</div>
@@ -629,6 +638,7 @@ if __name__ == "__main__":
         table_rows=table_rows,
         mortality_current=mortality["current"] if mortality else "–",
         mortality_delta_label=(f"{'+' if mortality['delta_pp'] >= 0 else ''}{mortality['delta_pp']}pp" if mortality else "–"),
+        mortality_delta_color=("#c1392b" if mortality and mortality["delta_pp"] > 0 else "#1baf7a" if mortality and mortality["delta_pp"] < 0 else "var(--text-muted)"),
         mortality_labels_json=json.dumps(mortality["labels"] if mortality else []),
         mortality_values_json=json.dumps(mortality["values"] if mortality else []),
         discard_current=losses["current"] if losses else "–",
