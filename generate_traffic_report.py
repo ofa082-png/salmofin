@@ -16,6 +16,18 @@ AIS data source. Avlusningsfartøy (delousing vessel visits) moved to
 generate_report.py/fiskehelse.html (2026-08-17) for the same reason —
 it's a fish-health-adjacent signal, not harvest-logistics.
 
+Export volume forecast (fetch_export_regression et al.) switched its
+underlying predictor from locality visits (vessel_visits — vessels
+visiting farm sites generally) to harvest-*plant* visits
+(harvest_plant_visits CSVs — vessels physically arriving at
+slaughterhouses) on 2026-08-19, plus added a same-week vessel-capacity
+term. Confirmed via live backtest to close much of a systematic
+under-prediction the locality-based model had developed over several
+recent weeks (e.g. week 31: -9% -> -4%). The locality-visit section
+("Slakteaktivitet — lokalitetsanløp") stays locality-based — it's
+useful for its own purpose (broad, same-day activity tracking), just
+not as an export predictor.
+
 Writes docs/traffic.html.
 """
 
@@ -101,75 +113,124 @@ def _solve_linear(A, B):
                 M[r] = [x - factor * y for x, y in zip(M[r], M[col])]
     return [M[i][n] for i in range(n)]
 
-def fetch_export_regression(client, harvest_mmsi_list):
-    """Fit exports_tonn[i] ~ a*visits[i] + b*visits[i-1]
+def parse_plant_capacity(capacity_str, unit_str):
+    """Vessel capacity in tonnes from a harvest_plant_visits CSV row —
+    m3 is converted to tonnes at 0.1 t/m3, the standard wellboat
+    conversion used throughout this project."""
+    try:
+        val = float(capacity_str)
+    except (TypeError, ValueError):
+        return 0.0
+    return val * 0.1 if (unit_str or "").strip().lower() == "m3" else val
+
+def fetch_plant_export_series():
+    """{(year, week): {"visit_count": int, "capacity_t": float}} from
+    every local harvest_plant_visits CSV — completed weeks and the
+    current in-progress week both included (the caller decides which
+    weeks to actually use). This is the export regression's input as of
+    2026-08-19 (see fetch_export_regression's docstring for why), built
+    from the same CSVs the plant-status/plant-visit-matrix sections of
+    this page already read. Named distinctly from the pre-existing
+    fetch_plant_weekly_series(n_weeks) — that one returns per-vessel-
+    type visit *counts only* for the activity chart; this one is
+    export-regression-specific (visit count + capacity, keyed by
+    (year, week) for direct lookup, not a fixed n_weeks window)."""
+    weekly = defaultdict(lambda: {"visit_count": 0, "capacity_t": 0.0})
+    for path in all_plant_csvs():
+        with open(path, encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                wk = weekly[(int(row["year"]), int(row["week"]))]
+                wk["visit_count"] += 1
+                wk["capacity_t"] += parse_plant_capacity(row["capacity"], row["capacity_unit"])
+    return weekly
+
+def fetch_plant_current_week_daily():
+    """{date: {"visits": int, "capacity_t": float}} for just the current
+    in-progress week's plant CSV, keyed by entry_time's date — used to
+    pace-project this week's plant visits/capacity for the live forecast
+    card. Returns {} if no partial file exists yet (e.g. very early
+    Monday before the day's fetch has run)."""
+    path = current_week_plant_path()
+    if not path:
+        return {}
+    daily = defaultdict(lambda: {"visits": 0, "capacity_t": 0.0})
+    with open(path, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            d = datetime.date.fromisoformat(row["entry_time"][:10])
+            rec = daily[d]
+            rec["visits"] += 1
+            rec["capacity_t"] += parse_plant_capacity(row["capacity"], row["capacity_unit"])
+    return daily
+
+def fetch_export_regression(client, plant_weekly):
+    """Fit exports_tonn[i] ~ a*visits[i] + b*visits[i-1] + g*capacity_t[i]
     + d*sin(2*pi*wk/52) + e*cos(2*pi*wk/52) + f*trend_weeks + c using
-    every matched (year, week) of harvest-fleet locality visits vs.
-    BigQuery export data. Refit live on every run — rather than
-    hardcoding coefficients — so the relationship self-corrects as the
-    fleet or export mix drifts, instead of silently going stale.
+    every matched (year, week) of harvest-*plant* visits (vessels
+    physically arriving at slaughterhouses) vs. BigQuery export data.
+    Refit live on every run — rather than hardcoding coefficients — so
+    the relationship self-corrects as the fleet or export mix drifts,
+    instead of silently going stale.
+
+    Switched from BigQuery *locality* visits (vessel_visits — vessels
+    visiting farm sites generally, one step removed from the actual
+    slaughter event) to harvest-*plant* visits (harvest_plant_visits
+    CSVs) on 2026-08-19. A capacity-only patch on top of the old
+    locality-based model was tried first and genuinely improved overall
+    fit (R^2 0.82->0.88) but did NOT close a real, live systematic
+    under-prediction spanning several recent weeks (confirmed against
+    an independently-built plant-visits+capacity model that tracked
+    those same weeks 3-6x tighter, e.g. week 31: locality-based -6.6%
+    vs. plant-based +1.6%) — the plant signal itself, not capacity, is
+    what was missing. Same two-visit-term / seasonal-harmonic / trend
+    structure as the old model, just fed the better predictor, plus the
+    capacity term (kept, since it's a real improvement on its own).
 
     Two visit terms, not one: a single-variable same-week-only fit gets
-    r=0.91, but last week's *already-known* (not forecast) visit count
-    carries real independent signal — a day-level lag scan peaks at a
-    2-3 day shift, consistent with the real harvest-to-export processing
-    lag — and adding it as a second term lifts R^2 from 0.82 to 0.86
-    while adding zero extra forecast uncertainty for that term.
+    real independent signal from last week's *already-known* (not
+    forecast) visit count too — a day-level lag scan on the old
+    locality-based model peaked at a 2-3 day shift, consistent with the
+    real harvest-to-export processing lag — adding it as a second term
+    costs zero extra forecast uncertainty since it's always already known.
 
     Seasonal harmonic + linear trend, on top of that: exports have a
     real annual pattern (calmer H1, a Jul-Sep ramp) that a pure
     visits-only fit can't see, and a slow multi-year drift toward more
     tonnes per vessel trip (bigger/fuller loads over time) that the
-    same-week visit count alone doesn't capture either. Adding a
-    52-week sin/cos pair plus a linear weeks-since-start trend term
-    lifts weekly R^2 further (~0.86 -> ~0.87 measured live against the
-    current dataset) — a real, if modest, gain, not just added
-    noise-fitting: seasonality and trend are genuine structural
-    features of the export series, not artifacts of this particular
-    fleet's visit pattern."""
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[bigquery.ArrayQueryParameter("mmsi_list", "INT64", harvest_mmsi_list)]
-    )
-    rows = list(client.query("""
-        WITH visits AS (
-          SELECT EXTRACT(ISOYEAR FROM startTime) AS yr, EXTRACT(ISOWEEK FROM startTime) AS wk, COUNT(*) AS visit_count
-          FROM `salmofin.salmofin.vessel_visits`
-          WHERE mmsi IN UNNEST(@mmsi_list)
-          GROUP BY yr, wk
-        ),
-        exports AS (
-          SELECT year AS yr, week AS wk, SUM(vekt_tonn) AS export_tonn
-          FROM `salmofin.salmofin.salmon_export_weekly`
-          GROUP BY yr, wk
-        )
-        SELECT v.yr, v.wk, v.visit_count, e.export_tonn
-        FROM visits v JOIN exports e ON v.yr = e.yr AND v.wk = e.wk
-        ORDER BY v.yr, v.wk
-    """, job_config=job_config).result())
+    same-week visit count alone doesn't fully capture either."""
+    export_rows = list(client.query("""
+        SELECT year AS yr, week AS wk, SUM(vekt_tonn) AS export_tonn
+        FROM `salmofin.salmofin.salmon_export_weekly`
+        GROUP BY yr, wk
+    """).result())
+    export_lookup = {(int(r.yr), int(r.wk)): r.export_tonn for r in export_rows}
 
-    # 6 unknowns now (was 3) — keep a wider safety margin than the old
+    keys = sorted(k for k in plant_weekly if k in export_lookup)
+
+    # 7 unknowns now (was 6) — keep a wider safety margin than the old
     # "12" floor so the fit isn't running on a handful more rows than
-    # parameters. Live history is ~135 weeks (2024+), far past this.
-    if len(rows) < 26:
+    # parameters. Local plant-CSV history is 130+ weeks (2024+), far past this.
+    if len(keys) < 26:
         return None
 
-    visits = [r.visit_count for r in rows]
-    exports = [r.export_tonn for r in rows]
+    visits = [plant_weekly[k]["visit_count"] for k in keys]
+    capacity = [plant_weekly[k]["capacity_t"] for k in keys]
+    exports = [export_lookup[k] for k in keys]
     # ISO (year, week) -> Monday date, so trend can be a plain weeks-since-
     # start count rather than dealing with 52/53-week-year ISO-week math.
-    mondays = [datetime.date.fromisocalendar(int(r.yr), int(r.wk), 1) for r in rows]
+    mondays = [datetime.date.fromisocalendar(k[0], k[1], 1) for k in keys]
     ref_monday = mondays[0]
 
     xs = visits[1:]        # this-week visits
     xs_prev = visits[:-1]  # last-week visits (known, not forecast)
+    caps = capacity[1:]    # this-week capacity
     ys = exports[1:]
-    wks = [r.wk for r in rows[1:]]
-    trend = [(mondays[i] - ref_monday).days // 7 for i in range(1, len(rows))]
+    wks = [k[1] for k in keys[1:]]
+    trend = [(mondays[i] - ref_monday).days // 7 for i in range(1, len(keys))]
     m = len(ys)
 
-    # design matrix columns: [visits, visits_prev, sin, cos, trend, 1]
+    # design matrix columns: [visits, visits_prev, capacity, sin, cos, trend, 1]
     design = [
-        [xs[i], xs_prev[i], math.sin(2 * math.pi * wks[i] / 52), math.cos(2 * math.pi * wks[i] / 52), trend[i], 1.0]
+        [xs[i], xs_prev[i], caps[i], math.sin(2 * math.pi * wks[i] / 52), math.cos(2 * math.pi * wks[i] / 52), trend[i], 1.0]
         for i in range(m)
     ]
     p = len(design[0])
@@ -184,7 +245,7 @@ def fetch_export_regression(client, harvest_mmsi_list):
     coef = _solve_linear(A, B)
     if coef is None:
         return None
-    a, b, d, e, f, c = coef
+    a, b, g, d, e, f, c = coef
 
     preds = [sum(coef_i * x_i for coef_i, x_i in zip(coef, row)) for row in design]
     my = sum(ys) / m
@@ -198,6 +259,7 @@ def fetch_export_regression(client, harvest_mmsi_list):
     return {
         "a": a,
         "b": b,
+        "g": g,
         "d": d,
         "e": e,
         "f": f,
@@ -208,10 +270,10 @@ def fetch_export_regression(client, harvest_mmsi_list):
         "n_weeks": m,
     }
 
-def _predict_export(regression, visits, prev_visits, monday):
+def _predict_export(regression, visits, prev_visits, capacity, monday):
     """Apply a fitted export_regression to one (visits, prev_visits,
-    week) point. `monday` gives both the ISO week (for the seasonal
-    term) and the trend position (weeks since the regression's
+    capacity, week) point. `monday` gives both the ISO week (for the
+    seasonal term) and the trend position (weeks since the regression's
     ref_monday) — shared by the live forecast card and the backtest
     table so both use exactly the same model, not a re-derived copy."""
     wk = monday.isocalendar()[1]
@@ -219,6 +281,7 @@ def _predict_export(regression, visits, prev_visits, monday):
     return (
         regression["a"] * visits
         + regression["b"] * prev_visits
+        + regression["g"] * capacity
         + regression["d"] * math.sin(2 * math.pi * wk / 52)
         + regression["e"] * math.cos(2 * math.pi * wk / 52)
         + regression["f"] * trend
@@ -238,22 +301,23 @@ def fetch_export_lookup(client, min_year):
     """).result())
     return {(r.yr, r.wk): r.export_tonn for r in rows}
 
-def build_export_backtest_rows(regression, weekly_mondays, weekly_visits, export_lookup, n_weeks):
-    """Predicted-vs-actual for the last n_weeks *completed* weeks (the
-    current partial week is excluded by the caller). Each prediction
-    uses two fully-known visit counts — no forecast uncertainty — so
-    any gap between predicted and actual here is purely model error,
-    not projection error."""
+def build_export_backtest_rows(regression, weekly_mondays, plant_weekly, export_lookup, n_weeks):
+    """Predicted-vs-actual for the last n_weeks *completed* weeks —
+    `weekly_mondays` must already exclude the current partial week (its
+    own prediction is the live forecast card, not this table). Each
+    prediction uses fully-known plant visit counts and capacity — no
+    forecast uncertainty — so any gap between predicted and actual here
+    is purely model error, not projection error. `plant_weekly` is
+    keyed by (year, week) directly (see fetch_plant_export_series), so
+    each backtested week — and its "last week" term — is looked up
+    directly rather than needing a parallel index-aligned array."""
     rows = []
-    # weekly_mondays/weekly_visits are oldest -> newest; need index i-1 for
-    # the "last week" term, so start from 1.
-    start = max(1, len(weekly_mondays) - n_weeks)
-    for i in range(start, len(weekly_mondays)):
-        monday = weekly_mondays[i]
-        visits = weekly_visits[i]
-        prev_visits = weekly_visits[i - 1]
-        predicted = _predict_export(regression, visits, prev_visits, monday)
+    for monday in weekly_mondays[-n_weeks:]:
         iso = monday.isocalendar()
+        prev_iso = (monday - datetime.timedelta(weeks=1)).isocalendar()
+        wk = plant_weekly.get((iso[0], iso[1]), {"visit_count": 0, "capacity_t": 0.0})
+        prev_wk = plant_weekly.get((prev_iso[0], prev_iso[1]), {"visit_count": 0, "capacity_t": 0.0})
+        predicted = _predict_export(regression, wk["visit_count"], prev_wk["visit_count"], wk["capacity_t"], monday)
         actual = export_lookup.get((iso[0], iso[1]))
         diff_pct = ((predicted - actual) / actual * 100) if actual else None
         rows.append({
@@ -676,24 +740,35 @@ def fetch_plant_weekday_series(n_weeks):
         }
     return result
 
-def build_export_forecast_card(regression, this_week_forecast, last_week_actual, current_monday):
+def build_export_forecast_card(regression, this_week_visit_forecast, prev_week_visits, this_week_capacity_forecast, current_monday):
     """Card showing this week's projected total export tonnage, derived
-    from this week's harvest-locality-visit forecast *and* last week's
-    already-known actual visit count, via a regression fit live against
-    BigQuery export data — now also accounting for seasonal position
-    (current_monday's ISO week) and long-run trend, not just the two
-    visit terms. Independent of the Alle/Brønnbåt/Prosesseringsfartøy
-    pill — exports aren't a per-vessel-type quantity, so this always
-    uses the combined ("Alle") numbers regardless of which pill is
-    currently selected."""
-    if regression is None or last_week_actual is None:
+    from this week's harvest-*plant*-visit forecast (paced from the
+    current in-progress week's plant CSV, refreshed daily — see
+    fetch_plant_current_week_daily) plus this week's paced capacity
+    forecast, last week's already-known actual plant visit count, and a
+    regression fit live against BigQuery export data accounting for
+    seasonal position and long-run trend too.
+
+    This week's visit/capacity pacing reuses the same weekday-elapsed
+    fraction already computed for the locality-visit forecast elsewhere
+    on this page (build_harvest_group_data's `frac`), rather than
+    building a second, separate plant-specific pacing curve — plant and
+    locality visits come from the same wellboat/processing fleet, so
+    the fraction of a typical week elapsed by today is a reasonable
+    shared proxy for both, not something that needs re-deriving per
+    data source.
+
+    Independent of the Alle/Brønnbåt/Prosesseringsfartøy pill — exports
+    aren't a per-vessel-type quantity, so this always uses the combined
+    numbers regardless of which pill is currently selected."""
+    if regression is None or prev_week_visits is None:
         return ""
-    predicted = round(_predict_export(regression, this_week_forecast, last_week_actual, current_monday))
+    predicted = round(_predict_export(regression, this_week_visit_forecast, prev_week_visits, this_week_capacity_forecast, current_monday))
     return f"""
     <div class="card" style="margin-bottom:14px;border:1px solid var(--accent);">
       <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Anslått eksportvolum denne uken</div>
       <div style="font-size:24px;font-weight:500;">{predicted:,.0f} t</div>
-      <div style="font-size:12px;color:var(--text-muted);">Utledet fra anløpsprognose denne uken + faktiske anløp forrige uke (begge Alle), justert for sesongvariasjon og trend. Modell tilpasset live mot eksportdata: R²={regression['r2']:.2f}, avvik ~±{regression['rmse_pct']}% (siste {regression['n_weeks']} uker). Ikke offisielle tall.</div>
+      <div style="font-size:12px;color:var(--text-muted);">Utledet fra slakterianløp-prognose denne uken (anløp + kapasitet) + faktiske anløp forrige uke, justert for sesongvariasjon og trend. Modell tilpasset live mot eksportdata: R²={regression['r2']:.2f}, avvik ~±{regression['rmse_pct']}% (siste {regression['n_weeks']} uker). Ikke offisielle tall.</div>
     </div>"""
 
 TEMPLATE = """<!doctype html>
@@ -947,23 +1022,38 @@ if __name__ == "__main__":
         f'<button class="pill" data-type="{t}">{HARVEST_LABELS[t]}</button>' for t in HARVEST_ORDER
     )
 
-    # --- Export volume forecast (regression fit live against BigQuery) ---
-    harvest_mmsi_list = [mmsi for mmsi, t in mmsi_to_type.items() if t in ("Wellboat", "Processing vessel")]
-    export_regression = fetch_export_regression(client, harvest_mmsi_list)
-    alle_weekly_values = harvest_data["Alle"]["weekly_values"]
-    last_week_actual = alle_weekly_values[-2] if len(alle_weekly_values) >= 2 else None
-    export_forecast_card = build_export_forecast_card(export_regression, harvest_data["Alle"]["forecast"], last_week_actual, current_monday)
+    # --- Export volume forecast (regression fit live against local plant CSVs + BigQuery) ---
+    plant_weekly = fetch_plant_export_series()
+    export_regression = fetch_export_regression(client, plant_weekly)
+
+    # This week's plant-visit/capacity forecast — paced from the current
+    # in-progress week's plant CSV using the same weekday-elapsed fraction
+    # already computed for the locality-visit forecast (harvest_data's
+    # `pace_pct`), see build_export_forecast_card's docstring for why.
+    plant_daily_current = fetch_plant_current_week_daily()
+    wtd_plant_visits = sum(v["visits"] for d, v in plant_daily_current.items() if d <= yesterday)
+    wtd_plant_capacity = sum(v["capacity_t"] for d, v in plant_daily_current.items() if d <= yesterday)
+    frac = harvest_data["Alle"]["pace_pct"] / 100 or (yesterday.weekday() + 1) / 7
+    plant_visit_forecast = wtd_plant_visits / frac
+    plant_capacity_forecast = wtd_plant_capacity / frac
+
+    prev_week_monday = current_monday - datetime.timedelta(weeks=1)
+    prev_week_iso = prev_week_monday.isocalendar()
+    prev_week_plant = plant_weekly.get((prev_week_iso[0], prev_week_iso[1]))
+    prev_week_plant_visits = prev_week_plant["visit_count"] if prev_week_plant else None
+
+    export_forecast_card = build_export_forecast_card(
+        export_regression, plant_visit_forecast, prev_week_plant_visits, plant_capacity_forecast, current_monday
+    )
 
     # Predicted-vs-actual backtest table: last few *completed* weeks only
     # (drop the current partial week — its own prediction is the card above).
-    weekly_mondays = [current_monday - datetime.timedelta(weeks=i) for i in range(WEEKS_HISTORY - 1, -1, -1)]
-    completed_mondays = weekly_mondays[:-1]
-    completed_visits = alle_weekly_values[:-1]
+    weekly_mondays = [current_monday - datetime.timedelta(weeks=i) for i in range(WEEKS_HISTORY, 0, -1)]
     export_backtest_section = ""
     if export_regression:
         export_lookup = fetch_export_lookup(client, current_monday.year - 1)
         backtest_rows = build_export_backtest_rows(
-            export_regression, completed_mondays, completed_visits, export_lookup, n_weeks=6
+            export_regression, weekly_mondays, plant_weekly, export_lookup, n_weeks=6
         )
         export_backtest_section = build_export_backtest_section(backtest_rows)
 

@@ -26,7 +26,7 @@
   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.5rem;">
     <div>
       <div style="font-size:18px;font-weight:500;">Trafikkrapport</div>
-      <div style="font-size:13px;color:var(--text-muted)">Data t.o.m. 18.08.2026 · oppdatert 19.08.2026 07:53 UTC</div>
+      <div style="font-size:13px;color:var(--text-muted)">Data t.o.m. 18.08.2026 · oppdatert 19.08.2026 17:58 UTC</div>
     </div>
     <div style="display:flex;gap:6px;">
       <a href="index.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">hjem →</a>
@@ -44,8 +44,8 @@
     
     <div class="card" style="margin-bottom:14px;border:1px solid var(--accent);">
       <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Anslått eksportvolum denne uken</div>
-      <div style="font-size:24px;font-weight:500;">27,597 t</div>
-      <div style="font-size:12px;color:var(--text-muted);">Utledet fra anløpsprognose denne uken + faktiske anløp forrige uke (begge Alle), justert for sesongvariasjon og trend. Modell tilpasset live mot eksportdata: R²=0.87, avvik ~±9% (siste 135 uker). Ikke offisielle tall.</div>
+      <div style="font-size:24px;font-weight:500;">32,137 t</div>
+      <div style="font-size:12px;color:var(--text-muted);">Utledet fra slakterianløp-prognose denne uken (anløp + kapasitet) + faktiske anløp forrige uke, justert for sesongvariasjon og trend. Modell tilpasset live mot eksportdata: R²=0.89, avvik ~±8% (siste 135 uker). Ikke offisielle tall.</div>
     </div>
     
     <div style="font-size:12px;color:var(--text-muted);margin:8px 0;">Prognose vs. faktisk eksportvolum, siste uker (begge tall bruker kun kjente anløp — ingen prognoseusikkerhet):</div>
@@ -62,37 +62,37 @@
         <tbody>
       <tr style="border-top:0.5px solid var(--border);">
         <td style="padding:8px 10px;">U28</td>
-        <td style="padding:8px 10px;text-align:right;">25,789 t</td>
+        <td style="padding:8px 10px;text-align:right;">26,810 t</td>
         <td style="padding:8px 10px;text-align:right;">26,620 t</td>
-        <td style="padding:8px 10px;text-align:right;"><span style="color:#008300;">-3%</span></td>
+        <td style="padding:8px 10px;text-align:right;"><span style="color:#008300;">+1%</span></td>
       </tr>
       <tr style="border-top:0.5px solid var(--border);">
         <td style="padding:8px 10px;">U29</td>
-        <td style="padding:8px 10px;text-align:right;">25,335 t</td>
+        <td style="padding:8px 10px;text-align:right;">27,370 t</td>
         <td style="padding:8px 10px;text-align:right;">29,003 t</td>
-        <td style="padding:8px 10px;text-align:right;"><span style="color:#a32d2d;">-13%</span></td>
-      </tr>
-      <tr style="border-top:0.5px solid var(--border);">
-        <td style="padding:8px 10px;">U30</td>
-        <td style="padding:8px 10px;text-align:right;">25,072 t</td>
-        <td style="padding:8px 10px;text-align:right;">26,558 t</td>
         <td style="padding:8px 10px;text-align:right;"><span style="color:#008300;">-6%</span></td>
       </tr>
       <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">U30</td>
+        <td style="padding:8px 10px;text-align:right;">26,576 t</td>
+        <td style="padding:8px 10px;text-align:right;">26,558 t</td>
+        <td style="padding:8px 10px;text-align:right;"><span style="color:#008300;">+0%</span></td>
+      </tr>
+      <tr style="border-top:0.5px solid var(--border);">
         <td style="padding:8px 10px;">U31</td>
-        <td style="padding:8px 10px;text-align:right;">25,171 t</td>
+        <td style="padding:8px 10px;text-align:right;">26,497 t</td>
         <td style="padding:8px 10px;text-align:right;">27,655 t</td>
-        <td style="padding:8px 10px;text-align:right;"><span style="color:#008300;">-9%</span></td>
+        <td style="padding:8px 10px;text-align:right;"><span style="color:#008300;">-4%</span></td>
       </tr>
       <tr style="border-top:0.5px solid var(--border);">
         <td style="padding:8px 10px;">U32</td>
-        <td style="padding:8px 10px;text-align:right;">26,384 t</td>
+        <td style="padding:8px 10px;text-align:right;">25,401 t</td>
         <td style="padding:8px 10px;text-align:right;">29,240 t</td>
-        <td style="padding:8px 10px;text-align:right;"><span style="color:#008300;">-10%</span></td>
+        <td style="padding:8px 10px;text-align:right;"><span style="color:#a32d2d;">-13%</span></td>
       </tr>
       <tr style="border-top:0.5px solid var(--border);">
         <td style="padding:8px 10px;">U33</td>
-        <td style="padding:8px 10px;text-align:right;">27,915 t</td>
+        <td style="padding:8px 10px;text-align:right;">25,953 t</td>
         <td style="padding:8px 10px;text-align:right;"><span style="color:var(--text-muted);">ikke publisert ennå</span></td>
         <td style="padding:8px 10px;text-align:right;"></td>
       </tr></tbody>
@@ -160,15 +160,6 @@
         <tbody id="plantRows"></tbody>
       </table>
     </div>
-  </section>
-
-  <section>
-    <div class="section-title">Avlusningsfartøy</div>
-    <div class="section-sub">Kun beskrivende — testet mot faktiske avlusningsregistreringer og fanger foreløpig opp ca. 22–26% av dem, så dette er ikke en pålitelig indikator ennå, kun et rått anløpsbilde.</div>
-    <div style="position:relative;width:100%;height:150px;margin-bottom:4px;">
-      <canvas id="delousingWeeklyChart" width="640" height="150"></canvas>
-    </div>
-    <div style="font-size:11px;color:var(--text-muted);">Siste søyle er inneværende uke (delvis).</div>
   </section>
 
   <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
@@ -257,13 +248,6 @@ document.querySelectorAll('#harvestPills .pill').forEach(el => {
   el.addEventListener('click', () => showHarvest(el.dataset.type));
 });
 showHarvest('Alle');
-
-new Chart(document.getElementById('delousingWeeklyChart'), {
-  type: 'bar',
-  data: { labels: ["U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34"], datasets: [{ data: [34, 37, 41, 32, 32, 27, 48, 48, 34, 5], backgroundColor: barColors(["U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34"], 9, '#52514e'), borderRadius: 4 }] },
-  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-    scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 10 } }, grid: { display: false } } } }
-});
 </script>
 </body>
 </html>
