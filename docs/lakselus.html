@@ -19,7 +19,7 @@
   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.25rem;">
     <div>
       <div style="font-size:18px;font-weight:500;">Lakselus — ukesrapport</div>
-      <div style="font-size:13px;color:var(--text-muted)">Uke 34, 2026 · oppdatert 22.08.2026</div>
+      <div style="font-size:13px;color:var(--text-muted)">Uke 34, 2026 · oppdatert 23.08.2026</div>
     </div>
     <div style="display:flex;gap:8px;align-items:baseline;">
       <a href="index.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">hjem →</a>
@@ -114,7 +114,7 @@ function barColors(labels, partialIdx, base) {
 }
 new Chart(document.getElementById('delousingWeeklyChart'), {
   type: 'bar',
-  data: { labels: ["U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34"], datasets: [{ data: [21, 40, 34, 37, 41, 32, 32, 27, 48, 48, 34, 13], backgroundColor: barColors(["U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34"], 11, '#52514e'), borderRadius: 4 }] },
+  data: { labels: ["U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34"], datasets: [{ data: [21, 40, 34, 37, 41, 32, 32, 27, 48, 48, 34, 15], backgroundColor: barColors(["U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34"], 11, '#52514e'), borderRadius: 4 }] },
   options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
     scales: { y: { ticks: { color: '#898781', font: { size: 11 } }, grid: { color: '#e1e0d9' } }, x: { ticks: { color: '#898781', font: { size: 10 } }, grid: { display: false } } } }
 });
