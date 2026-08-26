@@ -32,22 +32,22 @@
       <div style="width:26px;height:26px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:500;">s</div>
       <div style="font-size:18px;font-weight:500;">salmofin</div>
     </div>
-    <div style="font-size:11px;color:var(--text-muted);">oppdatert 25.08.2026 08:20 UTC</div>
+    <div style="font-size:11px;color:var(--text-muted);">oppdatert 26.08.2026 08:11 UTC</div>
   </div>
 
   <div class="grid">
     
     <a href="lakselus.html" class="card">
       <div class="tile-header">🐛 Lakselus og behandling</div>
-      <div class="tile-value">0.14 voksne/fisk</div>
-      <div class="tile-delta" style="color:var(--text-success)">-2%</div>
+      <div class="tile-value">0.15 voksne/fisk</div>
+      <div class="tile-delta" style="color:var(--text-danger)">+7%</div>
       <div class="tile-link">Nivå og behandlinger →</div>
     </a>
     
     <a href="fiskehelse.html" class="card">
       <div class="tile-header">🦠 Sykdom</div>
       <div class="tile-value">39 aktive tilfeller</div>
-      <div class="tile-delta" style="color:var(--text-success)">-2 nye siste uke</div>
+      <div class="tile-delta" style="color:var(--text-muted)">+0 nye siste uke</div>
       <div class="tile-link">Status og sykdomstilfeller →</div>
     </a>
     
@@ -91,8 +91,8 @@
 <script>
 (function(){
   var svg = document.getElementById('liceChart');
-  var data = [0.07, 0.085, 0.098, 0.108, 0.116, 0.116, 0.114, 0.112, 0.129, 0.138, 0.141, 0.138];
-  var labels = ["U22", "U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33"];
+  var data = [0.085, 0.098, 0.108, 0.116, 0.116, 0.114, 0.112, 0.129, 0.138, 0.141, 0.138, 0.147];
+  var labels = ["U23", "U24", "U25", "U26", "U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34"];
   var w = 560, h = 90, padL = 20, padR = 10, padT = 10, padB = 16;
   var min = Math.min.apply(null, data), max = Math.max.apply(null, data);
   var range = (max - min) || 1;
