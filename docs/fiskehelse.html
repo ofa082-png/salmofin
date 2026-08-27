@@ -20,7 +20,7 @@
   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.25rem;">
     <div>
       <div style="font-size:18px;font-weight:500;">Fiskehelse — ukesrapport</div>
-      <div style="font-size:13px;color:var(--text-muted)">Uke 35, 2026 · oppdatert 26.08.2026</div>
+      <div style="font-size:13px;color:var(--text-muted)">Uke 35, 2026 · oppdatert 27.08.2026</div>
     </div>
     <div style="display:flex;gap:8px;align-items:baseline;">
       <a href="index.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">hjem →</a>
@@ -35,11 +35,11 @@
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;">
     <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
       <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Aktive sykdomstilfeller</div>
-      <div style="font-size:24px;font-weight:500;">39</div>
+      <div style="font-size:24px;font-weight:500;">40</div>
     </div>
     <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
       <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Aktive lokaliteter</div>
-      <div style="font-size:24px;font-weight:500;">37</div>
+      <div style="font-size:24px;font-weight:500;">38</div>
     </div>
     <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
       <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Ulike sykdommer</div>
@@ -47,7 +47,7 @@
     </div>
     <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
       <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Nye siste 14 dager</div>
-      <div style="font-size:24px;font-weight:500;">3</div>
+      <div style="font-size:24px;font-weight:500;">2</div>
     </div>
   </div>
 
@@ -62,6 +62,18 @@
       </tr>
       
       <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">Storvika I Skjerstadfjorden</td>
+        <td style="padding:8px 10px;">INFEKSIØS_LAKSEANEMI</td>
+        <td style="padding:8px 10px;"><span style="background:#f7c1c1;color:#791f1f;font-size:11px;padding:2px 8px;border-radius:4px;">Bekreftet</span></td>
+        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">25.08</td>
+      </tr>
+      <tr style="border-top:0.5px solid var(--border);">
+        <td style="padding:8px 10px;">Fugløya</td>
+        <td style="padding:8px 10px;">PD</td>
+        <td style="padding:8px 10px;"><span style="background:#fac775;color:#633806;font-size:11px;padding:2px 8px;border-radius:4px;">Mistanke</span></td>
+        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">25.08</td>
+      </tr>
+      <tr style="border-top:0.5px solid var(--border);">
         <td style="padding:8px 10px;">Øksengård</td>
         <td style="padding:8px 10px;">INFEKSIØS_LAKSEANEMI</td>
         <td style="padding:8px 10px;"><span style="background:#fac775;color:#633806;font-size:11px;padding:2px 8px;border-radius:4px;">Mistanke</span></td>
@@ -74,13 +86,13 @@
         <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">23.08</td>
       </tr>
       <tr style="border-top:0.5px solid var(--border);">
-        <td style="padding:8px 10px;">Buholmen</td>
+        <td style="padding:8px 10px;">Uføro</td>
         <td style="padding:8px 10px;">PD</td>
         <td style="padding:8px 10px;"><span style="background:#c0dd97;color:#27500a;font-size:11px;padding:2px 8px;border-radius:4px;">Avsluttet</span></td>
         <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">22.08</td>
       </tr>
       <tr style="border-top:0.5px solid var(--border);">
-        <td style="padding:8px 10px;">Uføro</td>
+        <td style="padding:8px 10px;">Buholmen</td>
         <td style="padding:8px 10px;">PD</td>
         <td style="padding:8px 10px;"><span style="background:#c0dd97;color:#27500a;font-size:11px;padding:2px 8px;border-radius:4px;">Avsluttet</span></td>
         <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">22.08</td>
@@ -130,7 +142,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <script>
-const sites = [{"id": "45159", "name": "Aukan", "lat": 63.162167, "lon": 8.311933, "diseases": ["FRANCISELLOSE"]}, {"id": "10409", "name": "Kjelneset", "lat": 64.643867, "lon": 11.388867, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "17077", "name": "Trettevik", "lat": 69.5115, "lon": 18.022167, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "31357", "name": "Geitryggen", "lat": 64.751267, "lon": 11.189217, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "31557", "name": "Valøyan", "lat": 63.81835, "lon": 8.463817, "diseases": ["INFEKSIOES_LAKSEANEMI", "PANKREASSYKDOM"]}, {"id": "35377", "name": "Kveitskjeret", "lat": 63.825033, "lon": 8.444633, "diseases": ["INFEKSIOES_LAKSEANEMI", "PANKREASSYKDOM"]}, {"id": "37057", "name": "Mjøsund Vest", "lat": 68.90805, "lon": 17.407817, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "38857", "name": "Vannfjorden", "lat": 71.0171, "lon": 25.390833, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "39537", "name": "Gyltneset", "lat": 64.683817, "lon": 11.36595, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "45198", "name": "Purkholmen", "lat": 64.80645, "lon": 10.565933, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "10041", "name": "Kviksholmen", "lat": 60.054317, "lon": 5.090733, "diseases": ["PANKREASSYKDOM"]}, {"id": "10045", "name": "Eidholmen", "lat": 60.088083, "lon": 5.120633, "diseases": ["PANKREASSYKDOM"]}, {"id": "10232", "name": "Mannbruholmen", "lat": 63.84705, "lon": 8.536867, "diseases": ["PANKREASSYKDOM"]}, {"id": "10311", "name": "Storlia", "lat": 61.203133, "lon": 5.193833, "diseases": ["PANKREASSYKDOM"]}, {"id": "11688", "name": "Portevika", "lat": 61.190667, "lon": 5.081683, "diseases": ["PANKREASSYKDOM"]}, {"id": "12394", "name": "Ørnøya", "lat": 63.760017, "lon": 8.4477, "diseases": ["PANKREASSYKDOM"]}, {"id": "12435", "name": "Grøttingsøy", "lat": 63.87955, "lon": 8.547883, "diseases": ["PANKREASSYKDOM"]}, {"id": "12449", "name": "Tennøya", "lat": 63.805033, "lon": 8.4444, "diseases": ["PANKREASSYKDOM"]}, {"id": "13549", "name": "Løypingneset", "lat": 61.821333, "lon": 5.250533, "diseases": ["PANKREASSYKDOM"]}, {"id": "13837", "name": "Verpeide", "lat": 61.902217, "lon": 5.209233, "diseases": ["PANKREASSYKDOM"]}, {"id": "14039", "name": "Litle Lunnøy", "lat": 60.02005, "lon": 5.169533, "diseases": ["PANKREASSYKDOM"]}, {"id": "14040", "name": "Krigsholmen", "lat": 60.081383, "lon": 5.124117, "diseases": ["PANKREASSYKDOM"]}, {"id": "14042", "name": "Kattholmen", "lat": 63.867683, "lon": 8.677683, "diseases": ["PANKREASSYKDOM"]}, {"id": "20559", "name": "Langskjæra", "lat": 63.8225, "lon": 8.75505, "diseases": ["PANKREASSYKDOM"]}, {"id": "20595", "name": "Kyrholmen S", "lat": 60.161583, "lon": 5.207633, "diseases": ["PANKREASSYKDOM"]}, {"id": "26135", "name": "Kjørsvikgrunn", "lat": 63.457717, "lon": 9.0756, "diseases": ["PANKREASSYKDOM"]}, {"id": "28636", "name": "Rataren", "lat": 63.7813, "lon": 8.521533, "diseases": ["PANKREASSYKDOM"]}, {"id": "32577", "name": "Klammerholmen", "lat": 60.08165, "lon": 5.168567, "diseases": ["PANKREASSYKDOM"]}, {"id": "33077", "name": "Elveneset", "lat": 61.205833, "lon": 5.131717, "diseases": ["PANKREASSYKDOM"]}, {"id": "33737", "name": "Olausskjæret", "lat": 63.7917, "lon": 8.504717, "diseases": ["PANKREASSYKDOM"]}, {"id": "34857", "name": "Salatskjæra", "lat": 63.90485, "lon": 8.589133, "diseases": ["PANKREASSYKDOM"]}, {"id": "37197", "name": "Ruggstein", "lat": 63.770083, "lon": 8.476033, "diseases": ["PANKREASSYKDOM"]}, {"id": "38797", "name": "Oløya N", "lat": 63.852733, "lon": 8.591083, "diseases": ["PANKREASSYKDOM"]}, {"id": "39917", "name": "Fureneset", "lat": 61.798083, "lon": 5.125833, "diseases": ["PANKREASSYKDOM"]}, {"id": "45072", "name": "Bleket", "lat": 61.911667, "lon": 5.092217, "diseases": ["PANKREASSYKDOM"]}, {"id": "45078", "name": "Almbakkevika", "lat": 61.620333, "lon": 5.271967, "diseases": ["PANKREASSYKDOM"]}, {"id": "45211", "name": "Saltskår", "lat": 61.193133, "lon": 4.8148, "diseases": ["PANKREASSYKDOM"]}];
+const sites = [{"id": "45159", "name": "Aukan", "lat": 63.162167, "lon": 8.311933, "diseases": ["FRANCISELLOSE"]}, {"id": "10409", "name": "Kjelneset", "lat": 64.643867, "lon": 11.388867, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "17077", "name": "Trettevik", "lat": 69.5115, "lon": 18.022167, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "31357", "name": "Geitryggen", "lat": 64.751267, "lon": 11.189217, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "31557", "name": "Valøyan", "lat": 63.81835, "lon": 8.463817, "diseases": ["INFEKSIOES_LAKSEANEMI", "PANKREASSYKDOM"]}, {"id": "32397", "name": "Storvika I Skjerstadfjorden", "lat": 67.203967, "lon": 15.275233, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "35377", "name": "Kveitskjeret", "lat": 63.825033, "lon": 8.444633, "diseases": ["INFEKSIOES_LAKSEANEMI", "PANKREASSYKDOM"]}, {"id": "37057", "name": "Mjøsund Vest", "lat": 68.90805, "lon": 17.407817, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "38857", "name": "Vannfjorden", "lat": 71.0171, "lon": 25.390833, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "39537", "name": "Gyltneset", "lat": 64.683817, "lon": 11.36595, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "45198", "name": "Purkholmen", "lat": 64.80645, "lon": 10.565933, "diseases": ["INFEKSIOES_LAKSEANEMI"]}, {"id": "10041", "name": "Kviksholmen", "lat": 60.054317, "lon": 5.090733, "diseases": ["PANKREASSYKDOM"]}, {"id": "10045", "name": "Eidholmen", "lat": 60.088083, "lon": 5.120633, "diseases": ["PANKREASSYKDOM"]}, {"id": "10232", "name": "Mannbruholmen", "lat": 63.84705, "lon": 8.536867, "diseases": ["PANKREASSYKDOM"]}, {"id": "10311", "name": "Storlia", "lat": 61.203133, "lon": 5.193833, "diseases": ["PANKREASSYKDOM"]}, {"id": "11688", "name": "Portevika", "lat": 61.190667, "lon": 5.081683, "diseases": ["PANKREASSYKDOM"]}, {"id": "12394", "name": "Ørnøya", "lat": 63.760017, "lon": 8.4477, "diseases": ["PANKREASSYKDOM"]}, {"id": "12435", "name": "Grøttingsøy", "lat": 63.87955, "lon": 8.547883, "diseases": ["PANKREASSYKDOM"]}, {"id": "12449", "name": "Tennøya", "lat": 63.805033, "lon": 8.4444, "diseases": ["PANKREASSYKDOM"]}, {"id": "13549", "name": "Løypingneset", "lat": 61.821333, "lon": 5.250533, "diseases": ["PANKREASSYKDOM"]}, {"id": "13837", "name": "Verpeide", "lat": 61.902217, "lon": 5.209233, "diseases": ["PANKREASSYKDOM"]}, {"id": "14039", "name": "Litle Lunnøy", "lat": 60.02005, "lon": 5.169533, "diseases": ["PANKREASSYKDOM"]}, {"id": "14040", "name": "Krigsholmen", "lat": 60.081383, "lon": 5.124117, "diseases": ["PANKREASSYKDOM"]}, {"id": "14042", "name": "Kattholmen", "lat": 63.867683, "lon": 8.677683, "diseases": ["PANKREASSYKDOM"]}, {"id": "20559", "name": "Langskjæra", "lat": 63.8225, "lon": 8.75505, "diseases": ["PANKREASSYKDOM"]}, {"id": "20595", "name": "Kyrholmen S", "lat": 60.161583, "lon": 5.207633, "diseases": ["PANKREASSYKDOM"]}, {"id": "26135", "name": "Kjørsvikgrunn", "lat": 63.457717, "lon": 9.0756, "diseases": ["PANKREASSYKDOM"]}, {"id": "28636", "name": "Rataren", "lat": 63.7813, "lon": 8.521533, "diseases": ["PANKREASSYKDOM"]}, {"id": "32577", "name": "Klammerholmen", "lat": 60.08165, "lon": 5.168567, "diseases": ["PANKREASSYKDOM"]}, {"id": "33077", "name": "Elveneset", "lat": 61.205833, "lon": 5.131717, "diseases": ["PANKREASSYKDOM"]}, {"id": "33737", "name": "Olausskjæret", "lat": 63.7917, "lon": 8.504717, "diseases": ["PANKREASSYKDOM"]}, {"id": "34857", "name": "Salatskjæra", "lat": 63.90485, "lon": 8.589133, "diseases": ["PANKREASSYKDOM"]}, {"id": "37197", "name": "Ruggstein", "lat": 63.770083, "lon": 8.476033, "diseases": ["PANKREASSYKDOM"]}, {"id": "38797", "name": "Oløya N", "lat": 63.852733, "lon": 8.591083, "diseases": ["PANKREASSYKDOM"]}, {"id": "39917", "name": "Fureneset", "lat": 61.798083, "lon": 5.125833, "diseases": ["PANKREASSYKDOM"]}, {"id": "45072", "name": "Bleket", "lat": 61.911667, "lon": 5.092217, "diseases": ["PANKREASSYKDOM"]}, {"id": "45078", "name": "Almbakkevika", "lat": 61.620333, "lon": 5.271967, "diseases": ["PANKREASSYKDOM"]}, {"id": "45211", "name": "Saltskår", "lat": 61.193133, "lon": 4.8148, "diseases": ["PANKREASSYKDOM"]}];
 const diseaseColor = { 'PANKREASSYKDOM': '#2a78d6', 'INFEKSIOES_LAKSEANEMI': '#1baf7a', 'BAKTERIELL_NYRESYKE': '#eda100', 'FRANCISELLOSE': '#008300', 'multi': '#4a3aa7' };
 function colorFor(d) { return d.diseases.length > 1 ? diseaseColor.multi : diseaseColor[d.diseases[0]]; }
 const mw = 640, mh = 620;
