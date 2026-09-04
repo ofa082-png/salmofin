@@ -2,7 +2,6 @@ name: Notify on Pipeline Failure
 on:
   workflow_run:
     workflows:
-      - "Fetch Aquaculture Applications"
       - "Fetch Aqua Applications"
       - "Fetch Biomass"
       - "Fetch disease BW"
