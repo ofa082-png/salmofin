@@ -16,8 +16,29 @@ Endpoint chain per application:
   5. GET /api/v1/evaluation/{applicationNo}                         -> evaluation / decision (confirmed schema)
 
 Usage:
-  python fetch_aqua_applications.py              # incremental — only applications created since last run
+  python fetch_aqua_applications.py              # new applications + refresh of every open one
   python fetch_aqua_applications.py --backfill   # full history from START_DATE
+
+INCREMENTAL MODE REFRESHES OPEN APPLICATIONS - do not "optimise" this back to
+createdAfter alone. An application's status and decision change long after it
+is created, so a window keyed on created_at can never see them: the row is
+written once at creation and then never fetched again. That is exactly what
+happened here - two bulk loads (2026-06-04 and 2026-07-17), then only 2-4 new
+rows a week, and 4 of 25 sampled "pending" applications had in fact been
+GRANTED in August without the table ever noticing.
+
+The API has no modified-since filter. updatedAfter, modifiedAfter,
+changedAfter, statusSetAfter and lastModifiedAfter are all accepted and
+silently ignored, returning the full result set every time (probed 2026-09-04).
+So the only way to catch a status change is to re-fetch the application.
+
+Each run therefore does the expensive per-application calls for:
+  * applications not yet in the table (new), and
+  * applications in the table with no final decision yet (open),
+skipping anything already decided or withdrawn. The list endpoint is fetched in
+full because it is cheap - a handful of paginated calls - and doing so also
+closes the gap where applications created before the first backfill were never
+picked up at all.
 """
 
 import os
@@ -57,7 +78,7 @@ def get_bq_client():
 
 
 def get_last_created_at(client) -> str | None:
-    """MAX(created_at) from the existing table, used as createdAfter for incremental runs."""
+    """MAX(created_at) from the existing table. Only used to report drift in logs."""
     try:
         for row in client.query(
             f"SELECT FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E3SZ', MAX(created_at)) AS last "
@@ -66,6 +87,27 @@ def get_last_created_at(client) -> str | None:
             return row.last
     except Exception:
         return None
+
+
+def get_known_and_open(client) -> tuple[set, set]:
+    """
+    (every application_no in the table, those still open).
+
+    Open means no final decision recorded and not withdrawn - those are the rows
+    whose status can still change, so they are the ones worth re-fetching. A row
+    that is GRANTED or DENIED is terminal and is skipped on later runs.
+    """
+    try:
+        rows = list(client.query(
+            f"SELECT application_no, "
+            f"       (eval_result IS NULL AND withdrawn_at IS NULL) AS is_open "
+            f"FROM `{TABLE_ID}`"
+        ).result())
+    except Exception:
+        return set(), set()          # table does not exist yet
+    known = {r.application_no for r in rows}
+    open_ = {r.application_no for r in rows if r.is_open}
+    return known, open_
 
 
 # --------------------------------------------------------------------------- #
@@ -400,15 +442,26 @@ def main(backfill: bool = False):
     client = get_bq_client()
 
     if backfill:
-        created_after = START_DATE
         print(f"BACKFILL mode — fetching all applications since {START_DATE}")
+        print("\nFetching application list...")
+        app_list = fetch_list(created_after=START_DATE)
+        print(f"Found {len(app_list):,} applications.\n")
     else:
-        created_after = get_last_created_at(client)
-        print(f"INCREMENTAL mode — created after: {created_after or 'none (full fetch)'}")
+        known, open_ = get_known_and_open(client)
+        print(f"INCREMENTAL mode — table holds {len(known):,} applications, "
+              f"{len(open_):,} still open (latest created_at "
+              f"{get_last_created_at(client) or 'n/a'})")
 
-    print("\nFetching application list...")
-    app_list = fetch_list(created_after=created_after)
-    print(f"Found {len(app_list):,} applications.\n")
+        # Full list: cheap, and it also surfaces anything the old createdAfter
+        # window skipped entirely.
+        print("\nFetching application list...")
+        full = fetch_list()
+        new = [a for a in full if a.get("applicationNo") not in known]
+        refresh = [a for a in full if a.get("applicationNo") in open_]
+        app_list = new + refresh
+        print(f"Upstream has {len(full):,} applications: "
+              f"{len(new):,} new, {len(refresh):,} open to re-check, "
+              f"{len(full) - len(app_list):,} already decided (skipped).\n")
 
     if not app_list:
         print("Nothing to do.")
