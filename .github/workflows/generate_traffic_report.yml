@@ -25,3 +25,7 @@ jobs:
         with:
           commit_message: Update traffic report
           file_pattern: docs/traffic.html
+          # rebase before pushing: the report generators all commit to main and
+          # their 5-minute stagger is shorter than their runtime, so without this
+          # whichever finishes second is rejected as non-fast-forward.
+          pull: '--rebase --autostash'
