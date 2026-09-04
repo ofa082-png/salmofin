@@ -128,8 +128,12 @@ for app_no in df_apps["ApplicationNo"].dropna().unique():
     if not submissions:
         continue
 
-    # Get the latest submission ID
-    sub_id = submissions[0] if isinstance(submissions[0], int) else submissions[0].get("id")
+    # Get the latest submission ID. The field is "submissionId"; "id" is kept as
+    # a fallback in case the API reverts. Reading only "id" returned None for
+    # every application, so every one was skipped and df_subs came back empty,
+    # which then made the merge in step 5 raise KeyError on a missing column.
+    sub = submissions[0]
+    sub_id = sub if isinstance(sub, int) else (sub.get("submissionId") or sub.get("id"))
     if not sub_id:
         continue
 
@@ -176,7 +180,26 @@ df = df_apps.merge(
     on="ApplicationNo", how="left"
 )
 
-df = df.merge(df_subs, on="ApplicationNo", how="left")
+# Guard the join. If the submission endpoint returns nothing - an upstream
+# change, an outage, or a renamed field as happened above - df_subs is an empty
+# DataFrame with no columns at all, and merging on ApplicationNo raises
+# KeyError. That killed the whole run and wrote nothing, even though
+# applications and evaluations had both fetched fine. Degrade to null columns
+# and let the run finish instead.
+SUB_COLS = [
+    "NumLicences",
+    "DesiredBiomass_value", "DesiredBiomass_unit",
+    "PlannedProductionSize_value", "PlannedProductionSize_unit",
+    "ProductionCycleDuration_value", "ProductionCycleDuration_unit",
+    "MaxFeedPerMonth_value", "MaxFeedPerMonth_unit",
+]
+if df_subs.empty:
+    print("  WARNING - no submission data returned; continuing with null "
+          "submission columns. Check /api/v1/application/{no}/submissions.")
+    for col in SUB_COLS:
+        df[col] = pd.NA
+else:
+    df = df.merge(df_subs, on="ApplicationNo", how="left")
 
 # Fill pending
 df["OverallResult"] = df["OverallResult"].fillna("PENDING")
