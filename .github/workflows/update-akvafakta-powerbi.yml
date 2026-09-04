@@ -28,3 +28,7 @@ jobs:
         with:
           commit_message: Update Akvafakta Power BI data
           file_pattern: akvafakta_powerbi_data/*.csv akvafakta_powerbi_data/*_raw_querydata.json
+          # rebase before pushing: the report generators all commit to main and
+          # their 5-minute stagger is shorter than their runtime, so without this
+          # whichever finishes second is rejected as non-fast-forward.
+          pull: '--rebase --autostash'
