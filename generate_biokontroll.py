@@ -250,6 +250,21 @@ def main():
     series = build_series(raw, args.months)
     last = series["Norway"][-1]
     print(f"  {len(series['Norway'])} months, latest {last['y']}-{last['m']:02d}")
+
+    # Fiskeridirektoratet publishes last month's figures on the 20th, and this
+    # runs the same day at 08:00 after fetch_biomass at 06:00. If the publish
+    # slips we would silently re-render the month before, so say so loudly.
+    # A warning, not a failure: the report is still correct, just not new.
+    # Month M's figures are published on the 20th of month M+1, so before the
+    # 20th the newest month available is still M-2, not M-1. Anchoring on the
+    # calendar month alone would warn every time this is run mid-month.
+    today = datetime.date.today()
+    anchor = today if today.day >= 20 else today.replace(day=1) - datetime.timedelta(days=1)
+    exp_y, exp_m = (anchor.year, anchor.month - 1) if anchor.month > 1 else (anchor.year - 1, 12)
+    if (last["y"], last["m"]) < (exp_y, exp_m):
+        print(f"  WARNING - newest month is {last['y']}-{last['m']:02d}, expected "
+              f"{exp_y}-{exp_m:02d}. The source publish may have slipped, or "
+              f"fetch_biomass has not run yet. Report will repeat last month.")
     print(f"  sea-cage MTB: " +
           "  ".join(f"{s} {ceiling[s]:,}" for s in SCOPES))
 

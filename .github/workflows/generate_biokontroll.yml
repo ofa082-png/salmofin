@@ -2,11 +2,13 @@ name: Generate Biokontroll Report
 
 on:
   schedule:
-    # 21st at 09:00 UTC. Fiskeridirektoratet publishes biomass statistics on the
-    # 20th; fetch_biomass.yml lands it on the 21st at 06:00 and has taken up to
-    # an hour, so this leaves a wide margin. Running on the 20th would render
-    # last month's figures.
-    - cron: '0 9 21 * *'
+    # 20th at 08:00 UTC, two hours after fetch_biomass lands the new month.
+    # Fiskeridirektoratet publishes biostat-total-omr.json on the 20th in the
+    # small hours - observed Last-Modified Thu, 20 Aug 2026 04:38 GMT - so the
+    # figures are available same day. The generator warns if the newest month
+    # it finds is not last month, which is the signal that the publish slipped
+    # and this ran too early.
+    - cron: '0 8 20 * *'
   workflow_dispatch:
 
 jobs:
