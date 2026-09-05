@@ -1,0 +1,38 @@
+name: Generate Biokontroll Report
+
+on:
+  schedule:
+    # 21st at 09:00 UTC. Fiskeridirektoratet publishes biomass statistics on the
+    # 20th; fetch_biomass.yml lands it on the 21st at 06:00 and has taken up to
+    # an hour, so this leaves a wide margin. Running on the 20th would render
+    # last month's figures.
+    - cron: '0 9 21 * *'
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install google-cloud-bigquery google-auth db-dtypes
+      - name: Generate report
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        # --out docs publishes to the public GitHub Pages site. See the note in
+        # generate_biokontroll.py before changing this: the JSON beside the page
+        # is public too, so this is the line to change if the report ever moves
+        # behind a paywall.
+        run: python generate_biokontroll.py --out docs
+      - name: Commit updated report
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Update biokontroll report
+          file_pattern: docs/biokontroll.html docs/biokontroll_data.json
+          # rebase before pushing: several workflows commit to main, and without
+          # this whichever finishes second is rejected as non-fast-forward.
+          pull: '--rebase --autostash'

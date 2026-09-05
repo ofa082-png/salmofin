@@ -27,12 +27,29 @@ OUTPUT
     <out>/biokontroll.html        the report
     <out>/biokontroll_data.json   the same figures as data, for reuse
 
-PUBLISHING NOTE - READ BEFORE POINTING --out AT docs/
-    docs/ is served by GitHub Pages from a public repository. Anything written
-    there is world-readable, and so is the JSON beside it. If this report is
-    meant to sit behind a paywall, it must NOT be committed to docs/ - generate
-    it to a build directory and let the site that owns the paywall fetch it.
-    The default out directory is deliberately NOT docs/ for that reason.
+WHERE IT PUBLISHES, AND HOW TO MOVE IT LATER
+    The scheduled workflow runs with --out docs, which is the PUBLIC GitHub
+    Pages site. Both the page and biokontroll_data.json beside it are then
+    world-readable. That is a deliberate choice for now.
+
+    To move this behind a paywall later, nothing in this script needs to change.
+    Two things do:
+      1. change --out in .github/workflows/generate_biokontroll.yml so the files
+         land somewhere the paying site can read and the public cannot, and drop
+         the git-auto-commit step that writes them into the repo;
+      2. delete docs/biokontroll.html and docs/biokontroll_data.json - they stay
+         readable in git history, so treat anything already published as public.
+
+    biokontroll_data.json exists precisely to make that move cheap: a subscriber
+    site can render its own page from it and never expose the figures directly.
+
+    The local default stays ./build so a manual run never writes to the public
+    site by accident.
+
+SCHEDULE
+    Fiskeridirektoratet publishes biomass statistics on the 20th of each month.
+    fetch_biomass.yml lands them on the 21st at 06:00 UTC, so this runs on the
+    21st at 09:00. Running on the 20th would render the previous month.
 
 USAGE
     python generate_biokontroll.py                      # -> ./build
@@ -219,7 +236,7 @@ def render(series, ceiling, r12, out_dir, page_months):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="build",
-                    help="output directory (NOT docs/ if this is paywalled)")
+                    help="output directory. docs/ is the public Pages site; see module docstring")
     ap.add_argument("--months", type=int, default=MONTHS,
                     help="months of history to compute (>=25 for rolling 12v12)")
     ap.add_argument("--page-months", type=int, default=13,
