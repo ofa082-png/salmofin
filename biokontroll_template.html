@@ -1,0 +1,307 @@
+<title>Biologisk Kontrollrapport</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+:root{
+  --ground:#EEF2F3; --surface:#FFFFFF; --surface-2:#F6F9F9;
+  --ink:#0C1417; --ink-2:#55666D; --ink-3:#84969C;
+  --rule:#D3DDE0; --rule-2:#E5ECEE;
+  --accent:#14606B; --accent-soft:#DCEBEC;
+  --good:#2A6B54; --bad:#9B3A31; --warn:#8A6310;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,sans-serif;
+  --serif:'IBM Plex Serif',Georgia,serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0A1114; --surface:#101A1E; --surface-2:#152227;
+    --ink:#E4ECEE; --ink-2:#8FA2A9; --ink-3:#6B7E85;
+    --rule:#1E2C32; --rule-2:#182429;
+    --accent:#4FAEB8; --accent-soft:#123034;
+    --good:#5FB08F; --bad:#D2776C; --warn:#C9A24A;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0A1114; --surface:#101A1E; --surface-2:#152227;
+  --ink:#E4ECEE; --ink-2:#8FA2A9; --ink-3:#6B7E85;
+  --rule:#1E2C32; --rule-2:#182429;
+  --accent:#4FAEB8; --accent-soft:#123034;
+  --good:#5FB08F; --bad:#D2776C; --warn:#C9A24A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding:28px 22px 64px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* masthead */
+.mast{display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px;
+  border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:22px}
+.mast h1{font-family:var(--serif);font-weight:600;font-size:29px;line-height:1.1;
+  margin:0;letter-spacing:-.01em;text-wrap:balance}
+.mast .sub{font-size:13px;color:var(--ink-2);margin-top:5px}
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--accent);font-weight:500}
+.period{margin-left:auto;text-align:right}
+.period .big{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.01em}
+.period .lbl{font-size:11.5px;color:var(--ink-3);letter-spacing:.04em}
+
+/* scope tabs */
+.tabs{display:flex;gap:2px;margin:0 0 24px;border:1px solid var(--rule);
+  border-radius:3px;overflow:hidden;width:fit-content;background:var(--surface)}
+.tabs button{font-family:var(--sans);font-size:13px;font-weight:500;border:0;
+  background:transparent;color:var(--ink-2);padding:7px 17px;cursor:pointer;
+  border-right:1px solid var(--rule)}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--surface)}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+h2{font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-2);margin:0 0 12px}
+section{margin-bottom:30px}
+
+/* balance strip */
+.bal{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
+  background:var(--surface);border:1px solid var(--rule)}
+.bal .cell{padding:15px 16px;border-right:1px solid var(--rule-2);position:relative}
+.bal .cell:last-child{border-right:0}
+.bal .op{font-family:var(--mono);font-size:15px;color:var(--ink-3);
+  position:absolute;top:15px;right:9px}
+.bal .k{font-size:11.5px;color:var(--ink-2);letter-spacing:.03em;margin-bottom:5px}
+.bal .v{font-family:var(--mono);font-size:22px;font-weight:500;letter-spacing:-.02em}
+.bal .u{font-size:11px;color:var(--ink-3);margin-top:2px}
+.bal .cell.term{background:var(--surface-2)}
+.bal .cell.term .v{color:var(--accent)}
+
+/* kpi */
+/* Six tiles, fixed at 3 across so they fill two complete rows. auto-fit here
+   resolves to 5 columns at this width and orphans the sixth beside dead space. */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+  background:var(--rule);border:1px solid var(--rule)}
+@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:430px){.kpis{grid-template-columns:1fr}}
+.kpi{background:var(--surface);padding:14px 16px}
+.kpi .k{font-size:11.5px;color:var(--ink-2);margin-bottom:6px}
+.kpi .v{font-family:var(--mono);font-size:25px;font-weight:500;letter-spacing:-.02em;line-height:1.1}
+.kpi .u{font-size:11px;color:var(--ink-3)}
+.kpi .d{margin-top:7px;font-family:var(--mono);font-size:11.5px;font-weight:500}
+.up{color:var(--good)} .dn{color:var(--bad)} .flat{color:var(--ink-3)}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--surface)}
+th,td{padding:9px 11px;text-align:right;border-bottom:1px solid var(--rule-2)}
+th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);
+  font-weight:600;border-bottom:1px solid var(--rule);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+tbody tr:last-child td{border-bottom:0}
+tr.tot td{font-weight:600;border-top:1px solid var(--rule);background:var(--surface-2)}
+.scroll{overflow-x:auto;border:1px solid var(--rule)}
+.chip{font-family:var(--mono);font-size:11px;font-weight:500;padding:1px 6px;border-radius:2px}
+.chip.up{background:var(--accent-soft)}
+.chip.dn{background:var(--accent-soft)}
+
+.note{font-size:12.5px;color:var(--ink-2);line-height:1.65;margin-top:12px;
+  border-left:2px solid var(--rule);padding-left:13px;max-width:66ch}
+.note b{color:var(--ink);font-weight:600}
+figure{margin:0;background:var(--surface);border:1px solid var(--rule);padding:16px 14px 8px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-2);
+  margin:0 0 12px 2px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:1px;
+  margin-right:5px;vertical-align:-1px}
+footer{margin-top:34px;padding-top:14px;border-top:1px solid var(--rule);
+  font-size:11.5px;color:var(--ink-3);line-height:1.7}
+@media(max-width:620px){.mast h1{font-size:24px}.period{margin-left:0;text-align:left}}
+</style>
+
+<div class="wrap">
+  <div class="mast">
+    <div>
+      <div class="eyebrow">Biologisk kontroll &middot; Norsk lakseoppdrett</div>
+      <h1>Biologisk kontrollrapport</h1>
+      <div class="sub">Biomassebalanse, tilvekst og f&ocirc;rfaktor mot MTB-tak</div>
+    </div>
+    <div class="period">
+      <div class="big" id="per">&nbsp;</div>
+      <div class="lbl">Rapportm&aring;ned</div>
+    </div>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Produksjonsomr&aring;de">
+    <button role="tab" aria-selected="true" data-s="Norway">Norge</button>
+    <button role="tab" aria-selected="false" data-s="West">Vest &middot; PO 1&ndash;5</button>
+    <button role="tab" aria-selected="false" data-s="Mid">Midt &middot; PO 6&ndash;7</button>
+    <button role="tab" aria-selected="false" data-s="North">Nord &middot; PO 8&ndash;13</button>
+  </div>
+
+  <section>
+    <h2>Biomassebalanse</h2>
+    <div class="bal" id="bal"></div>
+    <div class="note" id="balnote"></div>
+  </section>
+
+  <section>
+    <h2>N&oslash;kkeltall mot samme m&aring;ned i fjor</h2>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section>
+    <h2>Siste 13 m&aring;neder</h2>
+    <figure>
+      <div class="legend">
+        <span><i style="background:var(--accent)"></i>Tilvekst</span>
+        <span><i style="background:var(--ink-3)"></i>Uttak</span>
+        <span><i style="background:var(--bad)"></i>D&oslash;dfisk</span>
+        <span><i style="background:var(--warn);border-radius:50%"></i>St&aring;ende biomasse (h&oslash;yre akse)</span>
+      </div>
+      <div class="scroll" style="border:0"><svg id="chart" width="100%" height="270" role="img"
+        aria-label="Tilvekst, uttak og st&aring;ende biomasse per m&aring;ned siste 13 m&aring;neder"></svg></div>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Produksjonsomr&aring;der &middot; rapportm&aring;ned</h2>
+    <div class="scroll"><table>
+      <thead><tr>
+        <th>Omr&aring;de</th><th>Biomasse&nbsp;t</th><th>Utnyttelse</th><th>Tilvekst&nbsp;t</th>
+        <th>Uttak&nbsp;t</th><th>Uttak&nbsp;YoY</th><th>D&oslash;dfisk&nbsp;t</th>
+        <th>F&ocirc;rfaktor</th><th>Snittvekt</th>
+      </tr></thead>
+      <tbody id="regions"></tbody>
+    </table></div>
+    <div class="note" id="regnote"></div>
+  </section>
+
+  <section>
+    <h2>Rullerende 12 m&aring;neder mot foreg&aring;ende 12</h2>
+    <div class="scroll"><table>
+      <thead><tr>
+        <th>Omr&aring;de</th><th>Uttak&nbsp;t</th><th>Endring</th><th>Tilvekst&nbsp;t</th>
+        <th>Endring</th><th>D&oslash;dfisk&nbsp;t</th><th>Tapsandel</th>
+      </tr></thead>
+      <tbody id="roll12"></tbody>
+    </table></div>
+  </section>
+
+  <footer>
+    Kilde: Fiskeridirektoratets biomassestatistikk (BIOSTAT-LAKS-OMR) og akvakulturregisteret via BarentsWatch, aggregert i BigQuery.
+    Tilvekst er beregnet som endring i st&aring;ende biomasse pluss uttak pluss estimert d&oslash;dfiskbiomasse; d&oslash;dfiskbiomasse er
+    antall d&oslash;dfisk multiplisert med snittvekt i merd, ikke rapportert vekt. F&ocirc;rfaktor er f&ocirc;rforbruk delt p&aring; tilvekst
+    &mdash; biologisk, ikke &oslash;konomisk. Utnyttelse er st&aring;ende biomasse mot summen av sj&oslash;baserte matfisktillatelser i omr&aring;det,
+    alle form&aring;l, og kan overstige 100&nbsp;% fordi MTB gjelder per selskap, ikke per omr&aring;de.
+  </footer>
+</div>
+
+<script>
+const D=/*__MONTHLY__*/null;
+const CEIL=/*__CEILING__*/null;
+const NAME={Norway:'Norge',West:'Vest',Mid:'Midt',North:'Nord'};
+const t=n=>Math.round(n).toLocaleString('nb-NO');
+const pc=(a,b)=>b?(a/b-1)*100:0;
+const dl=v=>(v>0?'+':'')+v.toFixed(1)+'%';
+const cls=(v,inv)=>Math.abs(v)<0.5?'flat':((inv?v<0:v>0)?'up':'dn');
+let scope='Norway';
+
+function balance(){
+  const s=D[scope], c=s[s.length-1], p=s[s.length-2];
+  document.getElementById('per').textContent=c.y+'-'+String(c.m).padStart(2,'0');
+  const cells=[
+    ['Inng&aring;ende biomasse',p.bio,'tonn 1. i m&aring;neden','',''],
+    ['Tilvekst',c.prod,'tonn produsert','+','term'],
+    ['Uttak',c.harv,t(c.harv_n)+' mill. fisk','&minus;',''],
+    ['D&oslash;dfisk',c.dead_t,t(c.dead_n)+' mill. fisk','&minus;',''],
+    ['Utg&aring;ende biomasse',c.bio,'tonn ved m&aring;nedsslutt','=','term']];
+  document.getElementById('bal').innerHTML=cells.map(([k,v,u,op,cl])=>
+    `<div class="cell ${cl}">${op?`<span class="op">${op}</span>`:''}
+      <div class="k">${k}</div><div class="v num">${t(v)}</div><div class="u">${u}</div></div>`).join('');
+  const net=c.prod-c.dead_t, ratio=c.harv/net;
+  document.getElementById('balnote').innerHTML=
+    `Netto tilvekst etter d&oslash;dfisk er <b>${t(net)} t</b>. Uttaket utgj&oslash;r <b>${ratio.toFixed(2)}</b> av dette
+     &mdash; ${ratio>1.01?'st&aring;ende biomasse tappes':(ratio<0.99?'st&aring;ende biomasse bygges opp':'balansert drift')}.
+     Biomassen endret seg <b>${(c.bio-p.bio>0?'+':'')+t(c.bio-p.bio)} t</b> i m&aring;neden.`;
+}
+function kpis(){
+  const s=D[scope], c=s[s.length-1], y=s[0];
+  const items=[
+    ['St&aring;ende biomasse',t(c.bio),'tonn',pc(c.bio,y.bio),false],
+    ['Utnyttelse av MTB',(c.bio/CEIL[scope]*100).toFixed(1),'% av sj&oslash;-MTB',
+      (c.bio/CEIL[scope]-y.bio/CEIL[scope])*100,false],
+    ['Tilvekst',t(c.prod),'tonn',pc(c.prod,y.prod),false],
+    ['F&ocirc;rfaktor',c.fcr.toFixed(2),'f&ocirc;r per kg tilvekst',(c.fcr-y.fcr)/y.fcr*100,true],
+    ['Snittvekt uttak',c.wt.toFixed(2),'kg rundvekt',pc(c.wt,y.wt),false],
+    ['D&oslash;dfisk',t(c.dead_t),'tonn',pc(c.dead_t,y.dead_t),true]];
+  document.getElementById('kpis').innerHTML=items.map(([k,v,u,d,inv])=>
+    `<div class="kpi"><div class="k">${k}</div><div class="v num">${v}</div>
+      <div class="u">${u}</div>
+      <div class="d ${cls(d,inv)}">${dl(d)} <span style="color:var(--ink-3);font-weight:400">mot i fjor</span></div></div>`).join('');
+}
+function regions(){
+  const rows=['West','Mid','North'].map(r=>{
+    const s=D[r],c=s[s.length-1],y=s[0],v=pc(c.harv,y.harv);
+    return `<tr><td>${NAME[r]}</td><td class="num">${t(c.bio)}</td>
+      <td class="num">${(c.bio/CEIL[r]*100).toFixed(1)} %</td>
+      <td class="num">${t(c.prod)}</td><td class="num">${t(c.harv)}</td>
+      <td class="num"><span class="chip ${cls(v)}">${dl(v)}</span></td>
+      <td class="num">${t(c.dead_t)}</td><td class="num">${c.fcr.toFixed(2)}</td>
+      <td class="num">${c.wt.toFixed(2)} kg</td></tr>`;}).join('');
+  const n=D.Norway[D.Norway.length-1], ny=D.Norway[0], nv=pc(n.harv,ny.harv);
+  document.getElementById('regions').innerHTML=rows+
+    `<tr class="tot"><td>Norge</td><td class="num">${t(n.bio)}</td>
+      <td class="num">${(n.bio/CEIL.Norway*100).toFixed(1)} %</td><td class="num">${t(n.prod)}</td>
+      <td class="num">${t(n.harv)}</td><td class="num">${dl(nv)}</td>
+      <td class="num">${t(n.dead_t)}</td><td class="num">${n.fcr.toFixed(2)}</td>
+      <td class="num">${n.wt.toFixed(2)} kg</td></tr>`;
+  document.getElementById('regnote').innerHTML=
+    `Vest ligger p&aring; <b>${(D.West[12].bio/CEIL.West*100).toFixed(0)} %</b> av MTB-taket med landets h&oslash;yeste
+     f&ocirc;rfaktor og tapsandel. Nord st&aring;r for <b>${(D.North[12].harv/n.harv*100).toFixed(0)} %</b> av uttaket i rapportm&aring;neden.`;
+}
+const R12=/*__ROLLING12__*/null;
+function roll12(){
+  document.getElementById('roll12').innerHTML=['West','Mid','North','Norway'].map(r=>{
+    const x=R12[r];
+    return `<tr${r==='Norway'?' class="tot"':''}><td>${NAME[r]}</td>
+      <td class="num">${t(x.harv)}</td><td class="num"><span class="chip ${cls(x.hv)}">${dl(x.hv)}</span></td>
+      <td class="num">${t(x.prod)}</td><td class="num"><span class="chip ${cls(x.pv)}">${dl(x.pv)}</span></td>
+      <td class="num">${t(x.dead)}</td><td class="num">${(x.dead/x.prod*100).toFixed(1)} %</td></tr>`;}).join('');
+}
+function chart(){
+  const s=D[scope], W=980, H=270, L=58, R=54, T=14, B=34;
+  const iw=W-L-R, ih=H-T-B, n=s.length;
+  const maxBar=Math.max(...s.map(d=>Math.max(d.prod,d.harv)))*1.12;
+  const bmin=Math.min(...s.map(d=>d.bio))*0.94, bmax=Math.max(...s.map(d=>d.bio))*1.03;
+  const bw=iw/n, gw=bw*0.27;
+  const yB=v=>T+ih-(v/maxBar)*ih;
+  const yL=v=>T+ih-((v-bmin)/(bmax-bmin))*ih;
+  let g='';
+  for(let i=0;i<=4;i++){const v=maxBar*i/4, y=yB(v);
+    g+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="var(--rule)" stroke-width="1"/>
+        <text x="${L-8}" y="${y+4}" text-anchor="end" font-size="10.5" font-family="var(--mono)"
+          fill="var(--ink-3)">${Math.round(v/1000)}k</text>`;}
+  s.forEach((d,i)=>{
+    const x=L+i*bw+bw/2;
+    g+=`<rect x="${x-gw-1.5}" y="${yB(d.prod)}" width="${gw}" height="${T+ih-yB(d.prod)}" fill="var(--accent)"/>
+        <rect x="${x+1.5}" y="${yB(d.harv)}" width="${gw}" height="${T+ih-yB(d.harv)}" fill="var(--ink-3)"/>
+        <rect x="${x-gw-1.5}" y="${T+ih-(d.dead_t/maxBar)*ih}" width="${gw*2+3}"
+          height="${(d.dead_t/maxBar)*ih}" fill="var(--bad)" opacity="0.9"/>
+        <text x="${x}" y="${H-12}" text-anchor="middle" font-size="10" font-family="var(--mono)"
+          fill="${i===n-1?'var(--ink)':'var(--ink-3)'}" font-weight="${i===n-1?600:400}">${d.m}</text>`;
+    if(d.m===1)g+=`<text x="${x}" y="${H-1}" text-anchor="middle" font-size="9.5"
+      font-family="var(--mono)" fill="var(--ink-3)">${d.y}</text>`;});
+  const pts=s.map((d,i)=>`${L+i*bw+bw/2},${yL(d.bio)}`).join(' ');
+  g+=`<polyline points="${pts}" fill="none" stroke="var(--warn)" stroke-width="2"
+        stroke-linejoin="round" stroke-linecap="round"/>`;
+  s.forEach((d,i)=>{g+=`<circle cx="${L+i*bw+bw/2}" cy="${yL(d.bio)}" r="${i===n-1?4.5:2.6}"
+    fill="var(--warn)" stroke="var(--surface)" stroke-width="1.5"/>`;});
+  [bmin,(bmin+bmax)/2,bmax].forEach(v=>{g+=`<text x="${W-R+8}" y="${yL(v)+4}" font-size="10.5"
+    font-family="var(--mono)" fill="var(--ink-3)">${Math.round(v/1000)}k</text>`;});
+  const c=s[n-1];
+  g+=`<text x="${W-R+8}" y="${yL(c.bio)-10}" font-size="10.5" font-family="var(--mono)"
+      font-weight="600" fill="var(--warn)">${t(c.bio)}</text>`;
+  const el=document.getElementById('chart');
+  el.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  el.style.minWidth='620px';
+  el.innerHTML=g;
+}
+function render(){balance();kpis();regions();roll12();chart();}
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected','false'));
+  b.setAttribute('aria-selected','true'); scope=b.dataset.s; render();}));
+render();
+</script>

@@ -1,0 +1,40 @@
+name: Generate Biokontroll Report
+
+on:
+  schedule:
+    # 20th at 08:00 UTC, two hours after fetch_biomass lands the new month.
+    # Fiskeridirektoratet publishes biostat-total-omr.json on the 20th in the
+    # small hours - observed Last-Modified Thu, 20 Aug 2026 04:38 GMT - so the
+    # figures are available same day. The generator warns if the newest month
+    # it finds is not last month, which is the signal that the publish slipped
+    # and this ran too early.
+    - cron: '0 8 20 * *'
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install google-cloud-bigquery google-auth db-dtypes
+      - name: Generate report
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        # --out docs publishes to the public GitHub Pages site. See the note in
+        # generate_biokontroll.py before changing this: the JSON beside the page
+        # is public too, so this is the line to change if the report ever moves
+        # behind a paywall.
+        run: python generate_biokontroll.py --out docs
+      - name: Commit updated report
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Update biokontroll report
+          file_pattern: docs/biokontroll.html docs/biokontroll_data.json
+          # rebase before pushing: several workflows commit to main, and without
+          # this whichever finishes second is rejected as non-fast-forward.
+          pull: '--rebase --autostash'
