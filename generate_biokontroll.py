@@ -192,7 +192,37 @@ def build_series(raw, months_wanted):
 
 
 def rolling12(series):
-    """Last 12 months against the 12 before them. Needs 24 rows; None if short."""
+    """
+    Last 12 months against the 12 before them. Needs 24 rows; None if short.
+
+    Two turnover figures are reported, and they are not interchangeable:
+
+      omlop   = harvest / mean standing biomass. The familiar operational
+                number, but it moves with stock phasing as well as productivity
+                - a region that draws its stock down harvests more from a
+                smaller average, and the ratio flatters it.
+      omlop_n = NET growth (growth less mortality) / mean standing biomass.
+                What the region actually delivered per tonne held.
+      omlop_g = GROSS growth / mean standing biomass. Biological production
+                before losses.
+
+    A rolling 12 months does not remove the phasing effect. Measured to
+    2026-07, the year-on-year CHANGE differs sharply by which numerator is
+    used - harvest -5.5% / +8.8% / +10.7% for West / Mid / North against
+    gross -2.1% / +5.0% / +5.3% - roughly double, because mean biomass itself
+    moved (West's fell 9.3%). That is the reason to show more than one.
+
+    The LEVELS behave differently from the changes, and the two should not be
+    conflated. Gross per mean biomass is 2.17 / 2.14 / 2.14 across the three
+    regions, so biomass is laid down at very nearly the same rate everywhere.
+    Net per mean biomass spreads wider (2.00 / 2.03 / 2.07) because mortality
+    differs. Harvest per mean biomass happens to be tight again (2.03 / 2.03 /
+    2.06). No claim is made here about which figure the industry conventionally
+    reports - this is only what these three ratios do on this data.
+
+    uttak_net = harvest / net growth. Above 1.00 means more was taken out than
+                was produced: stock is being drawn down.
+    """
     out = {}
     for scope, rows in series.items():
         if len(rows) < 24:
@@ -201,11 +231,23 @@ def rolling12(series):
             return None
         cur, prv = rows[-12:], rows[-24:-12]
         tot = lambda L, k: sum(x[k] for x in L)
+        mean = lambda L: tot(L, "bio") / len(L)
         h, p, d = tot(cur, "harv"), tot(cur, "prod"), tot(cur, "dead_t")
+        hp, pp = tot(prv, "harv"), tot(prv, "prod")
+        mc, mp = mean(cur), mean(prv)
         out[scope] = {
             "harv": round(h), "prod": round(p), "dead": round(d),
-            "hv": round((h / tot(prv, "harv") - 1) * 100, 1) if tot(prv, "harv") else 0,
-            "pv": round((p / tot(prv, "prod") - 1) * 100, 1) if tot(prv, "prod") else 0,
+            "bio": round(mc),
+            "hv": round((h / hp - 1) * 100, 1) if hp else 0,
+            "pv": round((p / pp - 1) * 100, 1) if pp else 0,
+            "omlop":   round(h / mc, 2),
+            "omlop_n": round((p - d) / mc, 2),
+            "omlop_g": round(p / mc, 2),
+            "ov":  round(((h / mc) / (hp / mp) - 1) * 100, 1) if hp and mp else 0,
+            "onv": round((((p - d) / mc) / ((pp - tot(prv, "dead_t")) / mp) - 1) * 100, 1)
+                   if (pp - tot(prv, "dead_t")) and mp else 0,
+            "ogv": round(((p / mc) / (pp / mp) - 1) * 100, 1) if pp and mp else 0,
+            "uttak_net": round(h / (p - d), 2) if (p - d) else 0,
         }
     return out
 

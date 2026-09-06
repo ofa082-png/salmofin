@@ -173,11 +173,13 @@ footer{margin-top:34px;padding-top:14px;border-top:1px solid var(--rule);
     <h2>Rullerende 12 m&aring;neder mot foreg&aring;ende 12</h2>
     <div class="scroll"><table>
       <thead><tr>
-        <th>Omr&aring;de</th><th>Uttak&nbsp;t</th><th>Endring</th><th>Tilvekst&nbsp;t</th>
-        <th>Endring</th><th>D&oslash;dfisk&nbsp;t</th><th>Tapsandel</th>
+        <th>Omr&aring;de</th><th>Snitt&nbsp;biomasse</th><th>Uttak&nbsp;t</th><th>Endring</th>
+        <th>Tilvekst&nbsp;t</th><th>Endring</th><th>D&oslash;dfisk&nbsp;t</th><th>Tapsandel</th>
+        <th>Oml&oslash;p</th><th>Endring</th><th>Uttak&nbsp;/&nbsp;netto</th>
       </tr></thead>
       <tbody id="roll12"></tbody>
     </table></div>
+    <div class="note" id="rollnote"></div>
   </section>
 
   <footer>
@@ -252,14 +254,31 @@ function regions(){
     `Vest ligger p&aring; <b>${(D.West[12].bio/CEIL.West*100).toFixed(0)} %</b> av MTB-taket med landets h&oslash;yeste
      f&ocirc;rfaktor og tapsandel. Nord st&aring;r for <b>${(D.North[12].harv/n.harv*100).toFixed(0)} %</b> av uttaket i rapportm&aring;neden.`;
 }
-const R12={"Norway":{"harv":1846540,"prod":1939164,"dead":96129,"hv":2.9,"pv":1.1},"West":{"harv":554777,"prod":593046,"dead":45874,"hv":-14.2,"pv":-11.2},"Mid":{"harv":436747,"prod":459817,"dead":23284,"hv":10.8,"pv":6.9},"North":{"harv":855015,"prod":887233,"dead":27900,"hv":13.5,"pv":8.0}};
+const R12={"Norway":{"harv":1846540,"prod":1939164,"dead":96129,"bio":903493,"hv":2.9,"pv":1.1,"omlop":2.04,"omlop_n":2.04,"omlop_g":2.15,"ov":4.5,"onv":3.4,"ogv":2.6,"uttak_net":1.0},"West":{"harv":554777,"prod":593046,"dead":45874,"bio":273324,"hv":-14.2,"pv":-11.2,"omlop":2.03,"omlop_n":2.0,"omlop_g":2.17,"ov":-5.5,"onv":-3.6,"ogv":-2.1,"uttak_net":1.01},"Mid":{"harv":436747,"prod":459817,"dead":23284,"bio":215259,"hv":10.8,"pv":6.9,"omlop":2.03,"omlop_n":2.03,"omlop_g":2.14,"ov":8.8,"onv":6.5,"ogv":5.0,"uttak_net":1.0},"North":{"harv":855015,"prod":887233,"dead":27900,"bio":414910,"hv":13.5,"pv":8.0,"omlop":2.06,"omlop_n":2.07,"omlop_g":2.14,"ov":10.7,"onv":7.4,"ogv":5.3,"uttak_net":0.99}};
 function roll12(){
+  if(!R12){document.getElementById('roll12').closest('section').hidden=true;return;}
   document.getElementById('roll12').innerHTML=['West','Mid','North','Norway'].map(r=>{
     const x=R12[r];
+    // uttak/netto above 1.00 means more was taken out than produced.
+    const drawdown=x.uttak_net>1.005;
     return `<tr${r==='Norway'?' class="tot"':''}><td>${NAME[r]}</td>
+      <td class="num">${t(x.bio)}</td>
       <td class="num">${t(x.harv)}</td><td class="num"><span class="chip ${cls(x.hv)}">${dl(x.hv)}</span></td>
       <td class="num">${t(x.prod)}</td><td class="num"><span class="chip ${cls(x.pv)}">${dl(x.pv)}</span></td>
-      <td class="num">${t(x.dead)}</td><td class="num">${(x.dead/x.prod*100).toFixed(1)} %</td></tr>`;}).join('');
+      <td class="num">${t(x.dead)}</td><td class="num">${(x.dead/x.prod*100).toFixed(1)} %</td>
+      <td class="num">${x.omlop.toFixed(2)}</td>
+      <td class="num"><span class="chip ${cls(x.ov)}">${dl(x.ov)}</span></td>
+      <td class="num"${drawdown?' style="color:var(--bad);font-weight:600"':''}>${x.uttak_net.toFixed(2)}</td></tr>`;
+  }).join('');
+  const w=R12.West, n=R12.Norway;
+  document.getElementById('rollnote').innerHTML=
+    `Oml&oslash;p er uttak delt p&aring; snittbiomasse. Tallet beveger seg ogs&aring; n&aring;r beholdningen
+     bygges opp eller tappes, ikke bare n&aring;r produktiviteten endrer seg: m&aring;lt p&aring; brutto tilvekst
+     er endringen <b>${dl(R12.West.ogv)}</b> for Vest mot <b>${dl(R12.West.ov)}</b> p&aring; uttak.
+     Brutto tilvekst per tonn st&aring;ende biomasse ligger p&aring; ${R12.West.omlop_g.toFixed(2)} i Vest,
+     ${R12.Mid.omlop_g.toFixed(2)} i Midt og ${R12.North.omlop_g.toFixed(2)} i Nord &mdash; alts&aring; n&aring;r
+     biomassen bygges omtrent like raskt overalt. <b>Uttak / netto</b> over 1,00 betyr at det er tatt ut
+     mer enn det er produsert.`;
 }
 function chart(){
   const s=D[scope], W=980, H=270, L=58, R=54, T=14, B=34;
