@@ -235,9 +235,16 @@ def rolling12(series):
         h, p, d = tot(cur, "harv"), tot(cur, "prod"), tot(cur, "dead_t")
         hp, pp = tot(prv, "harv"), tot(prv, "prod")
         mc, mp = mean(cur), mean(prv)
+        # Count mortality: dead fish against mean standing count. This is the
+        # REPORTED measure. dead_t is derived from it (count x mean pen weight),
+        # so tapsandel = mort_n / gross turnover as an identity, and the two
+        # carry no independent information. Fiskeridirektoratet publishes no
+        # dead-fish weight, so a genuinely independent measure is not available.
+        mean_n = sum(x["n"] for x in cur) / len(cur)
+        mort_n = sum(x["dead_n"] for x in cur) / mean_n * 100 if mean_n else 0
         out[scope] = {
             "harv": round(h), "prod": round(p), "dead": round(d),
-            "bio": round(mc),
+            "bio": round(mc), "mort_n": round(mort_n, 1),
             "hv": round((h / hp - 1) * 100, 1) if hp else 0,
             "pv": round((p / pp - 1) * 100, 1) if pp else 0,
             "omlop":   round(h / mc, 2),

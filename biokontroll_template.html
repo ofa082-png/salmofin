@@ -73,15 +73,16 @@ section{margin-bottom:30px}
 .bal .cell.term .v{color:var(--accent)}
 
 /* kpi */
-/* Six tiles, fixed at 3 across so they fill two complete rows. auto-fit here
-   resolves to 5 columns at this width and orphans the sixth beside dead space. */
-.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+/* Eight tiles, fixed at 4 across so they fill two complete rows. auto-fit
+   resolves to a column count that orphans the last tile beside dead space. */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
   background:var(--rule);border:1px solid var(--rule)}
-@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:430px){.kpis{grid-template-columns:1fr}}
 .kpi{background:var(--surface);padding:14px 16px}
 .kpi .k{font-size:11.5px;color:var(--ink-2);margin-bottom:6px}
-.kpi .v{font-family:var(--mono);font-size:25px;font-weight:500;letter-spacing:-.02em;line-height:1.1}
+.kpi .v{font-family:var(--mono);font-size:25px;font-weight:500;letter-spacing:-.02em;
+  line-height:1.1;white-space:nowrap}
 .kpi .u{font-size:11px;color:var(--ink-3)}
 .kpi .d{margin-top:7px;font-family:var(--mono);font-size:11.5px;font-weight:500}
 .up{color:var(--good)} .dn{color:var(--bad)} .flat{color:var(--ink-3)}
@@ -174,7 +175,8 @@ footer{margin-top:34px;padding-top:14px;border-top:1px solid var(--rule);
     <div class="scroll"><table>
       <thead><tr>
         <th>Omr&aring;de</th><th>Snitt&nbsp;biomasse</th><th>Uttak&nbsp;t</th><th>Endring</th>
-        <th>Tilvekst&nbsp;t</th><th>Endring</th><th>D&oslash;dfisk&nbsp;t</th><th>Tapsandel</th>
+        <th>Tilvekst&nbsp;t</th><th>Endring</th><th>D&oslash;delighet&nbsp;stk</th>
+        <th>D&oslash;dfisk&nbsp;t</th><th>Tapsandel</th>
         <th>Oml&oslash;p</th><th>Endring</th><th>Uttak&nbsp;/&nbsp;netto</th>
       </tr></thead>
       <tbody id="roll12"></tbody>
@@ -185,7 +187,7 @@ footer{margin-top:34px;padding-top:14px;border-top:1px solid var(--rule);
   <footer>
     Kilde: Fiskeridirektoratets biomassestatistikk (BIOSTAT-LAKS-OMR) og akvakulturregisteret via BarentsWatch, aggregert i BigQuery.
     Tilvekst er beregnet som endring i st&aring;ende biomasse pluss uttak pluss estimert d&oslash;dfiskbiomasse; d&oslash;dfiskbiomasse er
-    antall d&oslash;dfisk multiplisert med snittvekt i merd, ikke rapportert vekt. F&ocirc;rfaktor er f&ocirc;rforbruk delt p&aring; tilvekst
+    antall d&oslash;dfisk multiplisert med snittvekt i merd, ikke rapportert vekt. Fiskeridirektoratet rapporterer d&oslash;delighet kun i antall, s&aring; tonnasjen er et estimat og tapsandelen er ikke et uavhengig m&aring;l ved siden av d&oslash;deligheten i antall. F&ocirc;rfaktor er f&ocirc;rforbruk delt p&aring; tilvekst
     &mdash; biologisk, ikke &oslash;konomisk. Utnyttelse er st&aring;ende biomasse mot summen av sj&oslash;baserte matfisktillatelser i omr&aring;det,
     alle form&aring;l, og kan overstige 100&nbsp;% fordi MTB gjelder per selskap, ikke per omr&aring;de.
   </footer>
@@ -225,10 +227,19 @@ function kpis(){
     ['St&aring;ende biomasse',t(c.bio),'tonn',pc(c.bio,y.bio),false],
     ['Utnyttelse av MTB',(c.bio/CEIL[scope]*100).toFixed(1),'% av sj&oslash;-MTB',
       (c.bio/CEIL[scope]-y.bio/CEIL[scope])*100,false],
+    // The denominator of the mortality rate, shown beside it deliberately:
+    // every ratio on this page moves with its denominator as well as its top.
+    ['Fisk i sj&oslash;',c.n.toFixed(1),'millioner',pc(c.n,y.n),false],
     ['Tilvekst',t(c.prod),'tonn',pc(c.prod,y.prod),false],
     ['F&ocirc;rfaktor',c.fcr.toFixed(2),'f&ocirc;r per kg tilvekst',(c.fcr-y.fcr)/y.fcr*100,true],
     ['Snittvekt uttak',c.wt.toFixed(2),'kg rundvekt',pc(c.wt,y.wt),false],
-    ['D&oslash;dfisk',t(c.dead_t),'tonn',pc(c.dead_t,y.dead_t),true]];
+    // Count mortality is the REPORTED measure. dead_t is derived from it, so
+    // the two are not independent - see the note under the rolling table.
+    ['D&oslash;delighet',(c.dead_n/c.n*100).toFixed(2)+'&nbsp;%',
+      t(c.dead_n*1e6)+' fisk av '+t(c.n*1e6),
+      ((c.dead_n/c.n)-(y.dead_n/y.n))/(y.dead_n/y.n)*100,true],
+    ['D&oslash;dfisk','<span style="font-size:19px">'+t(c.dead_t)+'</span>',
+      'tonn &middot; avledet fra antall',pc(c.dead_t,y.dead_t),true]];
   document.getElementById('kpis').innerHTML=items.map(([k,v,u,d,inv])=>
     `<div class="kpi"><div class="k">${k}</div><div class="v num">${v}</div>
       <div class="u">${u}</div>
@@ -265,19 +276,27 @@ function roll12(){
       <td class="num">${t(x.bio)}</td>
       <td class="num">${t(x.harv)}</td><td class="num"><span class="chip ${cls(x.hv)}">${dl(x.hv)}</span></td>
       <td class="num">${t(x.prod)}</td><td class="num"><span class="chip ${cls(x.pv)}">${dl(x.pv)}</span></td>
+      <td class="num" style="font-weight:500">${x.mort_n.toFixed(1)} %</td>
       <td class="num">${t(x.dead)}</td><td class="num">${(x.dead/x.prod*100).toFixed(1)} %</td>
       <td class="num">${x.omlop.toFixed(2)}</td>
       <td class="num"><span class="chip ${cls(x.ov)}">${dl(x.ov)}</span></td>
       <td class="num"${drawdown?' style="color:var(--bad);font-weight:600"':''}>${x.uttak_net.toFixed(2)}</td></tr>`;
   }).join('');
-  const w=R12.West, n=R12.Norway;
+  const W=R12.West;
   document.getElementById('rollnote').innerHTML=
-    `Oml&oslash;p er uttak delt p&aring; snittbiomasse. Tallet beveger seg ogs&aring; n&aring;r beholdningen
-     bygges opp eller tappes, ikke bare n&aring;r produktiviteten endrer seg: m&aring;lt p&aring; brutto tilvekst
-     er endringen <b>${dl(R12.West.ogv)}</b> for Vest mot <b>${dl(R12.West.ov)}</b> p&aring; uttak.
-     Brutto tilvekst per tonn st&aring;ende biomasse ligger p&aring; ${R12.West.omlop_g.toFixed(2)} i Vest,
-     ${R12.Mid.omlop_g.toFixed(2)} i Midt og ${R12.North.omlop_g.toFixed(2)} i Nord &mdash; alts&aring; n&aring;r
-     biomassen bygges omtrent like raskt overalt. <b>Uttak / netto</b> over 1,00 betyr at det er tatt ut
+    `<b>D&oslash;delighet stk</b> er d&oslash;dfisk i antall mot snittbeholdning, og er det Fiskeridirektoratet
+     faktisk rapporterer. <b>Tapsandel</b> er d&oslash;dfisk i tonn mot brutto tilvekst &mdash; men
+     d&oslash;dfiskbiomassen er ikke rapportert, den er regnet ut som antall ganger snittvekt i merd.
+     De to er derfor ikke uavhengige: tapsandel er d&oslash;delighet delt p&aring; oml&oslash;p
+     (${W.mort_n.toFixed(1)}&nbsp;% / ${W.omlop_g.toFixed(2)} = ${(W.mort_n/W.omlop_g).toFixed(1)}&nbsp;% for Vest).
+     Et uavhengig m&aring;l ville kreve rapportert vekt p&aring; d&oslash;dfisk, som ville skilt tidlig d&oslash;delighet
+     fra sen &mdash; en vesentlig forskjell som disse tallene ikke fanger.
+     <br><br>
+     <b>Oml&oslash;p</b> er uttak delt p&aring; snittbiomasse, og beveger seg ogs&aring; n&aring;r beholdningen bygges opp
+     eller tappes: m&aring;lt p&aring; brutto tilvekst er endringen <b>${dl(W.ogv)}</b> for Vest mot
+     <b>${dl(W.ov)}</b> p&aring; uttak. Brutto tilvekst per tonn st&aring;ende biomasse ligger p&aring;
+     ${W.omlop_g.toFixed(2)} i Vest, ${R12.Mid.omlop_g.toFixed(2)} i Midt og
+     ${R12.North.omlop_g.toFixed(2)} i Nord. <b>Uttak / netto</b> over 1,00 betyr at det er tatt ut
      mer enn det er produsert.`;
 }
 function chart(){
