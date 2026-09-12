@@ -1,7 +1,10 @@
 name: Fetch Biomass
 on:
   schedule:
-    - cron: '0 6 21 * *'  # 21st each month at 6am UTC (day after update)
+    - cron: '0 6 20 * *'  # 20th each month at 06:00 UTC. Fiskeridirektoratet
+      # publishes biostat-total-omr.json on the 20th - observed Last-Modified
+      # Thu, 20 Aug 2026 04:38 GMT - so waiting for the 21st put every
+      # downstream report a full day behind the rest of the market.
   workflow_dispatch:
 jobs:
   fetch:

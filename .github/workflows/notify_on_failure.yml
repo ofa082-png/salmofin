@@ -18,6 +18,7 @@ on:
       - "Generate Dodelighet Report"
       - "Generate Traffic Report"
       - "Generate Big Vessel Tracker"
+      - "Generate Biokontroll Report"
       - "Harvest Plant Vessel Visits"
       - "Fetch Lice"
       - "Fetch Treatments"
