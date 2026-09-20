@@ -76,7 +76,11 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
 
     # Add AarMnd computed column
     df["AarMnd"] = df["Ar"].astype(str) + "-" + df["Maaned_kode"].astype(str).str.zfill(2)
-    df["running_month"] = (df["Ar"] - df["Utsettsar"]).astype(int) * 12 + df["Maaned_kode"].astype(int)
+    # Utsettsar is null on the odd stray row (e.g. PO 1, 2026-08: one fish, 1 g),
+    # so keep this nullable rather than casting straight to int.
+    df["running_month"] = (
+        (df["Ar"] - df["Utsettsar"]) * 12 + df["Maaned_kode"]
+    ).astype("Int64")
 
     missing = [c for c in KEEP_COLS if c not in df.columns]
     if missing:

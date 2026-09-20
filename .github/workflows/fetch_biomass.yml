@@ -1,7 +1,7 @@
 name: Fetch Biomass
 on:
   schedule:
-    - cron: '0 6 21 * *'  # 21st each month at 6am UTC (day after update)
+    - cron: '0 6 20,21 * *'  # 20th each month at 6am UTC (FD publishes ~04:40 UTC on the 20th); 21st kept as backstop
   workflow_dispatch:
 jobs:
   fetch:
