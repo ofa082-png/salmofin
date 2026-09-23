@@ -41,6 +41,8 @@ RENAME_MAP = {
     "UTKAST_STK":                      "Utkast_stk",
     "RØMMING_STK":                     "Romming_stk",
     "ANDRE_STK":                       "Andre_stk",
+    "ANDRE_NY_STK":                    "Andre_ny_stk",
+    "TELLEFEIL_STK":                   "Tellefeil_stk",
 }
 
 KEEP_COLS = [
@@ -48,7 +50,8 @@ KEEP_COLS = [
     "Utsettsar", "Behfisk_stk", "Biomasse_kg", "Utsett_smolt_stk",
     "Utsett_smolt_stk_under500g", "Forforbruk_kg", "Uttak_stk", "Uttak_kg",
     "Uttak_sloyd_kg", "Uttak_hodekappet_kg", "Uttak_rundvekt_kg",
-    "Dodfisk_stk", "Utkast_stk", "Romming_stk", "Andre_stk", "AarMnd", "running_month",
+    "Dodfisk_stk", "Utkast_stk", "Romming_stk", "Andre_stk", "Andre_ny_stk",
+    "Tellefeil_stk", "AarMnd", "running_month",
 ]
 
 
@@ -72,6 +75,13 @@ def fetch_biomass() -> pd.DataFrame:
 
 
 def clean(df: pd.DataFrame) -> pd.DataFrame:
+    # Warn when Fiskeridirektoratet extends the schema. ANDRE_NY_STK and
+    # TELLEFEIL_STK appeared in the feed during 2026 and went unnoticed,
+    # because nothing compared the fetched columns against RENAME_MAP.
+    unmapped = [c for c in df.columns if c not in RENAME_MAP]
+    if unmapped:
+        print(f"  WARNING - source columns not in RENAME_MAP, dropped: {unmapped}")
+
     df = df.rename(columns=RENAME_MAP)
 
     # Add AarMnd computed column
@@ -91,7 +101,8 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
     # Fix integer columns
     for col in ["Ar", "Maaned_kode", "Utsettsar", "Behfisk_stk", "Utsett_smolt_stk",
                 "Utsett_smolt_stk_under500g", "Forforbruk_kg", "Uttak_stk",
-                "Dodfisk_stk", "Utkast_stk", "Romming_stk", "Andre_stk"]:
+                "Dodfisk_stk", "Utkast_stk", "Romming_stk", "Andre_stk",
+                "Andre_ny_stk", "Tellefeil_stk"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
 
