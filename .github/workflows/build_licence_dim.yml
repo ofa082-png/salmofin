@@ -1,0 +1,22 @@
+name: Build Licence Dim
+on:
+  schedule:
+    # 08:00 UTC on the 1st, two hours after fetch_licenses.py refreshes the
+    # licenses table this reads from.
+    - cron: '0 8 1 * *'
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests pandas google-cloud-bigquery db-dtypes
+      - name: Run build_licence_dim.py
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python build_licence_dim.py
