@@ -32,21 +32,21 @@
       <div style="width:26px;height:26px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:500;">s</div>
       <div style="font-size:18px;font-weight:500;">salmofin</div>
     </div>
-    <div style="font-size:11px;color:var(--text-muted);">oppdatert 29.09.2026 14:17 UTC</div>
+    <div style="font-size:11px;color:var(--text-muted);">oppdatert 30.09.2026 14:10 UTC</div>
   </div>
 
   <div class="grid">
     
     <a href="lakselus.html" class="card">
       <div class="tile-header">🐛 Lakselus og behandling</div>
-      <div class="tile-value">0.16 voksne/fisk</div>
-      <div class="tile-delta" style="color:var(--text-success)">-4%</div>
+      <div class="tile-value">0.15 voksne/fisk</div>
+      <div class="tile-delta" style="color:var(--text-success)">-7%</div>
       <div class="tile-link">Nivå og behandlinger →</div>
     </a>
     
     <a href="fiskehelse.html" class="card">
       <div class="tile-header">🦠 Sykdom</div>
-      <div class="tile-value">42 aktive tilfeller</div>
+      <div class="tile-value">40 aktive tilfeller</div>
       <div class="tile-delta" style="color:var(--text-success)">-1 nye siste uke</div>
       <div class="tile-link">Status og sykdomstilfeller →</div>
     </a>
@@ -60,15 +60,15 @@
     
     <a href="traffic.html" class="card">
       <div class="tile-header">🚢 Trafikk</div>
-      <div class="tile-value">958 besøk/uke</div>
-      <div class="tile-delta" style="color:var(--text-success)">+13%</div>
+      <div class="tile-value">961 besøk/uke</div>
+      <div class="tile-delta" style="color:var(--text-success)">+14%</div>
       <div class="tile-link">Wellbåt og prosesseringsfartøy →</div>
     </a>
     
     <a href="traffic.html" class="card">
       <div class="tile-header">🐟 Slakt og eksport</div>
-      <div class="tile-value">31.9k t</div>
-      <div class="tile-delta" style="color:var(--text-success)">+4%</div>
+      <div class="tile-value">33.0k t</div>
+      <div class="tile-delta" style="color:var(--text-success)">+3%</div>
       <div class="tile-link">Volum og sesongmodell →</div>
     </a>
     
@@ -91,8 +91,8 @@
 <script>
 (function(){
   var svg = document.getElementById('liceChart');
-  var data = [0.116, 0.114, 0.112, 0.129, 0.138, 0.141, 0.138, 0.146, 0.147, 0.158, 0.169, 0.162];
-  var labels = ["U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34", "U35", "U36", "U37", "U38"];
+  var data = [0.114, 0.112, 0.129, 0.138, 0.141, 0.138, 0.146, 0.147, 0.158, 0.169, 0.162, 0.151];
+  var labels = ["U28", "U29", "U30", "U31", "U32", "U33", "U34", "U35", "U36", "U37", "U38", "U39"];
   var w = 560, h = 90, padL = 20, padR = 10, padT = 10, padB = 16;
   var min = Math.min.apply(null, data), max = Math.max.apply(null, data);
   var range = (max - min) || 1;
@@ -126,8 +126,8 @@
 <script>
 (function(){
   var svg = document.getElementById('exportChart');
-  var data = [26763, 26620, 29003, 26558, 27655, 29240, 29513, 32105, 31207, 31344, 30808, 31947];
-  var labels = ["U27", "U28", "U29", "U30", "U31", "U32", "U33", "U34", "U35", "U36", "U37", "U38"];
+  var data = [26620, 29003, 26558, 27655, 29240, 29513, 32105, 31207, 31344, 30808, 31947, 33039];
+  var labels = ["U28", "U29", "U30", "U31", "U32", "U33", "U34", "U35", "U36", "U37", "U38", "U39"];
   var w = 560, h = 90, padL = 20, padR = 10, padT = 10, padB = 16;
   var min = Math.min.apply(null, data), max = Math.max.apply(null, data);
   var range = (max - min) || 1;
