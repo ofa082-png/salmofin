@@ -337,6 +337,10 @@ TEMPLATE = """<!doctype html>
     {tile_export}
     {tile_foring}
   </div>
+  <a href="kontroll.html" class="card">
+    <div class="tile-header">🔬 Biologisk kontroll</div>
+    <div class="tile-link">Månedsrapport (engelsk): biomassebalanse, fôrfaktor, TGC, utsettsmiks →</div>
+  </a>
   {tile_kapasitet}
 
   <div class="card">
