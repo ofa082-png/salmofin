@@ -1,0 +1,29 @@
+name: Generate Kontroll Report
+on:
+  schedule:
+    - cron: '30 7 20,21,22 * *'  # after fetch_biomass.yml (06:00 on the 20th, 21st backstop)
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: pip install google-cloud-bigquery google-auth
+      - name: Generate kontroll report
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python generate_kontroll.py
+      - name: Commit updated report
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Update kontroll report
+          file_pattern: docs/kontroll.html
+          # rebase before pushing: report generators all commit to main
+          pull: '--rebase --autostash'

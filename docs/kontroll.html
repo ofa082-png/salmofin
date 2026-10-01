@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Biological Control Report</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+:root{
+  --ground:#EEF2F3; --surface:#FFFFFF; --surface-2:#F6F9F9;
+  --ink:#0C1417; --ink-2:#55666D; --ink-3:#84969C;
+  --rule:#D3DDE0; --rule-2:#E5ECEE;
+  --accent:#14606B; --accent-soft:#DCEBEC; --accent-2:#7FB3BA;
+  --good:#2A6B54; --bad:#9B3A31; --warn:#8A6310;
+  --c-grow:#14606B; --c-harv:#84969C; --c-dead:#B4473B; --c-in:#C08A1E;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --serif:'IBM Plex Serif',Georgia,serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0A1114; --surface:#101A1E; --surface-2:#152227;
+    --ink:#E4ECEE; --ink-2:#8FA2A9; --ink-3:#6B7E85;
+    --rule:#1E2C32; --rule-2:#182429;
+    --accent:#4FAEB8; --accent-soft:#123034; --accent-2:#2D6B72;
+    --good:#5FB08F; --bad:#D2776C; --warn:#C9A24A;
+    --c-grow:#4FAEB8; --c-harv:#6B7E85; --c-dead:#D2776C; --c-in:#C9A24A;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0A1114; --surface:#101A1E; --surface-2:#152227;
+  --ink:#E4ECEE; --ink-2:#8FA2A9; --ink-3:#6B7E85;
+  --rule:#1E2C32; --rule-2:#182429;
+  --accent:#4FAEB8; --accent-soft:#123034; --accent-2:#2D6B72;
+  --good:#5FB08F; --bad:#D2776C; --warn:#C9A24A;
+  --c-grow:#4FAEB8; --c-harv:#6B7E85; --c-dead:#D2776C; --c-in:#C9A24A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1060px;margin:0 auto;padding:28px 20px 64px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.mast{display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:22px}
+.mast h1{font-family:var(--serif);font-weight:600;font-size:29px;line-height:1.1;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.mast .sub{font-size:13px;color:var(--ink-2);margin-top:5px}
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);font-weight:500}
+.period{margin-left:auto;text-align:right}
+.period .big{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.01em}
+.period .lbl{font-size:11.5px;color:var(--ink-3);letter-spacing:.04em}
+.links{font-size:12.5px;color:var(--ink-2);margin:-8px 0 20px}
+.links a{color:var(--accent)}
+.tabs{display:flex;flex-wrap:wrap;gap:0;margin:0 0 24px;border:1px solid var(--rule);border-radius:3px;overflow:hidden;width:fit-content;max-width:100%;background:var(--surface)}
+.tabs button{font-family:var(--sans);font-size:13px;font-weight:500;border:0;background:transparent;color:var(--ink-2);padding:7px 16px;cursor:pointer;border-right:1px solid var(--rule)}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--surface)}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+h2{font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin:0 0 12px}
+section{margin-bottom:34px}
+.bal{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));background:var(--surface);border:1px solid var(--rule)}
+.bal .cell{padding:14px 15px;border-right:1px solid var(--rule-2);position:relative}
+.bal .cell:last-child{border-right:0}
+.bal .op{font-family:var(--mono);font-size:15px;color:var(--ink-3);position:absolute;top:14px;right:9px}
+.bal .k{font-size:11.5px;color:var(--ink-2);letter-spacing:.03em;margin-bottom:5px}
+.bal .v{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.02em}
+.bal .u{font-size:11px;color:var(--ink-3);margin-top:2px}
+.bal .cell.term{background:var(--surface-2)}
+.bal .cell.term .v{color:var(--accent)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule)}
+@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:430px){.kpis{grid-template-columns:1fr}}
+.kpi{background:var(--surface);padding:14px 16px}
+.kpi .k{font-size:11.5px;color:var(--ink-2);margin-bottom:6px}
+.kpi .v{font-family:var(--mono);font-size:25px;font-weight:500;letter-spacing:-.02em;line-height:1.1}
+.kpi .u{font-size:11px;color:var(--ink-3)}
+.kpi .d{margin-top:7px;font-family:var(--mono);font-size:11.5px;font-weight:500}
+.up{color:var(--good)} .dn{color:var(--bad)} .flat{color:var(--ink-3)}
+table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface)}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--rule-2);white-space:nowrap}
+th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);font-weight:600;border-bottom:1px solid var(--rule)}
+th:first-child,td:first-child{text-align:left}
+tbody tr:last-child td{border-bottom:0}
+tr.tot td{font-weight:600;border-top:1px solid var(--rule);background:var(--surface-2)}
+td .s{display:block;font-size:11px;font-weight:500;margin-top:1px}
+.scroll{overflow-x:auto;border:1px solid var(--rule)}
+.note{font-size:12.5px;color:var(--ink-2);line-height:1.65;margin-top:12px;border-left:2px solid var(--rule);padding-left:13px;max-width:72ch}
+.note b{color:var(--ink);font-weight:600}
+.warnbox{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--warn);padding:12px 15px;font-size:13px;color:var(--ink-2);line-height:1.6}
+.warnbox b{color:var(--ink)}
+.warnbox ul{margin:6px 0 0;padding-left:18px}
+figure{margin:0;background:var(--surface);border:1px solid var(--rule);padding:14px 14px 8px;position:relative}
+.legend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-2);margin:0 0 10px 2px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:1px;margin-right:5px;vertical-align:-1px}
+.legend i.ln{height:3px;width:16px;vertical-align:3px}
+.chart{overflow-x:auto}
+.chart svg{display:block;width:100%;min-width:600px;height:auto}
+.chart text{font-family:var(--mono);font-size:10.5px;fill:var(--ink-3)}
+.chart .lbl{fill:var(--ink-2);font-weight:500}
+.chart .strong{fill:var(--ink);font-weight:600}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:720px){.duo{grid-template-columns:1fr}}
+.duo .chart svg{min-width:0}
+.mt{font-size:12px;color:var(--ink-2);font-weight:600;margin:0 0 6px 2px}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--surface);font:11.5px/1.5 var(--mono);padding:7px 9px;border-radius:3px;white-space:pre;opacity:0;transition:opacity .08s;z-index:4}
+footer{margin-top:34px;padding-top:14px;border-top:1px solid var(--rule);font-size:11.5px;color:var(--ink-3);line-height:1.7}
+footer b{color:var(--ink-2)}
+code{font-family:var(--mono);font-size:.92em}
+@media(max-width:620px){.mast h1{font-size:24px}.period{margin-left:0;text-align:left}}
+@media (prefers-reduced-motion:reduce){.tip{transition:none}}
+</style>
+
+</head><body>
+<div class="wrap">
+  <div class="mast">
+    <div>
+      <div class="eyebrow">Biological control &middot; Norwegian salmon farming</div>
+      <h1>Biological control report</h1>
+      <div class="sub">Biomass balance, growth, FCR, temperature, stocking mix and count balance &middot; salmon</div>
+    </div>
+    <div class="period"><div class="big" id="per"></div><div class="lbl">Report month</div></div>
+  </div>
+  <div class="links"><a href="index.html">← salmofin</a> &middot; Updated <span id="upd"></span> &middot; Data: Fiskeridirektoratet, BarentsWatch</div>
+
+  <div class="tabs" role="tablist" aria-label="Region">
+    <button role="tab" aria-selected="true" data-s="Norge">Norway</button>
+    <button role="tab" aria-selected="false" data-s="Vest">West &middot; PO 1&ndash;4</button>
+    <button role="tab" aria-selected="false" data-s="Midt">Mid &middot; PO 5&ndash;7</button>
+    <button role="tab" aria-selected="false" data-s="Nord">North &middot; PO 8&ndash;13</button>
+  </div>
+
+  <section>
+    <h2>Biomass balance &middot; report month</h2>
+    <div class="bal" id="bal"></div>
+    <div class="note" id="balnote"></div>
+  </section>
+
+  <section>
+    <h2>Key figures vs same month last year</h2>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section>
+    <h2>Feed conversion</h2>
+    <figure>
+      <div class="legend">
+        <span><i class="ln" style="background:var(--accent)"></i>Biological FCR</span>
+        <span><i style="background:var(--accent-soft)"></i>Range (stocking weight)</span>
+        <span><i class="ln" style="background:repeating-linear-gradient(90deg,var(--ink-3) 0 5px,transparent 5px 9px)"></i>eFCR</span>
+        <span><i class="ln" style="background:var(--ink-3);opacity:.45"></i>Biological FCR, year before</span>
+      </div>
+      <div class="chart" id="chF"></div>
+      <div class="tip" id="tipF"></div>
+    </figure>
+    <div class="note" id="fnote"></div>
+  </section>
+
+  <section>
+    <h2>Temperature and growth per degree (TGC)</h2>
+    <figure>
+      <div class="legend">
+        <span><i class="ln" style="background:var(--accent)"></i>Last 13 months</span>
+        <span><i style="background:var(--accent-soft)"></i>TGC range</span>
+        <span><i class="ln" style="background:var(--ink-3);opacity:.6"></i>1 year before</span>
+        <span><i class="ln" style="background:repeating-linear-gradient(90deg,var(--ink-3) 0 2px,transparent 2px 5px)"></i>2 years before</span>
+        <span><i class="ln" style="background:var(--warn)"></i>Normal 2019&ndash;23</span>
+      </div>
+      <div class="duo" style="margin-top:0">
+        <div><div class="mt">Sea temperature, °C</div><div class="chart" id="chT"></div></div>
+        <div><div class="mt">TGC</div><div class="chart" id="chG"></div></div>
+      </div>
+      <div class="tip" id="tipT"></div>
+    </figure>
+    <div class="note" id="tnote"></div>
+  </section>
+
+  <section>
+    <h2>Last 13 months</h2>
+    <figure>
+      <div class="legend">
+        <span style="color:var(--ink)">In:</span>
+        <span><i style="background:var(--c-grow)"></i>Growth at sea</span>
+        <span><i style="background:var(--c-in)"></i>Stocked biomass</span>
+        <span style="color:var(--ink);margin-left:8px">Out:</span>
+        <span><i style="background:var(--c-harv)"></i>Harvest</span>
+        <span><i style="background:var(--c-dead)"></i>Mortality</span>
+        <span style="margin-left:8px"><b style="color:var(--good)">+</b>/<b style="color:var(--bad)">−</b> net change</span>
+      </div>
+      <div class="chart" id="chM"></div>
+      <div class="tip" id="tipM"></div>
+      <div class="legend" style="margin-top:16px">
+        <span><i class="ln" style="background:var(--accent)"></i>Last 13 months</span>
+        <span><i class="ln" style="background:var(--ink-3);opacity:.6"></i>1 year before</span>
+        <span><i class="ln" style="background:repeating-linear-gradient(90deg,var(--ink-3) 0 2px,transparent 2px 5px)"></i>2 years before</span>
+      </div>
+      <div class="duo" style="margin-top:0">
+        <div><div class="mt">Standing biomass, kt</div><div class="chart" id="chB"></div></div>
+        <div><div class="mt">Standing fish, million</div><div class="chart" id="chN"></div></div>
+      </div>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Regions &middot; report month</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Region</th><th>Biomass t</th><th>MTB use*</th><th>Growth t</th><th>Harvest t</th><th>Harvest y/y</th>
+      <th>Mortality t</th><th>Biol. FCR</th><th>eFCR</th><th>Harvest wt</th><th>Temp</th><th>TGC</th></tr></thead>
+      <tbody id="regions"></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Rolling 12 months vs previous 12</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Region</th><th>Avg biomass</th><th>Harvest t</th><th>Growth t</th><th>Mortality t</th><th>Loss share</th>
+      <th>Mortality (count)</th><th>Biol. FCR</th><th>eFCR</th><th>Turnover</th></tr></thead>
+      <tbody id="roll12"></tbody>
+    </table></div>
+    <div class="note">Loss share = mortality biomass ÷ growth. Mortality (count) = dead fish ÷ average standing count. Turnover = harvest ÷ average biomass.</div>
+  </section>
+
+  <section>
+    <h2>Stocking by weight class &middot; last 12 months</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Region</th><th>&lt;250 g</th><th>250&ndash;500 g</th><th>&gt;500 g**</th><th>Total fish</th>
+      <th>&gt;500 g, fish</th><th>Tonnes stocked</th><th>&gt;500 g, tonnes</th><th>Avg weight</th></tr></thead>
+      <tbody id="mix"></tbody>
+    </table></div>
+    <div class="note">Million fish, kt. &gt;500 g fish have no stocking field and are derived from the count balance; mainly post-smolt in the West.</div>
+  </section>
+
+  <section>
+    <h2>Count balance &middot; last 12 months</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Region</th><th>Start</th><th>+ Stocked (reported)</th><th>− Harvest</th><th>− Mortality</th><th>− Other losses</th>
+      <th>+ Count corr.</th><th>− End</th><th>= Residual</th><th>of which &gt;500 g</th><th>of which older gens</th></tr></thead>
+      <tbody id="cb"></tbody>
+    </table></div>
+    <div class="note">Million fish. Negative residual = fish appearing without reported stocking (&gt;500 g). Residual in older generations is counting noise.</div>
+  </section>
+
+  <section>
+    <h2>Count, biomass and turnover</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Region</th><th>Standing fish</th><th>Biomass</th><th>Avg weight at sea</th><th>Turnover, 12m</th><th id="seaHead">Months at sea</th></tr></thead>
+      <tbody id="turn"></tbody>
+    </table></div>
+    <div class="note">Standing fish = fish stocked per year × time at sea. Shorter time at sea means fewer fish for the same biomass.</div>
+  </section>
+
+  <section>
+    <h2>Data warnings</h2>
+    <div class="warnbox" id="warn"></div>
+  </section>
+
+  <footer>
+    <b>Source:</b> Fiskeridirektoratet biomass statistics by production area and generation (salmon; trout only in MTB use); Aquaculture Register; sea temperature from BarentsWatch lice counts.
+    West = PO1&ndash;4, Mid = PO5&ndash;7, North = PO8&ndash;13; Norway includes rows without production area.<br>
+    <b>Growth at sea</b> = Δ biomass + harvest + mortality biomass − stocked biomass (residual, so the balance closes by definition).
+    <b>Stocked biomass</b> = fish per weight class × estimated class weight. <b>Biological FCR</b> = feed ÷ growth at sea. <b>eFCR</b> = feed ÷ (Δ biomass + harvest), as in Biomassepulsen.
+    <b>TGC</b> = 1000 × (W₁<sup>⅓</sup> − W₀<sup>⅓</sup>) ÷ (°C × days), W in grams, by generation and PO; range from uncorrected to harvest-corrected start weight.<br>
+    *<b>MTB use</b> = (salmon + trout) ÷ sea-site licence MTB (excl. slaughter pens and licences without PO); indicative.
+    **<b>&gt;500 g</b> = unreported stocking from the count balance.<br>
+    <b>Changes from previous edition:</b> class-based stocked biomass (was [reported + other losses] × 0.50 kg); other losses (<code>ANDRE_NY_STK</code>) treated as a loss;
+    regions PO1&ndash;4/5&ndash;7/8&ndash;13; trout included in MTB use; two FCR definitions; temperature and TGC; stocking mix, count balance and turnover sections.
+  </footer>
+</div>
+
+<script>
+const D={"T0":24295,"T1":24319,"mtb":{"Norge":1042975,"Vest":273351,"Midt":290841,"Nord":478783},"mtbUnknown":181646,"w":{"Norge":{"lt":0.163,"mid":0.326,"big":0.683},"Vest":{"lt":0.225,"mid":0.281,"big":0.843},"Midt":{"lt":0.161,"mid":0.223,"big":0.553},"Nord":{"lt":0.15,"mid":0.284,"big":0.5}},"m":{"Norge":[{"t":24294,"bio":850589,"n":480.94,"ht":134537,"hn":27.854,"dn":2.814,"db":5761,"feed":219840,"lt":0.0,"mid":0.0,"big":0.0,"bigNet":0.0,"utk":0.203,"rom":0.0,"andre":0.145,"tf":-0.057,"resOld":0.0,"trout":51468},{"t":24295,"bio":892388,"n":497.38,"ht":150649,"hn":32.664,"dn":5.267,"db":11904,"feed":238814,"lt":44.251,"mid":8.694,"big":2.052,"bigNet":2.052,"utk":0.292,"rom":0.0001,"andre":0.419,"tf":-0.048,"resOld":-0.138,"trout":51817},{"t":24296,"bio":890755,"n":494.85,"ht":181770,"hn":42.515,"dn":6.847,"db":15964,"feed":231768,"lt":31.602,"mid":13.318,"big":2.946,"bigNet":2.946,"utk":0.338,"rom":0.0,"andre":0.753,"tf":-0.114,"resOld":-0.165,"trout":52190},{"t":24297,"bio":895469,"n":486.82,"ht":176665,"hn":40.747,"dn":4.831,"db":10869,"feed":228486,"lt":30.192,"mid":8.504,"big":2.133,"bigNet":2.133,"utk":0.365,"rom":0.0,"andre":1.739,"tf":-0.283,"resOld":0.896,"trout":53476},{"t":24298,"bio":892558,"n":474.27,"ht":155340,"hn":35.817,"dn":4.932,"db":11430,"feed":190814,"lt":19.06,"mid":7.773,"big":2.816,"bigNet":2.816,"utk":0.176,"rom":0.0,"andre":1.066,"tf":-0.225,"resOld":-0.019,"trout":53585},{"t":24299,"bio":902267,"n":476.55,"ht":125574,"hn":28.026,"dn":4.474,"db":9572,"feed":165479,"lt":21.653,"mid":13.599,"big":0.0,"bigNet":-0.277,"utk":0.129,"rom":0.0,"andre":0.254,"tf":-0.216,"resOld":-0.412,"trout":53304},{"t":24300,"bio":899645,"n":457.28,"ht":114139,"hn":24.472,"dn":4.819,"db":9996,"feed":144114,"lt":5.406,"mid":1.558,"big":3.593,"bigNet":3.593,"utk":0.156,"rom":0.015,"andre":0.347,"tf":-0.3,"resOld":-0.469,"trout":51848},{"t":24301,"bio":885690,"n":430.31,"ht":106803,"hn":22.758,"dn":4.749,"db":9981,"feed":121416,"lt":0.507,"mid":1.194,"big":0.0,"bigNet":-0.19,"utk":0.156,"rom":0.0,"andre":0.59,"tf":-0.143,"resOld":0.077,"trout":50835},{"t":24302,"bio":863203,"n":416.88,"ht":130154,"hn":26.327,"dn":3.557,"db":8051,"feed":132003,"lt":5.839,"mid":6.595,"big":7.472,"bigNet":7.472,"utk":0.212,"rom":0.0,"andre":0.415,"tf":-0.325,"resOld":2.506,"trout":49412},{"t":24303,"bio":849699,"n":432.12,"ht":127274,"hn":24.58,"dn":3.475,"db":7416,"feed":133600,"lt":28.227,"mid":11.871,"big":4.619,"bigNet":4.619,"utk":0.265,"rom":0.0,"andre":0.944,"tf":-0.386,"resOld":-0.175,"trout":49230},{"t":24304,"bio":847519,"n":466.68,"ht":134585,"hn":26.293,"dn":5.436,"db":10287,"feed":156333,"lt":50.41,"mid":12.055,"big":4.74,"bigNet":4.74,"utk":0.284,"rom":0.0109,"andre":0.408,"tf":-0.06,"resOld":0.161,"trout":49823},{"t":24305,"bio":856180,"n":467.68,"ht":139741,"hn":28.653,"dn":4.249,"db":9031,"feed":180515,"lt":23.987,"mid":11.357,"big":1.052,"bigNet":1.052,"utk":0.194,"rom":0.0,"andre":3.138,"tf":-0.165,"resOld":-1.495,"trout":53747},{"t":24306,"bio":862197,"n":459.27,"ht":164350,"hn":34.237,"dn":3.681,"db":9018,"feed":214427,"lt":24.461,"mid":5.448,"big":1.661,"bigNet":1.661,"utk":0.287,"rom":0.0,"andre":1.911,"tf":-0.328,"resOld":-0.463,"trout":54845},{"t":24307,"bio":871430,"n":465.15,"ht":177754,"hn":37.694,"dn":5.079,"db":11835,"feed":228356,"lt":36.872,"mid":8.634,"big":4.248,"bigNet":4.248,"utk":0.242,"rom":0.0,"andre":0.603,"tf":-0.19,"resOld":0.067,"trout":53431},{"t":24308,"bio":889020,"n":470.74,"ht":168006,"hn":36.782,"dn":5.014,"db":12133,"feed":230871,"lt":36.998,"mid":15.004,"big":0.0,"bigNet":-4.137,"utk":0.191,"rom":0.0,"andre":0.418,"tf":-0.253,"resOld":-0.385,"trout":52811},{"t":24309,"bio":892407,"n":458.79,"ht":178097,"hn":38.662,"dn":5.849,"db":13170,"feed":225949,"lt":23.404,"mid":7.295,"big":3.416,"bigNet":3.416,"utk":0.216,"rom":0.0001,"andre":0.575,"tf":-0.169,"resOld":0.597,"trout":51896},{"t":24310,"bio":902313,"n":459.81,"ht":153124,"hn":32.305,"dn":5.032,"db":10558,"feed":199829,"lt":28.992,"mid":10.059,"big":1.258,"bigNet":1.258,"utk":0.243,"rom":0.0,"andre":0.289,"tf":-0.179,"resOld":1.246,"trout":52181},{"t":24311,"bio":908375,"n":462.52,"ht":136654,"hn":27.588,"dn":3.973,"db":8644,"feed":172084,"lt":17.661,"mid":11.132,"big":6.37,"bigNet":6.37,"utk":0.227,"rom":0.0,"andre":0.407,"tf":-0.241,"resOld":0.018,"trout":51111},{"t":24312,"bio":892793,"n":436.66,"ht":135000,"hn":25.539,"dn":3.635,"db":8151,"feed":148005,"lt":2.785,"mid":1.892,"big":1.659,"bigNet":1.659,"utk":0.273,"rom":0.0,"andre":0.593,"tf":-0.459,"resOld":0.977,"trout":50492},{"t":24313,"bio":873277,"n":413.33,"ht":112499,"hn":21.484,"dn":2.71,"db":6260,"feed":121186,"lt":1.236,"mid":0.0,"big":1.476,"bigNet":1.476,"utk":0.157,"rom":0.0,"andre":0.426,"tf":-0.117,"resOld":1.139,"trout":49477},{"t":24314,"bio":853913,"n":405.13,"ht":125877,"hn":23.308,"dn":4.591,"db":10131,"feed":130215,"lt":6.536,"mid":8.511,"big":8.933,"bigNet":8.933,"utk":0.166,"rom":0.0,"andre":0.389,"tf":-0.275,"resOld":3.453,"trout":47916},{"t":24315,"bio":856629,"n":427.03,"ht":122206,"hn":23.433,"dn":3.127,"db":6305,"feed":138519,"lt":29.668,"mid":11.506,"big":9.244,"bigNet":9.244,"utk":0.112,"rom":0.0,"andre":0.587,"tf":-0.27,"resOld":0.992,"trout":45752},{"t":24316,"bio":871856,"n":463.55,"ht":135310,"hn":25.948,"dn":2.672,"db":5718,"feed":171170,"lt":42.906,"mid":21.732,"big":0.0,"bigNet":-0.324,"utk":0.216,"rom":0.0,"andre":0.395,"tf":-0.324,"resOld":-2.079,"trout":45671},{"t":24317,"bio":870856,"n":461.51,"ht":158755,"hn":32.128,"dn":2.385,"db":5173,"feed":184089,"lt":20.4,"mid":11.153,"big":0.682,"bigNet":0.682,"utk":0.222,"rom":0.0,"andre":0.101,"tf":-0.464,"resOld":-1.02,"trout":45436},{"t":24318,"bio":889223,"n":451.46,"ht":176690,"hn":35.506,"dn":2.548,"db":5552,"feed":230784,"lt":23.365,"mid":3.467,"big":1.514,"bigNet":1.514,"utk":0.167,"rom":0.0,"andre":0.113,"tf":-0.125,"resOld":-0.061,"trout":46190},{"t":24319,"bio":895944,"n":446.17,"ht":186683,"hn":38.26,"dn":3.662,"db":8867,"feed":245339,"lt":33.411,"mid":8.747,"big":0.0,"bigNet":-1.658,"utk":0.166,"rom":0.0,"andre":0.335,"tf":-0.263,"resOld":3.098,"trout":45202}],"Vest":[{"t":24294,"bio":206080,"n":103.58,"ht":42718,"hn":8.983,"dn":0.918,"db":2214,"feed":55487,"lt":0.0,"mid":0.0,"big":0.0,"bigNet":0.0,"utk":0.097,"rom":0.0,"andre":0.004,"tf":0.063,"resOld":0.0,"trout":46077},{"t":24295,"bio":215863,"n":103.84,"ht":36445,"hn":8.529,"dn":1.569,"db":4256,"feed":59345,"lt":4.691,"mid":2.664,"big":2.56,"bigNet":2.56,"utk":0.155,"rom":0.0,"andre":0.008,"tf":0.026,"resOld":-0.583,"trout":46216},{"t":24296,"bio":215281,"n":105.33,"ht":43079,"hn":10.893,"dn":2.124,"db":6005,"feed":55944,"lt":7.255,"mid":4.225,"big":2.25,"bigNet":2.25,"utk":0.127,"rom":0.0,"andre":0.011,"tf":0.02,"resOld":-0.889,"trout":47494},{"t":24297,"bio":210831,"n":102.54,"ht":46150,"hn":11.352,"dn":1.42,"db":3319,"feed":53613,"lt":6.72,"mid":2.779,"big":1.309,"bigNet":1.309,"utk":0.09,"rom":0.0,"andre":0.004,"tf":0.044,"resOld":0.779,"trout":48134},{"t":24298,"bio":206864,"n":98.55,"ht":40707,"hn":9.108,"dn":1.091,"db":2695,"feed":45768,"lt":3.145,"mid":1.446,"big":1.63,"bigNet":1.63,"utk":0.065,"rom":0.0,"andre":0.005,"tf":-0.052,"resOld":-0.114,"trout":48166},{"t":24299,"bio":201974,"n":95.29,"ht":38069,"hn":8.231,"dn":0.893,"db":2116,"feed":41360,"lt":0.985,"mid":2.728,"big":1.971,"bigNet":1.971,"utk":0.049,"rom":0.0,"andre":0.165,"tf":0.004,"resOld":-0.392,"trout":47455},{"t":24300,"bio":197233,"n":88.53,"ht":31722,"hn":6.663,"dn":1.017,"db":2284,"feed":35470,"lt":0.0,"mid":0.0,"big":0.806,"bigNet":0.806,"utk":0.065,"rom":0.0,"andre":0.009,"tf":-0.066,"resOld":-0.253,"trout":45968},{"t":24301,"bio":188927,"n":81.6,"ht":28671,"hn":5.791,"dn":1.142,"db":2636,"feed":27068,"lt":0.0,"mid":0.0,"big":0.05,"bigNet":0.05,"utk":0.057,"rom":0.0,"andre":0.01,"tf":0.019,"resOld":-0.0,"trout":45452},{"t":24302,"bio":190171,"n":91.27,"ht":28732,"hn":5.354,"dn":0.884,"db":2080,"feed":29943,"lt":4.473,"mid":6.198,"big":7.87,"bigNet":7.87,"utk":0.05,"rom":0.0,"andre":0.029,"tf":-0.049,"resOld":2.506,"trout":44510},{"t":24303,"bio":182614,"n":96.76,"ht":39677,"hn":7.303,"dn":0.832,"db":1796,"feed":34194,"lt":6.824,"mid":4.201,"big":3.047,"bigNet":3.047,"utk":0.102,"rom":0.0,"andre":0.045,"tf":-0.04,"resOld":0.261,"trout":44124},{"t":24304,"bio":181297,"n":93.89,"ht":32206,"hn":6.096,"dn":0.84,"db":1958,"feed":38448,"lt":2.307,"mid":0.625,"big":1.288,"bigNet":1.288,"utk":0.127,"rom":0.0109,"andre":0.029,"tf":0.037,"resOld":0.026,"trout":44079},{"t":24305,"bio":183385,"n":94.8,"ht":33180,"hn":6.912,"dn":0.957,"db":2446,"feed":42870,"lt":3.702,"mid":2.524,"big":2.056,"bigNet":2.056,"utk":0.075,"rom":0.0,"andre":0.022,"tf":0.023,"resOld":-1.058,"trout":47300},{"t":24306,"bio":185032,"n":92.37,"ht":34844,"hn":7.544,"dn":1.218,"db":3234,"feed":47104,"lt":3.194,"mid":0.829,"big":1.92,"bigNet":1.92,"utk":0.099,"rom":0.0,"andre":0.015,"tf":-0.107,"resOld":-0.612,"trout":48466},{"t":24307,"bio":194378,"n":94.09,"ht":31008,"hn":7.2,"dn":1.479,"db":3984,"feed":48827,"lt":4.606,"mid":1.835,"big":4.241,"bigNet":4.241,"utk":0.109,"rom":0.0,"andre":0.002,"tf":-0.037,"resOld":0.128,"trout":47468},{"t":24308,"bio":200165,"n":96.76,"ht":30674,"hn":7.445,"dn":2.044,"db":5345,"feed":48478,"lt":8.132,"mid":4.14,"big":0.0,"bigNet":-0.603,"utk":0.083,"rom":0.0,"andre":0.003,"tf":-0.005,"resOld":-0.58,"trout":47759},{"t":24309,"bio":200105,"n":98.29,"ht":32889,"hn":7.754,"dn":2.5,"db":5348,"feed":45190,"lt":6.242,"mid":3.412,"big":2.756,"bigNet":2.756,"utk":0.097,"rom":0.0,"andre":0.003,"tf":0.051,"resOld":0.585,"trout":47283},{"t":24310,"bio":203265,"n":95.06,"ht":28989,"hn":6.453,"dn":2.281,"db":4652,"feed":44196,"lt":2.843,"mid":1.35,"big":1.488,"bigNet":1.488,"utk":0.103,"rom":0.0,"andre":0.013,"tf":-0.06,"resOld":0.0,"trout":47434},{"t":24311,"bio":200186,"n":93.38,"ht":38637,"hn":8.504,"dn":1.281,"db":2996,"feed":44606,"lt":1.444,"mid":3.259,"big":3.442,"bigNet":3.442,"utk":0.116,"rom":0.0,"andre":0.01,"tf":0.088,"resOld":-0.0,"trout":45979},{"t":24312,"bio":191931,"n":85.61,"ht":32414,"hn":6.918,"dn":1.014,"db":2706,"feed":33964,"lt":0.0,"mid":0.07,"big":1.38,"bigNet":1.38,"utk":0.164,"rom":0.0,"andre":0.346,"tf":-0.06,"resOld":0.001,"trout":45612},{"t":24313,"bio":183558,"n":79.44,"ht":27891,"hn":5.662,"dn":0.691,"db":1887,"feed":26403,"lt":0.0,"mid":0.0,"big":0.69,"bigNet":0.69,"utk":0.053,"rom":0.0,"andre":0.213,"tf":0.047,"resOld":0.282,"trout":44143},{"t":24314,"bio":169123,"n":83.67,"ht":35511,"hn":6.937,"dn":2.47,"db":5559,"feed":25508,"lt":3.133,"mid":6.736,"big":7.063,"bigNet":7.063,"utk":0.059,"rom":0.0,"andre":0.047,"tf":-0.013,"resOld":3.179,"trout":42633},{"t":24315,"bio":171235,"n":91.04,"ht":27802,"hn":5.444,"dn":0.877,"db":1793,"feed":28859,"lt":3.162,"mid":4.554,"big":4.641,"bigNet":4.641,"utk":0.032,"rom":0.0,"andre":0.033,"tf":-0.012,"resOld":-1.405,"trout":40677},{"t":24316,"bio":179289,"n":89.25,"ht":22510,"hn":4.312,"dn":0.801,"db":1954,"feed":38160,"lt":2.404,"mid":1.195,"big":0.0,"bigNet":-0.026,"utk":0.071,"rom":0.0,"andre":0.047,"tf":-0.003,"resOld":-0.193,"trout":40796},{"t":24317,"bio":188389,"n":92.16,"ht":27965,"hn":5.871,"dn":0.676,"db":1789,"feed":42558,"lt":2.937,"mid":3.925,"big":2.755,"bigNet":2.755,"utk":0.065,"rom":0.0,"andre":0.034,"tf":-0.086,"resOld":-0.021,"trout":40337},{"t":24318,"bio":195072,"n":89.84,"ht":33942,"hn":7.102,"dn":0.63,"db":1793,"feed":50321,"lt":2.333,"mid":1.44,"big":1.789,"bigNet":1.789,"utk":0.047,"rom":0.0,"andre":0.035,"tf":0.007,"resOld":0.074,"trout":41042},{"t":24319,"bio":197621,"n":85.44,"ht":39848,"hn":8.437,"dn":1.029,"db":2966,"feed":56181,"lt":3.461,"mid":1.379,"big":0.956,"bigNet":0.956,"utk":0.049,"rom":0.0,"andre":0.032,"tf":-0.005,"resOld":0.645,"trout":43032}],"Midt":[{"t":24294,"bio":246981,"n":141.41,"ht":34184,"hn":7.042,"dn":0.948,"db":1944,"feed":61226,"lt":0.0,"mid":0.0,"big":0.0,"bigNet":0.0,"utk":0.046,"rom":0.0,"andre":0.004,"tf":-0.039,"resOld":0.0,"trout":4303},{"t":24295,"bio":250283,"n":146.39,"ht":46465,"hn":10.137,"dn":2.136,"db":4804,"feed":64136,"lt":16.801,"mid":0.926,"big":0.0,"bigNet":-0.127,"utk":0.07,"rom":0.0,"andre":0.322,"tf":0.021,"resOld":-0.019,"trout":4225},{"t":24296,"bio":251039,"n":148.9,"ht":50115,"hn":11.918,"dn":2.11,"db":5089,"feed":65473,"lt":11.437,"mid":4.776,"big":0.631,"bigNet":0.631,"utk":0.066,"rom":0.0,"andre":0.038,"tf":-0.069,"resOld":0.132,"trout":3328},{"t":24297,"bio":262250,"n":145.98,"ht":41346,"hn":9.568,"dn":1.68,"db":4017,"feed":65190,"lt":5.353,"mid":2.361,"big":0.91,"bigNet":0.91,"utk":0.071,"rom":0.0,"andre":0.324,"tf":-0.033,"resOld":-0.136,"trout":3493},{"t":24298,"bio":264633,"n":141.92,"ht":39604,"hn":9.834,"dn":1.809,"db":4325,"feed":54198,"lt":4.979,"mid":2.822,"big":0.679,"bigNet":0.679,"utk":0.04,"rom":0.0,"andre":0.758,"tf":0.032,"resOld":0.132,"trout":3777},{"t":24299,"bio":270493,"n":147.43,"ht":35581,"hn":8.148,"dn":1.717,"db":3577,"feed":50999,"lt":10.465,"mid":6.871,"big":0.0,"bigNet":-2.012,"utk":0.031,"rom":0.0,"andre":0.023,"tf":-0.023,"resOld":-0.128,"trout":4002},{"t":24300,"bio":276541,"n":148.6,"ht":28848,"hn":6.512,"dn":1.746,"db":3607,"feed":43859,"lt":5.406,"mid":1.558,"big":2.787,"bigNet":2.787,"utk":0.028,"rom":0.015,"andre":0.249,"tf":-0.047,"resOld":-0.011,"trout":4139},{"t":24301,"bio":278664,"n":141.35,"ht":28222,"hn":6.358,"dn":1.756,"db":3836,"feed":39293,"lt":0.399,"mid":0.943,"big":0.0,"bigNet":-0.234,"utk":0.031,"rom":0.0,"andre":0.136,"tf":-0.069,"resOld":-0.0,"trout":3772},{"t":24302,"bio":273846,"n":133.07,"ht":38993,"hn":7.851,"dn":1.346,"db":3171,"feed":44406,"lt":1.085,"mid":0.398,"big":0.0,"bigNet":-0.398,"utk":0.059,"rom":0.0,"andre":0.059,"tf":-0.057,"resOld":0.0,"trout":3581},{"t":24303,"bio":267477,"n":140.85,"ht":41249,"hn":7.805,"dn":1.406,"db":3010,"feed":42784,"lt":13.898,"mid":2.688,"big":0.0,"bigNet":-0.065,"utk":0.042,"rom":0.0,"andre":0.063,"tf":-0.144,"resOld":-0.722,"trout":3734},{"t":24304,"bio":270528,"n":140.53,"ht":41989,"hn":8.352,"dn":1.132,"db":2596,"feed":53426,"lt":6.669,"mid":1.299,"big":1.344,"bigNet":1.344,"utk":0.025,"rom":0.0,"andre":0.024,"tf":-0.1,"resOld":0.0,"trout":4154},{"t":24305,"bio":268085,"n":138.26,"ht":48323,"hn":10.108,"dn":1.049,"db":2455,"feed":56176,"lt":6.296,"mid":2.949,"big":0.0,"bigNet":-0.659,"utk":0.048,"rom":0.0,"andre":0.014,"tf":-0.1,"resOld":-0.461,"trout":4786},{"t":24306,"bio":253226,"n":134.28,"ht":59745,"hn":12.18,"dn":1.496,"db":3707,"feed":58622,"lt":7.572,"mid":2.733,"big":0.0,"bigNet":-0.232,"utk":0.088,"rom":0.0,"andre":0.027,"tf":-0.103,"resOld":0.154,"trout":4299},{"t":24307,"bio":247910,"n":132.07,"ht":52120,"hn":11.713,"dn":1.987,"db":4662,"feed":60974,"lt":10.075,"mid":0.912,"big":0.484,"bigNet":0.484,"utk":0.045,"rom":0.0,"andre":0.061,"tf":-0.008,"resOld":-0.132,"trout":3703},{"t":24308,"bio":255575,"n":135.57,"ht":42444,"hn":10.104,"dn":1.551,"db":3795,"feed":63874,"lt":12.15,"mid":4.821,"big":0.0,"bigNet":-1.541,"utk":0.057,"rom":0.0,"andre":0.044,"tf":-0.003,"resOld":0.172,"trout":3124},{"t":24309,"bio":251532,"n":126.73,"ht":53266,"hn":13.317,"dn":1.88,"db":4537,"feed":62217,"lt":4.629,"mid":1.002,"big":0.984,"bigNet":0.984,"utk":0.071,"rom":0.0,"andre":0.184,"tf":-0.005,"resOld":0.0,"trout":3004},{"t":24310,"bio":252950,"n":126.43,"ht":45837,"hn":10.674,"dn":1.244,"db":3002,"feed":57470,"lt":7.466,"mid":4.687,"big":0.0,"bigNet":-0.257,"utk":0.087,"rom":0.0,"andre":0.238,"tf":-0.063,"resOld":-0.116,"trout":2979},{"t":24311,"bio":259028,"n":133.46,"ht":37673,"hn":7.847,"dn":1.293,"db":2710,"feed":51183,"lt":10.091,"mid":5.335,"big":0.957,"bigNet":0.957,"utk":0.075,"rom":0.0,"andre":0.021,"tf":-0.116,"resOld":-0.0,"trout":2988},{"t":24312,"bio":258012,"n":129.47,"ht":37778,"hn":6.848,"dn":1.095,"db":2539,"feed":45706,"lt":2.131,"mid":1.822,"big":0.279,"bigNet":0.279,"utk":0.062,"rom":0.0,"andre":0.029,"tf":-0.13,"resOld":0.057,"trout":2787},{"t":24313,"bio":256135,"n":123.48,"ht":33392,"hn":6.413,"dn":0.784,"db":1832,"feed":38527,"lt":0.922,"mid":0.0,"big":0.786,"bigNet":0.786,"utk":0.046,"rom":0.0,"andre":0.028,"tf":-0.034,"resOld":0.392,"trout":3026},{"t":24314,"bio":255305,"n":122.2,"ht":36352,"hn":6.848,"dn":0.957,"db":2110,"feed":42167,"lt":3.389,"mid":1.775,"big":1.869,"bigNet":1.869,"utk":0.052,"rom":0.0,"andre":0.074,"tf":-0.137,"resOld":0.248,"trout":3019},{"t":24315,"bio":248965,"n":131.26,"ht":42890,"hn":8.524,"dn":1.172,"db":2291,"feed":42881,"lt":16.287,"mid":1.797,"big":3.17,"bigNet":3.17,"utk":0.039,"rom":0.0,"andre":0.085,"tf":-0.078,"resOld":2.294,"trout":3118},{"t":24316,"bio":245497,"n":134.23,"ht":48899,"hn":9.741,"dn":0.807,"db":1688,"feed":52232,"lt":8.527,"mid":3.696,"big":0.0,"bigNet":-0.462,"utk":0.048,"rom":0.0,"andre":0.113,"tf":-0.029,"resOld":-1.947,"trout":3764},{"t":24317,"bio":241642,"n":132.58,"ht":45629,"hn":9.151,"dn":0.888,"db":1769,"feed":50612,"lt":5.493,"mid":3.539,"big":0.0,"bigNet":-1.506,"utk":0.037,"rom":0.0,"andre":0.032,"tf":-0.091,"resOld":-1.022,"trout":3984},{"t":24318,"bio":243970,"n":128.57,"ht":47787,"hn":9.653,"dn":0.861,"db":1854,"feed":61960,"lt":5.897,"mid":0.577,"big":0.131,"bigNet":0.131,"utk":0.04,"rom":0.0,"andre":0.033,"tf":-0.026,"resOld":0.0,"trout":3583},{"t":24319,"bio":248331,"n":128.48,"ht":45877,"hn":10.047,"dn":1.256,"db":3324,"feed":66539,"lt":11.438,"mid":0.663,"big":0.032,"bigNet":0.032,"utk":0.048,"rom":0.0,"andre":0.143,"tf":-0.059,"resOld":0.668,"trout":223}],"Nord":[{"t":24294,"bio":384737,"n":231.21,"ht":55848,"hn":11.497,"dn":0.91,"db":1461,"feed":100162,"lt":0.0,"mid":0.0,"big":0.0,"bigNet":0.0,"utk":0.049,"rom":0.0,"andre":0.135,"tf":-0.076,"resOld":0.0,"trout":0},{"t":24295,"bio":413089,"n":242.63,"ht":65596,"hn":13.556,"dn":1.524,"db":2694,"feed":112269,"lt":22.54,"mid":5.103,"big":0.0,"bigNet":-0.454,"utk":0.06,"rom":0.0001,"andre":0.089,"tf":-0.089,"resOld":0.451,"trout":0},{"t":24296,"bio":411936,"n":235.92,"ht":86296,"hn":19.277,"dn":2.584,"db":4767,"feed":107739,"lt":12.078,"mid":4.297,"big":0.24,"bigNet":0.24,"utk":0.135,"rom":0.0,"andre":0.703,"tf":-0.045,"resOld":0.581,"trout":0},{"t":24297,"bio":411147,"n":233.55,"ht":86311,"hn":19.283,"dn":1.702,"db":3435,"feed":107161,"lt":17.723,"mid":3.113,"big":0.0,"bigNet":-0.125,"utk":0.18,"rom":0.0,"andre":1.405,"tf":-0.282,"resOld":0.223,"trout":249},{"t":24298,"bio":409728,"n":229.34,"ht":73462,"hn":16.584,"dn":2.011,"db":4334,"feed":88507,"lt":10.923,"mid":3.505,"big":0.506,"bigNet":0.506,"utk":0.068,"rom":0.0,"andre":0.295,"tf":-0.195,"resOld":-0.0,"trout":0},{"t":24299,"bio":417919,"n":228.69,"ht":51000,"hn":11.493,"dn":1.812,"db":3730,"feed":70934,"lt":9.27,"mid":4.0,"big":0.0,"bigNet":-0.276,"utk":0.042,"rom":0.0,"andre":0.066,"tf":-0.197,"resOld":0.026,"trout":0},{"t":24300,"bio":414642,"n":215.42,"ht":51456,"hn":10.971,"dn":1.98,"db":3900,"feed":62943,"lt":0.0,"mid":0.0,"big":0.0,"bigNet":0.0,"utk":0.054,"rom":0.0,"andre":0.087,"tf":-0.178,"resOld":-0.193,"trout":0},{"t":24301,"bio":407293,"n":202.9,"ht":48629,"hn":10.376,"dn":1.814,"db":3405,"feed":53612,"lt":0.0,"mid":0.251,"big":0.0,"bigNet":0.0,"utk":0.061,"rom":0.0,"andre":0.441,"tf":-0.088,"resOld":0.0,"trout":0},{"t":24302,"bio":388349,"n":188.33,"ht":61325,"hn":12.912,"dn":1.292,"db":2669,"feed":56036,"lt":0.279,"mid":0.0,"big":0.0,"bigNet":0.0,"utk":0.097,"rom":0.0,"andre":0.325,"tf":-0.216,"resOld":0.0,"trout":0},{"t":24303,"bio":388516,"n":189.83,"ht":45451,"hn":9.313,"dn":1.194,"db":2505,"feed":54917,"lt":6.775,"mid":4.744,"big":1.614,"bigNet":1.614,"utk":0.098,"rom":0.0,"andre":0.834,"tf":-0.197,"resOld":-0.004,"trout":0},{"t":24304,"bio":385293,"n":227.05,"ht":58641,"hn":11.641,"dn":3.432,"db":5591,"feed":62417,"lt":40.636,"mid":10.122,"big":2.103,"bigNet":2.103,"utk":0.122,"rom":0.0,"andre":0.351,"tf":0.004,"resOld":0.099,"trout":0},{"t":24305,"bio":394680,"n":226.42,"ht":55915,"hn":11.275,"dn":2.202,"db":4075,"feed":79246,"lt":11.165,"mid":5.421,"big":0.0,"bigNet":-0.504,"utk":0.064,"rom":0.0,"andre":3.098,"tf":-0.079,"resOld":0.0,"trout":0},{"t":24306,"bio":411868,"n":222.82,"ht":69182,"hn":14.392,"dn":0.909,"db":1939,"feed":105646,"lt":12.229,"mid":1.713,"big":0.0,"bigNet":-0.158,"utk":0.096,"rom":0.0,"andre":1.868,"tf":-0.118,"resOld":0.0,"trout":0},{"t":24307,"bio":415157,"n":228.46,"ht":93048,"hn":18.456,"dn":1.544,"db":3045,"feed":114681,"lt":20.976,"mid":5.888,"big":0.0,"bigNet":-0.377,"utk":0.083,"rom":0.0,"andre":0.531,"tf":-0.142,"resOld":0.09,"trout":0},{"t":24308,"bio":417130,"n":226.85,"ht":93234,"hn":18.887,"dn":1.323,"db":2846,"feed":113928,"lt":15.401,"mid":5.873,"big":0.0,"bigNet":-2.011,"utk":0.042,"rom":0.0,"andre":0.341,"tf":-0.231,"resOld":0.051,"trout":0},{"t":24309,"bio":422386,"n":221.38,"ht":90090,"hn":17.28,"dn":1.365,"db":3076,"feed":113627,"lt":11.317,"mid":2.881,"big":0.0,"bigNet":-0.405,"utk":0.043,"rom":0.0001,"andre":0.352,"tf":-0.211,"resOld":0.008,"trout":47},{"t":24310,"bio":424510,"n":222.85,"ht":76786,"hn":14.905,"dn":1.419,"db":2765,"feed":92973,"lt":15.616,"mid":3.658,"big":0.028,"bigNet":0.028,"utk":0.048,"rom":0.0,"andre":0.035,"tf":-0.051,"resOld":1.37,"trout":59},{"t":24311,"bio":425274,"n":218.21,"ht":58777,"hn":10.914,"dn":1.291,"db":2775,"feed":71534,"lt":5.525,"mid":2.385,"big":0.162,"bigNet":0.162,"utk":0.03,"rom":0.0,"andre":0.243,"tf":-0.236,"resOld":-0.0,"trout":67},{"t":24312,"bio":416560,"n":206.25,"ht":63207,"hn":11.516,"dn":1.433,"db":2704,"feed":63762,"lt":0.653,"mid":0.0,"big":0.0,"bigNet":0.0,"utk":0.041,"rom":0.0,"andre":0.214,"tf":-0.264,"resOld":-0.854,"trout":77},{"t":24313,"bio":405217,"n":195.36,"ht":49629,"hn":9.208,"dn":1.167,"db":2387,"feed":52144,"lt":0.308,"mid":0.0,"big":0.0,"bigNet":0.0,"utk":0.054,"rom":0.0,"andre":0.183,"tf":-0.131,"resOld":0.46,"trout":84},{"t":24314,"bio":399595,"n":184.79,"ht":51691,"hn":9.061,"dn":1.088,"db":2285,"feed":57947,"lt":0.0,"mid":0.0,"big":0.0,"bigNet":0.0,"utk":0.048,"rom":0.0,"andre":0.262,"tf":-0.106,"resOld":0.0,"trout":99},{"t":24315,"bio":406900,"n":190.63,"ht":47540,"hn":8.53,"dn":1.0,"db":2019,"feed":61979,"lt":9.421,"mid":5.156,"big":1.44,"bigNet":1.44,"utk":0.037,"rom":0.0,"andre":0.455,"tf":-0.149,"resOld":0.0,"trout":131},{"t":24316,"bio":417473,"n":225.97,"ht":59541,"hn":11.057,"dn":1.0,"db":1880,"feed":75050,"lt":30.782,"mid":16.842,"big":0.368,"bigNet":0.368,"utk":0.072,"rom":0.0,"andre":0.228,"tf":-0.259,"resOld":0.043,"trout":193},{"t":24317,"bio":411513,"n":221.36,"ht":81007,"hn":16.37,"dn":0.727,"db":1422,"feed":84884,"lt":10.092,"mid":2.856,"big":0.0,"bigNet":-0.561,"utk":0.082,"rom":0.0,"andre":0.028,"tf":-0.246,"resOld":-0.46,"trout":266},{"t":24318,"bio":416939,"n":217.77,"ht":92216,"hn":18.146,"dn":0.966,"db":1689,"feed":110481,"lt":14.564,"mid":1.449,"big":0.0,"bigNet":-0.407,"utk":0.073,"rom":0.0,"andre":0.044,"tf":-0.114,"resOld":-0.145,"trout":382},{"t":24319,"bio":413263,"n":216.52,"ht":97028,"hn":19.019,"dn":1.273,"db":2296,"feed":113547,"lt":17.356,"mid":6.51,"big":0.0,"bigNet":-2.685,"utk":0.063,"rom":0.0,"andre":0.148,"tf":-0.189,"resOld":1.742,"trout":448}]},"nullpo":{"24319":{"n":15.7,"b":36729},"24297":{"n":4.7,"b":11241},"24298":{"n":4.5,"b":11333},"24310":{"n":15.5,"b":21587},"24299":{"n":5.1,"b":11882},"24311":{"n":17.5,"b":23888},"24300":{"n":4.7,"b":11230},"24312":{"n":15.3,"b":26291},"24301":{"n":4.5,"b":10806},"24313":{"n":15.1,"b":28368},"24302":{"n":4.2,"b":10837},"24314":{"n":14.5,"b":29890},"24303":{"n":4.7,"b":11091},"24315":{"n":14.1,"b":29529},"24304":{"n":5.2,"b":10401},"24316":{"n":14.1,"b":29598},"24305":{"n":8.2,"b":10030},"24317":{"n":15.4,"b":29313},"24306":{"n":9.8,"b":12071},"24318":{"n":15.3,"b":33241},"24295":{"n":4.5,"b":13154},"24307":{"n":10.5,"b":13985},"24296":{"n":4.7,"b":12498},"24308":{"n":11.6,"b":16151},"24309":{"n":12.4,"b":18384}},"hist":{"Norge":{"24277":{"bio":800094,"n":409.57},"24278":{"bio":771718,"n":403.4},"24279":{"bio":764801,"n":425.94},"24280":{"bio":772257,"n":459.76},"24304":{"bio":847519,"n":466.68},"24316":{"bio":871856,"n":463.55},"24269":{"bio":767950,"n":449.01},"24281":{"bio":778465,"n":462.34},"24293":{"bio":803991,"n":480.83},"24305":{"bio":856180,"n":467.68},"24270":{"bio":814694,"n":450.49},"24282":{"bio":830327,"n":465.09},"24294":{"bio":850589,"n":480.94},"24306":{"bio":862197,"n":459.27},"24271":{"bio":847792,"n":469.41},"24283":{"bio":864485,"n":473.38},"24295":{"bio":892388,"n":497.38},"24307":{"bio":871430,"n":465.15},"24319":{"bio":895944,"n":446.17},"24272":{"bio":859477,"n":471.28},"24284":{"bio":891571,"n":481.9},"24296":{"bio":890755,"n":494.85},"24308":{"bio":889020,"n":470.74},"24273":{"bio":867673,"n":464.92},"24285":{"bio":895158,"n":475.91},"24297":{"bio":895469,"n":486.82},"24309":{"bio":892407,"n":458.79},"24274":{"bio":862195,"n":459.39},"24286":{"bio":879516,"n":468.74},"24298":{"bio":892558,"n":474.27},"24310":{"bio":902313,"n":459.81},"24275":{"bio":846710,"n":452.41},"24287":{"bio":857342,"n":469.31},"24299":{"bio":902267,"n":476.55},"24311":{"bio":908375,"n":462.52},"24276":{"bio":827210,"n":434.66},"24288":{"bio":824030,"n":444.62},"24300":{"bio":899645,"n":457.28},"24312":{"bio":892793,"n":436.66},"24289":{"bio":791541,"n":416.23},"24301":{"bio":885690,"n":430.31},"24313":{"bio":873277,"n":413.33},"24290":{"bio":765857,"n":405.07},"24302":{"bio":863203,"n":416.88},"24314":{"bio":853913,"n":405.13},"24291":{"bio":760947,"n":434.01},"24303":{"bio":849699,"n":432.12},"24315":{"bio":856629,"n":427.03},"24292":{"bio":778520,"n":470.68},"24317":{"bio":870856,"n":461.51},"24318":{"bio":889223,"n":451.46}},"Vest":{"24277":{"bio":184804,"n":89.74},"24278":{"bio":176597,"n":100.25},"24279":{"bio":170889,"n":105.17},"24280":{"bio":164741,"n":104.66},"24304":{"bio":181297,"n":93.89},"24316":{"bio":179289,"n":89.25},"24281":{"bio":161990,"n":103.37},"24293":{"bio":204597,"n":109.51},"24305":{"bio":183385,"n":94.8},"24282":{"bio":176635,"n":102.34},"24294":{"bio":206080,"n":103.58},"24306":{"bio":185032,"n":92.37},"24283":{"bio":189354,"n":105.43},"24295":{"bio":215863,"n":103.84},"24307":{"bio":194378,"n":94.09},"24319":{"bio":197621,"n":85.44},"24272":{"bio":228708,"n":109.68},"24284":{"bio":197260,"n":110.27},"24296":{"bio":215281,"n":105.33},"24308":{"bio":200165,"n":96.76},"24273":{"bio":229663,"n":112.4},"24285":{"bio":206726,"n":114.04},"24297":{"bio":210831,"n":102.54},"24309":{"bio":200105,"n":98.29},"24274":{"bio":219145,"n":106.94},"24286":{"bio":208359,"n":112.72},"24298":{"bio":206864,"n":98.55},"24310":{"bio":203265,"n":95.06},"24275":{"bio":206030,"n":103.13},"24287":{"bio":203547,"n":108.48},"24299":{"bio":201974,"n":95.29},"24311":{"bio":200186,"n":93.38},"24276":{"bio":195523,"n":96.24},"24288":{"bio":190823,"n":101.03},"24300":{"bio":197233,"n":88.53},"24312":{"bio":191931,"n":85.61},"24289":{"bio":186133,"n":95.06},"24301":{"bio":188927,"n":81.6},"24313":{"bio":183558,"n":79.44},"24290":{"bio":186980,"n":101.18},"24302":{"bio":190171,"n":91.27},"24314":{"bio":169123,"n":83.67},"24291":{"bio":197133,"n":113.18},"24303":{"bio":182614,"n":96.76},"24315":{"bio":171235,"n":91.04},"24292":{"bio":201689,"n":109.25},"24269":{"bio":199467,"n":109.01},"24317":{"bio":188389,"n":92.16},"24270":{"bio":213196,"n":104.72},"24318":{"bio":195072,"n":89.84},"24271":{"bio":225977,"n":109.09}},"Midt":{"24271":{"bio":231365,"n":138.87},"24307":{"bio":247910,"n":132.07},"24272":{"bio":232106,"n":144.27},"24308":{"bio":255575,"n":135.57},"24273":{"bio":237800,"n":137.87},"24285":{"bio":267105,"n":131.27},"24297":{"bio":262250,"n":145.98},"24309":{"bio":251532,"n":126.73},"24274":{"bio":240528,"n":131.43},"24286":{"bio":261805,"n":126.9},"24298":{"bio":264633,"n":141.92},"24310":{"bio":252950,"n":126.43},"24275":{"bio":242191,"n":135.81},"24287":{"bio":255887,"n":133.4},"24299":{"bio":270493,"n":147.43},"24311":{"bio":259028,"n":133.46},"24276":{"bio":245217,"n":137.82},"24288":{"bio":252630,"n":129.89},"24300":{"bio":276541,"n":148.6},"24312":{"bio":258012,"n":129.47},"24277":{"bio":245730,"n":131.78},"24289":{"bio":239948,"n":120.42},"24301":{"bio":278664,"n":141.35},"24313":{"bio":256135,"n":123.48},"24278":{"bio":246448,"n":128.38},"24290":{"bio":224333,"n":115.87},"24302":{"bio":273846,"n":133.07},"24314":{"bio":255305,"n":122.2},"24279":{"bio":244025,"n":136.62},"24291":{"bio":215283,"n":128.01},"24303":{"bio":267477,"n":140.85},"24315":{"bio":248965,"n":131.26},"24280":{"bio":254266,"n":139.68},"24292":{"bio":223178,"n":136.66},"24304":{"bio":270528,"n":140.53},"24316":{"bio":245497,"n":134.23},"24269":{"bio":228551,"n":130.17},"24281":{"bio":257058,"n":139.94},"24293":{"bio":231184,"n":140.39},"24305":{"bio":268085,"n":138.26},"24317":{"bio":241642,"n":132.58},"24270":{"bio":230418,"n":128.94},"24282":{"bio":263742,"n":139.55},"24294":{"bio":246981,"n":141.41},"24306":{"bio":253226,"n":134.28},"24318":{"bio":243970,"n":128.57},"24283":{"bio":270902,"n":137.35},"24295":{"bio":250283,"n":146.39},"24319":{"bio":248331,"n":128.48},"24284":{"bio":272230,"n":137.3},"24296":{"bio":251039,"n":148.9}},"Nord":{"24304":{"bio":385293,"n":227.05},"24269":{"bio":326583,"n":204.06},"24281":{"bio":349865,"n":213.54},"24270":{"bio":359886,"n":212.47},"24283":{"bio":393492,"n":225.05},"24273":{"bio":389301,"n":210.18},"24285":{"bio":410863,"n":224.89},"24274":{"bio":392137,"n":216.72},"24286":{"bio":398372,"n":223.25},"24298":{"bio":409728,"n":229.34},"24310":{"bio":424510,"n":222.85},"24275":{"bio":387335,"n":209.23},"24287":{"bio":386471,"n":221.68},"24299":{"bio":417919,"n":228.69},"24311":{"bio":425274,"n":218.21},"24276":{"bio":376473,"n":196.9},"24288":{"bio":368701,"n":208.58},"24300":{"bio":414642,"n":215.42},"24312":{"bio":416560,"n":206.25},"24277":{"bio":359101,"n":184.46},"24289":{"bio":352450,"n":195.67},"24301":{"bio":407293,"n":202.9},"24313":{"bio":405217,"n":195.36},"24278":{"bio":337844,"n":171.3},"24290":{"bio":340693,"n":183.27},"24302":{"bio":388349,"n":188.33},"24314":{"bio":399595,"n":184.79},"24279":{"bio":337209,"n":179.46},"24291":{"bio":334810,"n":187.9},"24303":{"bio":388516,"n":189.83},"24315":{"bio":406900,"n":190.63},"24280":{"bio":342040,"n":209.36},"24292":{"bio":340300,"n":219.4},"24316":{"bio":417473,"n":225.97},"24293":{"bio":355826,"n":225.79},"24305":{"bio":394680,"n":226.42},"24317":{"bio":411513,"n":221.36},"24282":{"bio":379418,"n":217.54},"24294":{"bio":384737,"n":231.21},"24306":{"bio":411868,"n":222.82},"24318":{"bio":416939,"n":217.77},"24271":{"bio":378017,"n":217.03},"24295":{"bio":413089,"n":242.63},"24307":{"bio":415157,"n":228.46},"24319":{"bio":413263,"n":216.52},"24272":{"bio":385131,"n":212.53},"24284":{"bio":410598,"n":228.01},"24296":{"bio":411936,"n":235.92},"24308":{"bio":417130,"n":226.85},"24297":{"bio":411147,"n":233.55},"24309":{"bio":422386,"n":221.38}}},"temp":{"Norge":{"24277":5.42,"24278":5.02,"24279":5.73,"24280":7.18,"24304":7.64,"24316":7.77,"24269":10.21,"24281":9.67,"24293":11.35,"24305":10.31,"24270":12.98,"24282":12.66,"24294":13.62,"24306":13.35,"24271":13.59,"24283":13.16,"24295":15.18,"24307":13.98,"24319":12.86,"24272":12.8,"24284":12.76,"24296":14.04,"24308":13.66,"24273":10.62,"24285":10.79,"24297":11.29,"24309":11.73,"24274":9.34,"24286":8.41,"24298":9.17,"24310":9.55,"24275":7.3,"24287":6.32,"24299":7.26,"24311":8.18,"24276":6.0,"24288":5.17,"24300":6.0,"24312":6.53,"24289":4.63,"24301":5.3,"24313":5.46,"24290":4.53,"24302":5.24,"24314":5.38,"24291":5.06,"24303":5.93,"24315":6.09,"24292":8.03,"24317":10.69,"24318":12.43},"Vest":{"24277":6.56,"24278":6.94,"24279":7.14,"24280":8.66,"24304":9.93,"24316":9.31,"24281":12.54,"24293":12.56,"24305":12.32,"24282":15.45,"24294":14.88,"24306":15.41,"24283":15.3,"24295":16.0,"24307":14.68,"24319":13.84,"24272":15.31,"24284":15.37,"24296":15.17,"24308":15.34,"24273":12.36,"24285":13.03,"24297":12.66,"24309":13.55,"24274":11.15,"24286":10.05,"24298":10.64,"24310":11.36,"24275":8.77,"24287":7.53,"24299":8.65,"24311":9.85,"24276":7.11,"24288":6.12,"24300":7.29,"24312":7.61,"24289":5.69,"24301":6.02,"24313":6.02,"24290":5.28,"24302":6.06,"24314":5.56,"24291":6.15,"24303":7.7,"24315":6.76,"24292":10.6,"24269":12.54,"24317":12.27,"24270":14.55,"24318":13.65,"24271":15.13},"Midt":{"24271":14.06,"24307":14.39,"24272":13.09,"24308":13.97,"24273":11.05,"24285":11.61,"24297":11.22,"24309":12.43,"24274":9.84,"24286":8.63,"24298":9.28,"24310":10.19,"24275":7.51,"24287":6.49,"24299":7.64,"24311":8.8,"24276":6.51,"24288":5.68,"24300":6.58,"24312":7.33,"24277":6.02,"24289":5.36,"24301":6.06,"24313":6.32,"24278":5.41,"24290":5.31,"24302":6.1,"24314":6.38,"24279":6.64,"24291":5.83,"24303":6.82,"24315":6.9,"24280":8.08,"24292":8.89,"24304":8.32,"24316":8.28,"24269":10.61,"24281":10.04,"24293":12.18,"24305":10.92,"24317":11.0,"24270":13.13,"24282":13.08,"24294":13.88,"24306":13.73,"24318":12.91,"24283":13.37,"24295":15.43,"24319":13.23,"24284":13.48,"24296":14.13},"Nord":{"24304":6.08,"24269":8.52,"24281":8.06,"24270":11.96,"24283":11.99,"24273":9.34,"24285":9.14,"24274":8.03,"24286":7.41,"24298":8.37,"24310":8.31,"24275":6.4,"24287":5.57,"24299":6.34,"24311":7.01,"24276":5.1,"24288":4.34,"24300":5.01,"24312":5.53,"24277":4.42,"24289":3.58,"24301":4.44,"24313":4.66,"24278":3.74,"24290":3.6,"24302":4.22,"24314":4.66,"24279":4.36,"24291":3.93,"24303":4.49,"24315":5.31,"24280":5.79,"24292":5.95,"24316":6.82,"24293":10.11,"24305":8.96,"24317":9.78,"24282":11.06,"24294":12.78,"24306":12.18,"24318":11.58,"24271":12.37,"24295":14.59,"24307":13.4,"24319":12.16,"24272":11.14,"24284":11.03,"24296":13.4,"24308":12.67,"24297":10.63,"24309":10.45}},"tgc":{"Norge":{"24274":3.28,"24310":3.41,"24311":3.19,"24276":3.01,"24288":3.06,"24300":3.37,"24312":3.37,"24277":2.9,"24289":3.36,"24301":3.68,"24313":3.57,"24278":3.41,"24290":3.68,"24302":3.87,"24314":3.84,"24279":3.2,"24291":3.33,"24303":3.61,"24315":3.61,"24280":2.93,"24292":2.68,"24304":3.07,"24316":3.21,"24269":2.41,"24281":2.48,"24293":2.21,"24305":2.76,"24317":2.65,"24270":2.37,"24282":2.5,"24294":2.31,"24306":2.41,"24318":2.8,"24271":2.42,"24283":2.56,"24295":2.07,"24307":2.33,"24319":2.8,"24272":2.57,"24284":2.76,"24296":2.18,"24308":2.47,"24273":3.07,"24285":2.95,"24297":2.81,"24309":2.95,"24286":3.17,"24298":3.05,"24275":3.16,"24287":3.39,"24299":3.46},"Vest":{"24310":2.39,"24311":2.77,"24276":2.7,"24288":2.95,"24300":3.02,"24312":3.03,"24277":2.57,"24289":3.31,"24301":3.34,"24313":3.34,"24278":2.59,"24290":3.74,"24302":4.15,"24314":4.15,"24279":3.66,"24291":3.03,"24303":3.31,"24315":2.99,"24280":2.77,"24292":2.36,"24304":2.59,"24316":2.84,"24269":2.25,"24281":2.04,"24293":2.3,"24305":2.2,"24317":2.38,"24270":2.1,"24282":2.07,"24294":2.18,"24306":1.84,"24318":2.36,"24271":2.06,"24283":1.97,"24295":1.9,"24307":2.0,"24319":2.67,"24272":1.87,"24284":2.14,"24296":1.96,"24308":1.7,"24273":2.35,"24285":2.19,"24297":2.76,"24309":2.01,"24274":2.6,"24286":2.52,"24298":2.65,"24275":3.07,"24287":3.55,"24299":3.03},"Midt":{"24274":2.83,"24276":2.51,"24288":2.96,"24300":2.89,"24312":3.18,"24277":2.76,"24289":3.0,"24301":3.24,"24313":3.41,"24278":3.18,"24290":3.42,"24302":3.33,"24314":3.44,"24279":2.6,"24291":2.93,"24303":2.83,"24315":3.46,"24280":2.87,"24292":2.61,"24304":3.09,"24316":2.95,"24269":2.42,"24281":2.39,"24293":1.99,"24305":2.45,"24317":2.33,"24270":2.15,"24282":2.34,"24294":2.08,"24306":1.99,"24318":2.42,"24271":2.2,"24283":2.46,"24295":1.79,"24307":1.92,"24319":2.39,"24272":2.12,"24284":2.57,"24296":2.07,"24308":2.07,"24273":2.44,"24285":2.62,"24297":2.54,"24309":2.56,"24286":3.02,"24298":2.64,"24310":3.05,"24275":3.42,"24287":3.26,"24299":3.2,"24311":3.03},"Nord":{"24276":3.49,"24288":3.19,"24300":3.85,"24312":3.64,"24277":3.19,"24289":3.62,"24301":4.13,"24313":3.78,"24278":3.98,"24290":3.83,"24302":4.11,"24314":3.97,"24279":3.39,"24291":3.72,"24303":4.24,"24315":3.93,"24280":3.05,"24292":2.91,"24304":3.27,"24316":3.5,"24269":2.51,"24281":2.73,"24293":2.3,"24305":3.19,"24317":2.93,"24270":2.65,"24282":2.77,"24294":2.51,"24306":2.85,"24318":3.18,"24271":2.73,"24283":2.84,"24295":2.3,"24307":2.66,"24319":3.07,"24272":3.11,"24284":3.07,"24296":2.33,"24308":2.93,"24273":3.69,"24285":3.37,"24297":2.98,"24309":3.44,"24274":3.79,"24286":3.47,"24298":3.37,"24310":3.9,"24275":3.09,"24287":3.41,"24299":3.68,"24311":3.37}},"tgcRaw":{"Norge":{"24274":1.7,"24310":1.92,"24311":1.79,"24276":2.05,"24288":2.12,"24300":2.51,"24312":2.23,"24277":2.07,"24289":2.35,"24301":2.67,"24313":2.47,"24278":2.3,"24290":2.66,"24302":2.76,"24314":2.53,"24279":2.25,"24291":2.26,"24303":2.38,"24315":2.46,"24280":1.92,"24292":1.86,"24304":1.94,"24316":2.0,"24269":1.37,"24281":1.46,"24293":1.41,"24305":1.79,"24317":1.28,"24270":1.46,"24282":1.6,"24294":1.4,"24306":1.29,"24318":1.41,"24271":1.3,"24283":1.41,"24295":1.12,"24307":1.18,"24319":1.42,"24272":1.15,"24284":1.59,"24296":0.99,"24308":1.26,"24273":1.4,"24285":1.35,"24297":1.4,"24309":1.54,"24286":1.34,"24298":1.55,"24275":1.59,"24287":1.77,"24299":2.15},"Vest":{"24310":1.63,"24311":1.39,"24276":1.62,"24288":1.54,"24300":1.96,"24312":1.82,"24277":1.25,"24289":1.98,"24301":1.88,"24313":1.74,"24278":1.26,"24290":2.88,"24302":2.62,"24314":1.77,"24279":1.93,"24291":1.84,"24303":1.28,"24315":1.03,"24280":0.82,"24292":1.33,"24304":0.99,"24316":1.62,"24269":1.15,"24281":0.66,"24293":0.9,"24305":0.84,"24317":1.21,"24270":1.33,"24282":1.37,"24294":0.83,"24306":0.73,"24318":1.19,"24271":1.33,"24283":1.18,"24295":1.0,"24307":1.08,"24319":1.31,"24272":1.05,"24284":1.25,"24296":1.07,"24308":0.91,"24273":1.41,"24285":1.43,"24297":1.73,"24309":1.25,"24274":1.2,"24286":1.51,"24298":1.3,"24275":1.12,"24287":1.9,"24299":1.64},"Midt":{"24274":1.8,"24276":1.87,"24288":2.3,"24300":2.24,"24312":2.22,"24277":2.04,"24289":1.92,"24301":2.53,"24313":2.44,"24278":2.25,"24290":2.0,"24302":2.27,"24314":2.45,"24279":1.93,"24291":1.92,"24303":1.68,"24315":2.25,"24280":1.9,"24292":1.66,"24304":1.9,"24316":1.45,"24269":1.04,"24281":1.28,"24293":1.04,"24305":1.3,"24317":0.93,"24270":0.95,"24282":1.2,"24294":1.14,"24306":0.62,"24318":1.1,"24271":0.74,"24283":1.33,"24295":0.75,"24307":0.79,"24319":1.25,"24272":0.64,"24284":1.61,"24296":0.89,"24308":1.16,"24273":1.12,"24285":1.23,"24297":1.3,"24309":1.54,"24286":1.22,"24298":1.6,"24310":1.72,"24275":2.22,"24287":1.65,"24299":1.87,"24311":1.67},"Nord":{"24276":2.38,"24288":2.29,"24300":2.95,"24312":2.42,"24277":2.54,"24289":2.85,"24301":3.13,"24313":2.81,"24278":2.85,"24290":2.99,"24302":3.16,"24314":2.86,"24279":2.62,"24291":2.69,"24303":3.28,"24315":3.1,"24280":2.42,"24292":2.28,"24304":2.37,"24316":2.44,"24269":1.73,"24281":1.91,"24293":1.91,"24305":2.47,"24317":1.51,"24270":1.84,"24282":1.95,"24294":1.81,"24306":1.86,"24318":1.65,"24271":1.59,"24283":1.55,"24295":1.38,"24307":1.43,"24319":1.55,"24272":1.44,"24284":1.68,"24296":1.02,"24308":1.42,"24273":1.52,"24285":1.39,"24297":1.35,"24309":1.62,"24274":1.82,"24286":1.34,"24298":1.59,"24310":2.11,"24275":1.49,"24287":1.8,"24299":2.4,"24311":1.95}},"norm":{"Norge":{"0":{"temp":5.99,"tgc":3.05},"1":{"temp":5.09,"tgc":3.3},"2":{"temp":4.91,"tgc":3.36},"3":{"temp":5.6,"tgc":3.21},"4":{"temp":7.22,"tgc":2.79},"5":{"temp":10.09,"tgc":2.42},"6":{"temp":12.5,"tgc":2.42},"7":{"temp":13.46,"tgc":2.43},"8":{"temp":12.59,"tgc":2.68},"9":{"temp":10.68,"tgc":3.03},"10":{"temp":8.81,"tgc":3.17},"11":{"temp":7.11,"tgc":3.25}},"Vest":{"0":{"temp":7.08,"tgc":2.6},"1":{"temp":6.13,"tgc":2.67},"2":{"temp":6.42,"tgc":2.56},"3":{"temp":7.39,"tgc":2.72},"4":{"temp":9.24,"tgc":2.46},"5":{"temp":12.61,"tgc":2.11},"6":{"temp":14.75,"tgc":1.94},"7":{"temp":15.73,"tgc":1.81},"8":{"temp":14.94,"tgc":1.93},"9":{"temp":12.69,"tgc":2.25},"10":{"temp":10.61,"tgc":2.44},"11":{"temp":8.73,"tgc":3.02}},"Midt":{"0":{"temp":6.5,"tgc":2.86},"1":{"temp":5.66,"tgc":3.22},"2":{"temp":5.47,"tgc":3.13},"3":{"temp":6.27,"tgc":2.98},"4":{"temp":7.91,"tgc":2.79},"5":{"temp":10.52,"tgc":2.36},"6":{"temp":12.97,"tgc":2.17},"7":{"temp":13.98,"tgc":2.14},"8":{"temp":13.24,"tgc":2.33},"9":{"temp":11.22,"tgc":2.61},"10":{"temp":9.15,"tgc":2.95},"11":{"temp":7.34,"tgc":3.17}},"Nord":{"0":{"temp":5.01,"tgc":3.44},"1":{"temp":4.08,"tgc":3.72},"2":{"temp":3.67,"tgc":3.93},"3":{"temp":4.1,"tgc":3.64},"4":{"temp":5.53,"tgc":2.97},"5":{"temp":8.36,"tgc":2.61},"6":{"temp":10.97,"tgc":2.82},"7":{"temp":11.86,"tgc":2.89},"8":{"temp":10.84,"tgc":3.2},"9":{"temp":9.16,"tgc":3.58},"10":{"temp":7.51,"tgc":3.61},"11":{"temp":6.02,"tgc":3.43}}},"sea":{"Norge":{"2018":15.4,"2024":13.9},"Vest":{"2018":14.7,"2024":11.9},"Midt":{"2018":14.7,"2024":14.0},"Nord":{"2018":16.5,"2024":14.9}},"seaGens":[2018,2024],"updated":"2026-10-01"};
+const NAME={Norge:'Norway',Vest:'West',Midt:'Mid',Nord:'North'};const AR=['Vest','Midt','Nord','Norge'];
+const L='en-GB';const t=n=>Math.round(n).toLocaleString(L);
+const f=(v,d=0)=>(+v).toLocaleString(L,{minimumFractionDigits:d,maximumFractionDigits:d});
+const dl=v=>(v>0?'+':'')+f(v,1)+'%';const pp=v=>(v>0?'+':'')+f(v,1)+' pp';const ab=v=>(v>0?'+':'')+f(v,2);
+const cls=(v,inv,th=0.5)=>Math.abs(v)<th?'flat':((inv?v<0:v>0)?'up':'dn');
+const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const ml=tt=>mn[tt%12]+' '+String(Math.floor(tt/12)).slice(2);
+let scope='Norge';
+function S(a){const m=D.m[a],w=D.w[a];return m.map((x,i)=>{if(!i)return null;const p=m[i-1];
+  const inb=(wl,wm,wb)=>(x.lt*wl+x.mid*wm+x.big*wb)*1000;const inT=inb(w.lt,w.mid,w.big),grow=x.bio-p.bio+x.ht+x.db-inT,grow2=x.bio-p.bio+x.ht;
+  const gLo=x.bio-p.bio+x.ht+x.db-inb(w.lt*1.15,w.mid*1.15,w.big+0.10),gHi=x.bio-p.bio+x.ht+x.db-inb(w.lt*.85,w.mid*.85,Math.max(0.5,w.big-0.10));
+  return {...x,prev:p.bio,inT,grow,fcr:x.feed/grow,efcr:x.feed/grow2,fHi:x.feed/gLo,fLo:x.feed/gHi,util:(x.bio+x.trout)/D.mtb[a],hw:x.hn?x.ht/x.hn/1000:0}}).slice(1)}
+const SS={};for(const a of AR)SS[a]=S(a);
+const last=a=>SS[a][SS[a].length-1],yago=a=>SS[a][SS[a].length-13];
+function R12(a,off=0){const s=SS[a],Lx=s.length-1-off,w=s.slice(Lx-11,Lx+1);const sum=k=>w.reduce((q,x)=>q+x[k],0);
+  return {bio:sum('bio')/12,n:sum('n')/12,ht:sum('ht'),grow:sum('grow'),db:sum('db'),dn:sum('dn'),feed:sum('feed'),g2:w.reduce((q,x)=>q+(x.bio-x.prev+x.ht),0),
+    lt:sum('lt'),mid:sum('mid'),big:sum('big'),bigNet:sum('bigNet'),hn:sum('hn'),utk:sum('utk'),rom:sum('rom'),andre:sum('andre'),tf:sum('tf'),resOld:sum('resOld'),
+    n0:s[Lx-12]?s[Lx-12].n:D.m[a][0].n,n1:s[Lx].n}}
+const tg=(a,q)=>D.tgc[a][q],tgr=(a,q)=>D.tgcRaw[a][q];
+const unsure=(a,q)=>tg(a,q)!=null&&tgr(a,q)!=null&&tgr(a,q)<0.7*tg(a,q);
+
+function balance(){const c=last(scope);document.getElementById('per').textContent=ml(c.t);
+  const cells=[['Opening biomass',c.prev,'t','',''],['Stocked',c.inT,f(c.lt+c.mid+c.big,1)+' M fish','+',''],['Growth at sea',c.grow,'t, derived','+','term'],
+    ['Harvest',c.ht,f(c.hn,1)+' M fish','−',''],['Mortality',c.db,f(c.dn,2)+' M fish','−',''],['Closing biomass',c.bio,'t','=','term']];
+  document.getElementById('bal').innerHTML=cells.map(([k,v,u,op,cl])=>`<div class="cell ${cl}">${op?`<span class="op">${op}</span>`:''}<div class="k">${k}</div><div class="v num">${t(v)}</div><div class="u">${u}</div></div>`).join('');
+  const r=c.ht/(c.grow-c.db);document.getElementById('balnote').innerHTML=`Harvest = <b>${f(r,2)}×</b> net growth: ${r>1.03?'biomass drawn down':r<0.97?'biomass built up':'balanced'} (${(c.bio-c.prev>0?'+':'')+t(c.bio-c.prev)} t).`}
+
+function kpis(){const c=last(scope),y=yago(scope),pc=(a,b)=>b?(a/b-1)*100:0;const tc=D.temp[scope][c.t],ty=D.temp[scope][y.t];
+  const g=tg(scope,c.t),gy=tg(scope,y.t);
+  const items=[['Standing biomass',t(c.bio),'t salmon',dl(pc(c.bio,y.bio)),cls(pc(c.bio,y.bio))],
+   ['MTB use (salmon + trout)',f(c.util*100,1)+'%','of sea MTB',pp((c.util-y.util)*100),cls((c.util-y.util)*100)],
+   ['Growth at sea',t(c.grow),'t',dl(pc(c.grow,y.grow)),cls(pc(c.grow,y.grow))],
+   ['Biological FCR',f(c.fcr,2),`eFCR ${f(c.efcr,2)}`,ab(c.fcr-y.fcr),cls((c.fcr-y.fcr)*10,true)],
+   ['Harvest weight',f(c.hw,2),'kg round',dl(pc(c.hw,y.hw)),cls(pc(c.hw,y.hw))],
+   ['Mortality',t(c.db),`t · ${f(c.dn/c.n*100,2)}% of fish`,dl(pc(c.db,y.db)),cls(pc(c.db,y.db),true)],
+   ['Sea temperature',f(tc,1)+' °C',`normal ${f(D.norm[scope][c.t%12].temp,1)}`,(tc-ty>0?'+':'')+f(tc-ty,1)+' °C','flat'],
+   ['TGC',g!=null?f(g,2):'–',g!=null?`range ${f(tgr(scope,c.t),2)}–${f(g,2)}${unsure(scope,c.t)?' · uncertain':''}`:'',g!=null&&gy!=null?ab(g-gy):'–',g!=null&&gy!=null?cls((g-gy)*10):'flat']];
+  document.getElementById('kpis').innerHTML=items.map(([k,v,u,d,cl])=>`<div class="kpi"><div class="k">${k}</div><div class="v num">${v}</div><div class="u">${u}</div>
+    <div class="d ${cl}">${d} <span style="color:var(--ink-3);font-weight:400">vs ${ml(y.t)}</span></div></div>`).join('')}
+
+function tipper(fig,tip){return{show(h,x,y){tip.innerHTML=h;tip.style.opacity=1;const r=fig.getBoundingClientRect();let l=x-r.left+12;const w=tip.offsetWidth;if(l+w>r.width-6)l=x-r.left-w-12;tip.style.left=Math.max(4,l)+'px';tip.style.top=Math.max(4,y-r.top-10)+'px'},hide(){tip.style.opacity=0}}}
+function nice(lo,hi,n=4){const raw=(hi-lo)/n,p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p,st=(m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p;const a=Math.floor(lo/st)*st,o=[+a.toFixed(6)];while(o[o.length-1]<hi-1e-9)o.push(+(o[o.length-1]+st).toFixed(6));return o}
+
+function fcrChart(){const s=SS[scope],n=13,w=s.slice(-n),wy=s.slice(-n-12,-12);
+  const W=960,H=240,Lm=46,R=60,T=14,B=28,iw=W-Lm-R,ih=H-T-B;
+  const vals=[...w.flatMap(x=>[x.fLo,x.fHi,x.efcr]),...wy.map(x=>x.fcr)].filter(v=>isFinite(v)&&v>0&&v<3);
+  const tk=nice(Math.max(0.6,Math.min(...vals)-0.05),Math.min(2.2,Math.max(...vals)+0.05));const lo=tk[0],hi=tk[tk.length-1];
+  const x=i=>Lm+i*iw/(n-1),y=v=>T+ih-(Math.min(Math.max(v,lo),hi)-lo)/(hi-lo)*ih;let g='';
+  tk.forEach(v=>{g+=`<line x1="${Lm}" x2="${Lm+iw}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule-2)"/><text x="${Lm-8}" y="${y(v)+4}" text-anchor="end">${f(v,2)}</text>`});
+  g+=`<path d="M${w.map((d,i)=>x(i)+','+y(d.fHi)).join('L')}L${w.map((d,i)=>x(i)+','+y(d.fLo)).reverse().join('L')}Z" fill="var(--accent-soft)"/>`;
+  const line=(arr,k,c,ex='')=>`<polyline points="${arr.map((d,i)=>x(i)+','+y(d[k])).join(' ')}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" ${ex}/>`;
+  g+=line(wy,'fcr','var(--ink-3)','opacity=".45"')+line(w,'efcr','var(--ink-3)','stroke-dasharray="5 4"')+line(w,'fcr','var(--accent)');
+  w.forEach((d,i)=>{g+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle" class="${i===n-1?'strong':''}">${ml(d.t)}</text>`});
+  const e=w[n-1];g+=`<circle cx="${x(n-1)}" cy="${y(e.fcr)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/><text x="${x(n-1)+9}" y="${y(e.fcr)+4}" class="strong">${f(e.fcr,2)}</text>`;
+  g+=`<line id="fx" x1="0" x2="0" y1="${T}" y2="${T+ih}" stroke="var(--ink-3)" stroke-dasharray="3 3" opacity="0"/>`;
+  w.forEach((d,i)=>{g+=`<rect class="hit" data-i="${i}" x="${x(i)-iw/(n-1)/2}" y="${T}" width="${iw/(n-1)}" height="${ih}" fill="transparent"/>`});
+  const el=document.getElementById('chF');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="FCR, last 13 months">${g}</svg>`;
+  const tp=tipper(el.parentElement,document.getElementById('tipF')),xl=el.querySelector('#fx');
+  el.querySelectorAll('.hit').forEach(h=>{const i=+h.dataset.i,d=w[i];h.onmousemove=ev=>{xl.setAttribute('x1',x(i));xl.setAttribute('x2',x(i));xl.setAttribute('opacity',1);
+    tp.show(`<b>${NAME[scope]} · ${ml(d.t)}</b>\nBiological  ${f(d.fcr,2)} (${f(d.fLo,2)}–${f(d.fHi,2)})\neFCR        ${f(d.efcr,2)}\nYear before ${f(wy[i].fcr,2)}`,ev.clientX,ev.clientY)};h.onmouseleave=()=>{tp.hide();xl.setAttribute('opacity',0)}});
+  const r=R12(scope),ry=R12(scope,12);
+  document.getElementById('fnote').innerHTML=`Biological FCR = feed ÷ growth at sea (adds mortality, removes stocked biomass). eFCR = feed ÷ (Δ biomass + harvest).
+    12 months: biological <b>${f(r.feed/r.grow,2)}</b> (${ab(r.feed/r.grow-ry.feed/ry.grow)} y/y), eFCR <b>${f(r.feed/r.g2,2)}</b>.`}
+
+function tempChart(){const s=SS[scope],n=13,w=s.slice(-n);const fig=document.getElementById('chT').closest('figure');const tp=tipper(fig,document.getElementById('tipT'));
+  const one=(id,src,key,dg,band)=>{const W=470,H=170,Lm=34,R=36,T=12,B=22,iw=W-Lm-R,ih=H-T-B;
+    const cur=w.map(d=>src[d.t]),prev=w.map(d=>src[d.t-12]),prev2=w.map(d=>src[d.t-24]),nor=w.map(d=>D.norm[scope][d.t%12][key]);const bl=band?w.map(d=>band[d.t]):[];
+    const v=[...cur,...prev,...prev2,...nor,...bl].filter(q=>q!=null);const tk=nice(Math.min(...v)*0.95,Math.max(...v)*1.03,4);const lo=tk[0],hi=tk[tk.length-1];
+    const x=i=>Lm+i*iw/(n-1),y=q=>T+ih-(q-lo)/(hi-lo)*ih;let g='';
+    tk.forEach(q=>{g+=`<line x1="${Lm}" x2="${Lm+iw}" y1="${y(q)}" y2="${y(q)}" stroke="var(--rule-2)"/><text x="${Lm-5}" y="${y(q)+4}" text-anchor="end">${f(q,q%1?1:0)}</text>`});
+    if(band){const ok=w.map((d,i)=>cur[i]!=null&&bl[i]!=null);const idx=w.map((_,i)=>i).filter(i=>ok[i]);if(idx.length>1)g+=`<path d="M${idx.map(i=>x(i)+','+y(cur[i])).join('L')}L${idx.slice().reverse().map(i=>x(i)+','+y(bl[i])).join('L')}Z" fill="var(--accent-soft)"/>`}
+    const pl=(arr,c,ex='')=>{const pts=arr.map((q,i)=>q==null?null:x(i)+','+y(q)).filter(Boolean);return `<polyline points="${pts.join(' ')}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" ${ex}/>`};
+    g+=pl(nor,'var(--warn)','stroke-dasharray="4 3"')+pl(prev2,'var(--ink-3)','stroke-dasharray="2 3" opacity=".7"')+pl(prev,'var(--ink-3)','opacity=".6"')+pl(cur,'var(--accent)');
+    if(band)w.forEach((d,i)=>{if(unsure(scope,d.t))g+=`<circle cx="${x(i)}" cy="${y(cur[i])}" r="3.5" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/>`});
+    [0,6,12].forEach(i=>{g+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle">${ml(w[i].t)}</text>`});
+    const li=n-1;if(cur[li]!=null)g+=`<text x="${x(li)+6}" y="${y(cur[li])+4}" class="strong">${f(cur[li],dg)}</text>`;
+    const step=iw/(n-1);w.forEach((d,i)=>{g+=`<rect class="hit" data-i="${i}" x="${x(i)-step/2}" y="${T}" width="${step}" height="${ih}" fill="transparent"/>`});
+    const el=document.getElementById(id);el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${key}">${g}</svg>`;
+    el.querySelectorAll('.hit').forEach(h=>{const d=w[+h.dataset.i];const c3=(o,q,dd)=>o[q]!=null?f(o[q],dd).padStart(5):'    –';
+      h.onmousemove=ev=>tp.show(`<b>${NAME[scope]} · ${ml(d.t)}</b>\n       now   −1y   −2y  normal\nTemp ${c3(D.temp[scope],d.t,1)} ${c3(D.temp[scope],d.t-12,1)} ${c3(D.temp[scope],d.t-24,1)}  ${f(D.norm[scope][d.t%12].temp,1).padStart(5)}\nTGC  ${c3(D.tgc[scope],d.t,2)} ${c3(D.tgc[scope],d.t-12,2)} ${c3(D.tgc[scope],d.t-24,2)}  ${f(D.norm[scope][d.t%12].tgc,2).padStart(5)}${tgr(scope,d.t)!=null?`\nTGC range ${f(tgr(scope,d.t),2)}–${f(tg(scope,d.t),2)}${unsure(scope,d.t)?' (uncertain)':''}`:''}`,ev.clientX,ev.clientY);h.onmouseleave=tp.hide})};
+  one('chT',D.temp[scope],'temp',1);one('chG',D.tgc[scope],'tgc',2,D.tgcRaw[scope]);
+  document.getElementById('tnote').innerHTML=`TGC = growth per degree-day. Line: harvest-corrected; band down to uncorrected. Open circles = heavy-harvest months where the level is uncertain. Compare the same month across years.`}
+
+function flows(){const s=SS[scope],n=13,w=s.slice(-n);
+  const W=960,H=270,Lm=52,R=12,T=30,B=40,iw=W-Lm-R,ih=H-T-B;const mx=Math.max(...w.map(d=>Math.max(d.grow+d.inT,d.ht+d.db)))*1.06;const tk=nice(0,mx);const top=tk[tk.length-1];
+  const y=v=>T+ih-v/top*ih;const bw=iw/n,gw=Math.min(22,bw*.3);let g='';
+  tk.forEach(v=>{g+=`<line x1="${Lm}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule-2)"/><text x="${Lm-8}" y="${y(v)+4}" text-anchor="end">${f(v/1000)}k</text>`});
+  const stack=(x0,parts)=>{let base=0;parts.forEach(([v,c],j)=>{v=Math.max(0,v);if(!v)return;const y0=y(base),y1=y(base+v);g+=`<rect x="${x0}" y="${y1}" width="${gw}" height="${Math.max(0,y0-y1-(j?1.5:0))}" fill="${c}"/>`;base+=v});return base};
+  w.forEach((d,i)=>{const cx=Lm+bw*i+bw/2;const inn=stack(cx-gw-1.5,[[d.grow,'var(--c-grow)'],[d.inT,'var(--c-in)']]);const out=stack(cx+1.5,[[d.ht,'var(--c-harv)'],[d.db,'var(--c-dead)']]);
+    const net=d.bio-d.prev;g+=`<text x="${cx}" y="${y(Math.max(inn,out))-7}" text-anchor="middle" style="fill:${net>=0?'var(--good)':'var(--bad)'};font-weight:600">${net>=0?'+':'−'}${f(Math.abs(net)/1000,1)}k</text>`;
+    g+=`<text x="${cx-gw/2-1.5}" y="${H-24}" text-anchor="middle" style="font-size:9px">in</text><text x="${cx+gw/2+1.5}" y="${H-24}" text-anchor="middle" style="font-size:9px">out</text>`;
+    g+=`<text x="${cx}" y="${H-8}" text-anchor="middle" class="${i===n-1?'strong':''}">${ml(d.t)}</text><rect class="hit" data-i="${i}" x="${Lm+bw*i}" y="${T}" width="${bw}" height="${ih}" fill="transparent"/>`});
+  const el=document.getElementById('chM');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Biomass in and out per month">${g}</svg>`;
+  const tp=tipper(el.parentElement,document.getElementById('tipM'));
+  el.querySelectorAll('.hit').forEach(h=>{const d=w[+h.dataset.i];h.onmousemove=ev=>tp.show(`<b>${NAME[scope]} · ${ml(d.t)}</b>\nIn   ${t(d.grow+d.inT)} t\n  growth    ${t(d.grow)} t\n  stocked   ${t(d.inT)} t\nOut  ${t(d.ht+d.db)} t\n  harvest   ${t(d.ht)} t\n  mortality ${t(d.db)} t\nNet ${(d.bio-d.prev>=0?'+':'')+t(d.bio-d.prev)} t → ${t(d.bio)} t`,ev.clientX,ev.clientY);h.onmouseleave=tp.hide});
+  const mini=(id,k,div)=>{const W=470,H=160,Lm=40,R=40,T=12,B=22,iw=W-Lm-R,ih=H-T-B;const v=w.map(d=>d[k]/div);
+    const hv=off=>w.map(d=>{const o=D.hist[scope][d.t-off];return o?o[k]/div:null});const p1=hv(12),p2=hv(24);
+    const all=[...v,...p1,...p2].filter(q=>q!=null);const tk=nice(Math.min(...all)*0.97,Math.max(...all)*1.02,3);const lo=tk[0],hi=tk[tk.length-1];
+    const x=i=>Lm+i*iw/(n-1),y=q=>T+ih-(q-lo)/(hi-lo)*ih;let g='';tk.forEach(q=>{g+=`<line x1="${Lm}" x2="${Lm+iw}" y1="${y(q)}" y2="${y(q)}" stroke="var(--rule-2)"/><text x="${Lm-6}" y="${y(q)+4}" text-anchor="end">${f(q)}</text>`});
+    const pl=(arr,c,ex)=>`<polyline points="${arr.map((q,i)=>q==null?null:x(i)+','+y(q)).filter(Boolean).join(' ')}" fill="none" stroke="${c}" stroke-width="1.75" ${ex}/>`;
+    g+=pl(p2,'var(--ink-3)','stroke-dasharray="2 3" opacity=".7"')+pl(p1,'var(--ink-3)','opacity=".6"');
+    g+=`<polyline points="${v.map((q,i)=>x(i)+','+y(q)).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+    [0,6,12].forEach(i=>{g+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle">${ml(w[i].t)}</text>`});
+    g+=`<circle cx="${x(n-1)}" cy="${y(v[n-1])}" r="3.5" fill="var(--accent)"/><text x="${x(n-1)+6}" y="${y(v[n-1])+4}" class="strong">${f(v[n-1])}</text>`;
+    document.getElementById(id).innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${k}">${g}</svg>`};
+  mini('chB','bio',1000);mini('chN','n',1)}
+
+function regions(){const pc=(a,b)=>b?(a/b-1)*100:0;
+  document.getElementById('regions').innerHTML=AR.map(a=>{const c=last(a),y=yago(a),v=pc(c.ht,y.ht);const g=tg(a,c.t);
+    return `<tr${a==='Norge'?' class="tot"':''}><td>${NAME[a]}</td><td class="num">${t(c.bio)}</td><td class="num">${f(c.util*100,1)}%</td><td class="num">${t(c.grow)}</td><td class="num">${t(c.ht)}</td>
+      <td class="num"><span class="${cls(v)}">${dl(v)}</span></td><td class="num">${t(c.db)}</td><td class="num">${f(c.fcr,2)}</td><td class="num">${f(c.efcr,2)}</td><td class="num">${f(c.hw,2)} kg</td>
+      <td class="num">${f(D.temp[a][c.t],1)} °C</td><td class="num">${g!=null?f(g,2)+(unsure(a,c.t)?'<sup>†</sup>':''):'–'}</td></tr>`}).join('')+
+    `<tr><td colspan="12" style="text-align:left;font-size:11px;color:var(--ink-3);white-space:normal">† Heavy-harvest month, TGC level uncertain.</td></tr>`}
+
+function roll12(){const cell=(v,chip,c)=>`<td class="num">${v}<span class="s ${c}">${chip}</span></td>`;
+  document.getElementById('roll12').innerHTML=AR.map(a=>{const r=R12(a),p=R12(a,12);const pc=(x,y)=>(x/y-1)*100;
+    const loss=r.db/r.grow*100,lossP=p.db/p.grow*100,mort=r.dn/r.n*100,mortP=p.dn/p.n*100,fc=r.feed/r.grow,fcP=p.feed/p.grow,ef=r.feed/r.g2,efP=p.feed/p.g2,to=r.ht/r.bio,toP=p.ht/p.bio;
+    return `<tr${a==='Norge'?' class="tot"':''}><td>${NAME[a]}</td>`+cell(t(r.bio),dl(pc(r.bio,p.bio)),cls(pc(r.bio,p.bio)))+cell(t(r.ht),dl(pc(r.ht,p.ht)),cls(pc(r.ht,p.ht)))+
+      cell(t(r.grow),dl(pc(r.grow,p.grow)),cls(pc(r.grow,p.grow)))+cell(t(r.db),dl(pc(r.db,p.db)),cls(pc(r.db,p.db),true))+cell(f(loss,1)+'%',pp(loss-lossP),cls(loss-lossP,true,0.1))+
+      cell(f(mort,1)+'%',pp(mort-mortP),cls(mort-mortP,true,0.1))+cell(f(fc,2),ab(fc-fcP),cls((fc-fcP)*10,true))+cell(f(ef,2),ab(ef-efP),cls((ef-efP)*10,true))+cell(f(to,2)+'×',ab(to-toP),cls((to-toP)*10))+'</tr>'}).join('')}
+
+function mix(){document.getElementById('mix').innerHTML=AR.map(a=>{const r=R12(a),w=D.w[a];const n=r.lt+r.mid+r.big,tl=r.lt*w.lt,tm=r.mid*w.mid,tb=r.big*w.big,tt=tl+tm+tb;
+  return `<tr${a==='Norge'?' class="tot"':''}><td>${NAME[a]}</td><td class="num">${f(r.lt,1)}</td><td class="num">${f(r.mid,1)}</td><td class="num">${f(r.big,1)}</td><td class="num">${f(n,1)}</td>
+    <td class="num">${f(r.big/n*100,0)}%</td><td class="num">${f(tt,1)} kt</td><td class="num">${f(tb/tt*100,0)}%</td><td class="num">${f(tt/n,2)} kg</td></tr>`}).join('')}
+
+function countBal(){document.getElementById('cb').innerHTML=AR.map(a=>{const r=R12(a);const outO=r.utk+r.rom+r.andre;const rest=r.n0+(r.lt+r.mid)-r.hn-r.dn-outO+r.tf-r.n1;const c=v=>`<td class="num">${f(v,1)}</td>`;
+  return `<tr${a==='Norge'?' class="tot"':''}><td>${NAME[a]}</td>${c(r.n0)}${c(r.lt+r.mid)}${c(r.hn)}${c(r.dn)}${c(outO)}${c(r.tf)}${c(r.n1)}<td class="num"><b>${f(rest,1)}</b></td>${c(-r.bigNet)}${c(r.resOld)}</tr>`}).join('')}
+
+function turnTab(){document.getElementById('turn').innerHTML=AR.map(a=>{const c=last(a),y=yago(a),r=R12(a),p=R12(a,12),s=D.sea[a];
+  return `<tr${a==='Norge'?' class="tot"':''}><td>${NAME[a]}</td><td class="num">${f(c.n,1)} M<span class="s ${cls((c.n/y.n-1)*100)}">${dl((c.n/y.n-1)*100)}</span></td>
+    <td class="num">${t(c.bio)} t<span class="s ${cls((c.bio/y.bio-1)*100)}">${dl((c.bio/y.bio-1)*100)}</span></td><td class="num">${f(c.bio/c.n/1000,2)} kg<span class="s flat">${f(y.bio/y.n/1000,2)} last year</span></td>
+    <td class="num">${f(r.ht/r.bio,2)}×<span class="s ${cls((r.ht/r.bio-p.ht/p.bio)*10)}">${ab(r.ht/r.bio-p.ht/p.bio)}</span></td><td class="num">${s[D.seaGens[0]]!=null?f(s[D.seaGens[0]],1):'–'} → ${s[D.seaGens[1]]!=null?f(s[D.seaGens[1]],1):'–'}</td></tr>`}).join('');document.getElementById('seaHead').textContent=`Months at sea, gen ${D.seaGens[0]} → ${D.seaGens[1]}`}
+
+function warn(){const np=D.nullpo,keys=Object.keys(np).map(Number).sort((a,b)=>a-b),a=np[keys[0]],b=np[keys[keys.length-1]];
+  document.getElementById('warn').innerHTML=`<ul style="margin:0"><li><b>Fish without production area:</b> ${f(b.n,1)} M (${t(b.b)} t) in ${ml(keys[keys.length-1])}, up from ${f(a.n,1)} M in ${ml(keys[0])}. Regional figures since mid-2025 are understated; national figures are not.</li>
+    <li><b>Dec 2022</b> excluded from stocking calculations (reporting error).</li><li><b>Fiskeridirektoratet revises past months</b>; the full series is re-pulled each edition.</li>
+    <li><b>MTB use</b> is indicative (${t(D.mtbUnknown/1000)} kt licences without production area excluded).</li></ul>`}
+
+function render(){document.getElementById('upd').textContent=D.updated;balance();kpis();fcrChart();tempChart();flows();regions();roll12();mix();countBal();turnTab();warn()}
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected','false'));
+  b.setAttribute('aria-selected','true');scope=b.dataset.s;balance();kpis();fcrChart();tempChart();flows()}));
+render();
+</script>
+
+</body></html>
