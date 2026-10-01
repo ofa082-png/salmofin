@@ -418,7 +418,7 @@ def monthly_history(salmon, trout, temp_po):
             avg_bio = (c["bio"] + p["bio"]) / 2
             tt = tw[a][t]
             rows.append({"t": t, "feed": round(c["feed_all"]), "feedS": round(c["feed"]), "grow": round(grow),
-                         "g2": round(dbio + c["ht"]),
+                         "g2": round(dbio + c["ht"] - inb),   # eFCR denominator: excludes mortality, removes stocked biomass
                          "sfr": round(c["feed"] / avg_bio / gk.days_in_month(t) * 100, 3) if avg_bio else None,
                          "temp": round(tt[0] / tt[1], 2) if tt[1] else None, "masked": t == gk.DEC_2022})
         out[a] = rows

@@ -253,7 +253,7 @@ code{font-family:var(--mono);font-size:.92em}
     <b>Source:</b> Fiskeridirektoratet biomass statistics by production area and generation (salmon; trout only in MTB use); Aquaculture Register; sea temperature from BarentsWatch lice counts.
     West = PO1&ndash;4, Mid = PO5&ndash;7, North = PO8&ndash;13; Norway includes rows without production area.<br>
     <b>Growth at sea</b> = Δ biomass + harvest + mortality biomass − stocked biomass (residual, so the balance closes by definition).
-    <b>Stocked biomass</b> = fish per weight class × estimated class weight. <b>Biological FCR</b> = feed ÷ growth at sea. <b>eFCR</b> = feed ÷ (Δ biomass + harvest), as in Biomassepulsen.
+    <b>Stocked biomass</b> = fish per weight class × estimated class weight. <b>Biological FCR</b> = feed ÷ growth at sea. <b>eFCR</b> = feed ÷ (Δ biomass + harvest − stocked biomass); always ≥ biological FCR, the gap is mortality.
     <b>TGC</b> = 1000 × (W₁<sup>⅓</sup> − W₀<sup>⅓</sup>) ÷ (°C × days), W in grams, by generation and PO; range from uncorrected to harvest-corrected start weight.<br>
     *<b>MTB use</b> = (salmon + trout) ÷ sea-site licence MTB (excl. slaughter pens and licences without PO); indicative.
     **<b>&gt;500 g</b> = unreported stocking from the count balance.<br>
@@ -273,13 +273,13 @@ const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec
 const ml=tt=>mn[tt%12]+' '+String(Math.floor(tt/12)).slice(2);
 let scope='Norge';
 function S(a){const m=D.m[a],w=D.w[a];return m.map((x,i)=>{if(!i)return null;const p=m[i-1];
-  const inb=(wl,wm,wb)=>(x.lt*wl+x.mid*wm+x.big*wb)*1000;const inT=inb(w.lt,w.mid,w.big),grow=x.bio-p.bio+x.ht+x.db-inT,grow2=x.bio-p.bio+x.ht;
+  const inb=(wl,wm,wb)=>(x.lt*wl+x.mid*wm+x.big*wb)*1000;const inT=inb(w.lt,w.mid,w.big),grow=x.bio-p.bio+x.ht+x.db-inT,grow2=x.bio-p.bio+x.ht-inT;
   const gLo=x.bio-p.bio+x.ht+x.db-inb(w.lt*1.15,w.mid*1.15,w.big+0.10),gHi=x.bio-p.bio+x.ht+x.db-inb(w.lt*.85,w.mid*.85,Math.max(0.5,w.big-0.10));
   return {...x,prev:p.bio,inT,grow,fcr:x.feed/grow,efcr:x.feed/grow2,fHi:x.feed/gLo,fLo:x.feed/gHi,util:(x.bio+x.trout)/D.mtb[a],hw:x.hn?x.ht/x.hn/1000:0}}).slice(1)}
 const SS={};for(const a of AR)SS[a]=S(a);
 const last=a=>SS[a][SS[a].length-1],yago=a=>SS[a][SS[a].length-13];
 function R12(a,off=0){const s=SS[a],Lx=s.length-1-off,w=s.slice(Lx-11,Lx+1);const sum=k=>w.reduce((q,x)=>q+x[k],0);
-  return {bio:sum('bio')/12,n:sum('n')/12,ht:sum('ht'),grow:sum('grow'),db:sum('db'),dn:sum('dn'),feed:sum('feed'),g2:w.reduce((q,x)=>q+(x.bio-x.prev+x.ht),0),
+  return {bio:sum('bio')/12,n:sum('n')/12,ht:sum('ht'),grow:sum('grow'),db:sum('db'),dn:sum('dn'),feed:sum('feed'),g2:w.reduce((q,x)=>q+(x.bio-x.prev+x.ht-x.inT),0),
     lt:sum('lt'),mid:sum('mid'),big:sum('big'),bigNet:sum('bigNet'),hn:sum('hn'),utk:sum('utk'),rom:sum('rom'),andre:sum('andre'),tf:sum('tf'),resOld:sum('resOld'),
     n0:s[Lx-12]?s[Lx-12].n:D.m[a][0].n,n1:s[Lx].n}}
 const tg=(a,q)=>D.tgc[a][q],tgr=(a,q)=>D.tgcRaw[a][q];
@@ -325,7 +325,7 @@ function fcrChart(){const s=SS[scope],n=13,w=s.slice(-n),wy=s.slice(-n-12,-12);
   el.querySelectorAll('.hit').forEach(h=>{const i=+h.dataset.i,d=w[i];h.onmousemove=ev=>{xl.setAttribute('x1',x(i));xl.setAttribute('x2',x(i));xl.setAttribute('opacity',1);
     tp.show(`<b>${NAME[scope]} · ${ml(d.t)}</b>\nBiological  ${f(d.fcr,2)} (${f(d.fLo,2)}–${f(d.fHi,2)})\neFCR        ${f(d.efcr,2)}\nYear before ${f(wy[i].fcr,2)}`,ev.clientX,ev.clientY)};h.onmouseleave=()=>{tp.hide();xl.setAttribute('opacity',0)}});
   const r=R12(scope),ry=R12(scope,12);
-  document.getElementById('fnote').innerHTML=`Biological FCR = feed ÷ growth at sea (adds mortality, removes stocked biomass). eFCR = feed ÷ (Δ biomass + harvest).
+  document.getElementById('fnote').innerHTML=`Biological FCR = feed ÷ growth at sea = feed ÷ (Δ biomass + harvest + mortality − stocked biomass). eFCR = feed ÷ (Δ biomass + harvest − stocked biomass). The gap between them is mortality: eFCR = biological FCR ÷ (1 − loss share).
     12 months: biological <b>${f(r.feed/r.grow,2)}</b> (${ab(r.feed/r.grow-ry.feed/ry.grow)} y/y), eFCR <b>${f(r.feed/r.g2,2)}</b>.`}
 
 function tempChart(){const s=SS[scope],n=13,w=s.slice(-n);const fig=document.getElementById('chT').closest('figure');const tp=tipper(fig,document.getElementById('tipT'));
