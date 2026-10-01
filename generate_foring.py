@@ -1,7 +1,7 @@
 """
 generate_foring.py
 -------------------
-Renders the feed-vessel report — split out of generate_traffic_report.py
+Renders the feed report (English, same visual system as kontroll.html via templates/foring_template.html) — split out of generate_traffic_report.py
 (2026-08-16) so feed/silage traffic isn't bundled under the harvest
 ("Trafikk") page it doesn't conceptually belong to. Feed carrier and
 silage vessel visits are a production-intensity signal, not a
@@ -167,7 +167,7 @@ def build_group_data(daily, current_monday, yesterday, two_days_ago):
 
 FEED_HISTORY_START = datetime.date(2024, 1, 1)
 FEED_WEEKS = 26
-NO_MONTHS = ["jan", "feb", "mar", "apr", "mai", "jun", "jul", "aug", "sep", "okt", "nov", "des"]
+MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 
 def fetch_daily_feed_visits(client, mmsi_list, yesterday):
@@ -276,12 +276,12 @@ def build_fd_section(daily, fd, yesterday):
             total += day_feed(d, v)
             d += datetime.timedelta(days=1)
         band = mape * 1.5 + (0.05 * (1 - seen / n_days))
-        estimates.append({"label": f"{NO_MONTHS[m-1]} {y}", "value": round(total), "band": round(band * 100, 1),
+        estimates.append({"label": f"{MONTHS[m-1]} {y}", "value": round(total), "band": round(band * 100, 1),
                           "partial": seen < n_days, "days": seen, "ndays": n_days})
 
     # monthly chart: last 24 FD months + estimates, model fit line
     fd_months = sorted(fd)[-24:]
-    m_labels = [f"{NO_MONTHS[k[1]-1]} {str(k[0])[2:]}" for k in fd_months] + [e["label"].replace(" 20", " ") for e in estimates]
+    m_labels = [f"{MONTHS[k[1]-1]} {str(k[0])[2:]}" for k in fd_months] + [e["label"].replace(" 20", " ") for e in estimates]
     m_actual = [round(fd[k]) for k in fd_months] + [None] * len(estimates)
     m_est = [None] * len(fd_months) + [e["value"] for e in estimates]
     m_fit = []
@@ -316,7 +316,7 @@ def build_fd_section(daily, fd, yesterday):
     lk = last_fd
     ly = (lk[0] - 1, lk[1])
     return {
-        "last_label": f"{NO_MONTHS[lk[1]-1]} {lk[0]}",
+        "last_label": f"{MONTHS[lk[1]-1]} {lk[0]}",
         "last_value": round(fd[lk]),
         "last_yoy": round((fd[lk] / fd[ly] - 1) * 100, 1) if ly in fd else None,
         "estimates": estimates,
@@ -328,147 +328,8 @@ def build_fd_section(daily, fd, yesterday):
     }
 
 
-def render_fd_section(s):
-    html = _render_fd(s)
-    a, b = html.split('<!--SPLIT-->')
-    return a, b
+TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "foring_template.html")
 
-
-def _render_fd(s):
-    def card(title, value, sub, sub_color="var(--text-muted)"):
-        return (f'<div class="card"><div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">{title}</div>'
-                f'<div style="font-size:24px;font-weight:500;">{value}</div>'
-                f'<div style="font-size:12px;color:{sub_color};">{sub}</div></div>')
-    yoy = s["last_yoy"]
-    cards = [card(f"Fiskeridirektoratet, {s['last_label']}", f"{s['last_value']/1000:,.1f}k t".replace(",", " "),
-                  f"{'+' if yoy >= 0 else ''}{yoy:.1f}% mot året før" if yoy is not None else "",
-                  "#008300" if (yoy or 0) >= 0 else "#a32d2d")]
-    for e in s["estimates"]:
-        sub = f"±{e['band']:.0f}% · " + (f"anløp t.o.m. dag {e['days']} av {e['ndays']}" if e["partial"] else "fullført måned, anløp")
-        cards.append(card(f"Anslag {e['label']}", f"{e['value']/1000:,.1f}k t".replace(",", " "), sub))
-    data = json.dumps({k: s[k] for k in ("m_labels", "m_actual", "m_est", "m_fit", "w_labels", "w_model", "w_fd", "ratio")})
-    return f"""
-  <section>
-    <div class="section-title">Fôrforbruk — Fiskeridirektoratet mot fôrbåtanløp</div>
-    <div class="section-sub">Faktisk fôrforbruk (laks og ørret) fra Fiskeridirektoratet, månedlig med ca. 7 ukers forsinkelse.
-      Anløpene oversettes til tonn med en modell som korrigerer for sesong og større laster over tid. Anslagene dekker månedene etter siste FD-tall.</div>
-    <div style="display:grid;grid-template-columns:repeat({min(len(cards),3)},1fr);gap:12px;margin-bottom:14px;">{''.join(cards)}</div>
-
-    <div class="chart-title">Fôrforbruk per måned, tonn</div>
-    <div style="position:relative;width:100%;height:190px;margin-bottom:4px;"><canvas id="fdMonthChart" width="640" height="190"></canvas></div>
-    <div class="legend-row"><span><i style="background:#2a78d6"></i>Fiskeridirektoratet</span><span><i style="background:#2a78d655;border:1px dashed #2a78d6"></i>Anslag fra anløp</span><span><i class="ln" style="background:#d68a2a"></i>Modell</span></div>
-
-    <div class="chart-title" style="margin-top:18px;">Tonn fôr per dag, ukentlig</div>
-    <div style="position:relative;width:100%;height:170px;margin-bottom:4px;"><canvas id="fdWeekChart" width="640" height="170"></canvas></div>
-    <div class="legend-row"><span><i class="ln" style="background:#2a78d6"></i>Anslag fra anløp (uke)</span><span><i class="ln" style="background:#0b0b0b"></i>Fiskeridirektoratet (månedssnitt)</span></div>
-    <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">Ukene fortsetter etter siste FD-måned; siste uke er delvis.</div>
-
-    <div class="chart-title" style="margin-top:18px;">Tonn fôr per anløp</div>
-    <div style="position:relative;width:100%;height:150px;margin-bottom:4px;"><canvas id="fdRatioChart" width="640" height="150"></canvas></div>
-    <div style="font-size:11px;color:var(--text-muted);">Lastene er større om sommeren og høsten og har økt fra år til år; derfor undervurderer rene anløpstall både topper og bunner.
-      Modellens treffsikkerhet utenfor utvalget: ±{s['mape']:.1f}% per måned ({s['n_fit']} måneder).</div>
-  </section>
-<!--SPLIT--><script>
-(function(){{
-const D={data};const grid='#e1e0d9',tick={{color:'#898781',font:{{size:10}}}};
-new Chart(document.getElementById('fdMonthChart'),{{data:{{labels:D.m_labels,datasets:[
-  {{type:'bar',data:D.m_actual,backgroundColor:'#2a78d6',borderRadius:3,order:2}},
-  {{type:'bar',data:D.m_est,backgroundColor:'#2a78d655',borderColor:'#2a78d6',borderWidth:1,borderDash:[4,3],borderRadius:3,order:2}},
-  {{type:'line',data:D.m_fit,borderColor:'#d68a2a',borderWidth:2,pointRadius:0,spanGaps:true,order:1}}]}},
-  options:{{responsive:true,maintainAspectRatio:false,plugins:{{legend:{{display:false}}}},scales:{{x:{{stacked:true,ticks:tick,grid:{{display:false}}}},y:{{ticks:tick,grid:{{color:grid}}}}}}}}}});
-new Chart(document.getElementById('fdWeekChart'),{{type:'line',data:{{labels:D.w_labels,datasets:[
-  {{data:D.w_model,borderColor:'#2a78d6',borderWidth:2,pointRadius:2}},
-  {{data:D.w_fd,borderColor:'#0b0b0b',borderWidth:1.5,pointRadius:0,stepped:true,spanGaps:false}}]}},
-  options:{{responsive:true,maintainAspectRatio:false,plugins:{{legend:{{display:false}}}},scales:{{x:{{ticks:tick,grid:{{display:false}}}},y:{{ticks:tick,grid:{{color:grid}}}}}}}}}});
-const cols={{'2024':'#b4b2a9','2025':'#898781','2026':'#2a78d6'}};
-new Chart(document.getElementById('fdRatioChart'),{{type:'line',data:{{labels:{json.dumps(NO_MONTHS)},datasets:Object.entries(D.ratio).map(([y,v])=>({{label:y,data:v,borderColor:cols[y]||'#52514e',borderWidth:2,pointRadius:2}}))}},
-  options:{{responsive:true,maintainAspectRatio:false,plugins:{{legend:{{display:true,labels:{{boxWidth:10,font:{{size:11}}}}}}}},scales:{{x:{{ticks:tick,grid:{{display:false}}}},y:{{ticks:tick,grid:{{color:grid}}}}}}}}}});
-}})();
-</script>"""
-
-
-TEMPLATE = """<!doctype html>
-<html lang="no">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fôringsrapport — fôr- og ensilasjefartøy</title>
-<style>
-  :root {{ --surface-1:#f5f4f0; --surface-2:#ffffff; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781; --border:#e1e0d9; --accent:#2a78d6; --accent2:#d68a2a; }}
-  @media (prefers-color-scheme: dark) {{
-    :root {{ --surface-1:#242422; --surface-2:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781; --border:#2c2c2a; }}
-  }}
-  body {{ background:var(--surface-1); color:var(--text-primary); font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:0; padding:2rem 1rem; }}
-  .wrap {{ max-width:680px; margin:0 auto; }}
-  a {{ color:var(--text-secondary); }}
-  .card {{ background:var(--surface-2); border-radius:8px; padding:1rem; }}
-  .section-title {{ font-size:16px; font-weight:500; margin-bottom:2px; }}
-  .section-sub {{ font-size:12px; color:var(--text-muted); margin-bottom:10px; }}
-  section {{ margin-bottom:2.25rem; }}
-  .chart-title {{ font-size:13px; color:var(--text-secondary); margin-bottom:4px; }}
-  .legend-row {{ display:flex; gap:14px; flex-wrap:wrap; font-size:11px; color:var(--text-muted); margin-bottom:6px; }}
-  .legend-row i {{ display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }}
-  .legend-row i.ln {{ height:2px; width:14px; vertical-align:3px; }}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.5rem;">
-    <div>
-      <div style="font-size:18px;font-weight:500;">Fôringsrapport</div>
-      <div style="font-size:13px;color:var(--text-muted)">Data t.o.m. {yesterday_label} · oppdatert {updated}</div>
-    </div>
-    <div style="display:flex;gap:6px;">
-      <a href="index.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">hjem →</a>
-      <a href="traffic.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">trafikk →</a>
-      <a href="fiskehelse.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">fiskehelse →</a>
-    </div>
-  </div>
-
-  <section>
-    <div class="section-title">Fôring</div>
-    <div class="section-sub">Fôrbåtanløp ved lokaliteter, ukentlig. BarentsWatch AIS.</div>
-
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px;">
-      <div class="card">
-        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Hittil denne uken</div>
-        <div style="font-size:24px;font-weight:500;">{feed_wtd_visits}</div>
-        <div style="font-size:12px;color:{feed_wtd_diff_color};">{feed_wtd_diff_label} vs. samme periode forrige uke</div>
-      </div>
-      <div class="card">
-        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Anslag hele uken</div>
-        <div style="font-size:24px;font-weight:500;">{feed_forecast}</div>
-        <div style="font-size:12px;color:var(--text-muted);">basert på {feed_pace_pct}% typisk fremdrift til {yesterday_weekday}</div>
-      </div>
-    </div>
-    <div style="position:relative;width:100%;height:150px;margin-bottom:4px;">
-      <canvas id="feedChart" width="640" height="150"></canvas>
-    </div>
-    <div style="font-size:11px;color:var(--text-muted);">Siste søyle er inneværende uke (delvis).</div>
-  </section>
-
-{fd_section}
-  <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
-    Lokalitetsanløp: BarentsWatch AIS, kun fartøy i vår flåteliste (vessel_categories.csv). Anslag hele uken bruker gjennomsnittlig ukentlig fremdriftsmønster fra de siste {pacing_weeks} fullførte ukene. Via salmofin BigQuery-pipeline.
-  </div>
-</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script>
-function barColors(labels, partialIdx, base) {{
-  return labels.map((_, i) => i === partialIdx ? base + '80' : base);
-}}
-
-new Chart(document.getElementById('feedChart'), {{
-  type: 'bar',
-  data: {{ labels: {feed_weekly_labels_json}, datasets: [{{ data: {feed_weekly_values_json}, backgroundColor: barColors({feed_weekly_labels_json}, {feed_partial_idx}, '#2a78d6'), borderRadius: 4 }}] }},
-  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
-    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
-}});
-</script>
-{fd_script}
-</body>
-</html>
-"""
 
 if __name__ == "__main__":
     mmsi_to_type = load_fleet()
@@ -489,28 +350,21 @@ if __name__ == "__main__":
 
     fd_daily = fetch_daily_feed_visits(client, list(mmsi_to_type.keys()), yesterday)
     fd_feed = fetch_fd_feed(client)
-    fd_stats = build_fd_section(fd_daily, fd_feed, yesterday)
-    fd_section, fd_script = render_fd_section(fd_stats)
-    print(f"  FD feed: last {fd_stats['last_label']} {fd_stats['last_value']} t; estimates {fd_stats['estimates']}; walk-forward MAPE {fd_stats['mape']}%")
+    fd = build_fd_section(fd_daily, fd_feed, yesterday)
+    print(f"  FD feed: last {fd['last_label']} {fd['last_value']} t; estimates {fd['estimates']}; walk-forward MAPE {fd['mape']}%")
 
     now = datetime.datetime.now(datetime.timezone.utc)
-    html = TEMPLATE.format(
-        yesterday_label=yesterday.strftime("%d.%m.%Y"),
-        yesterday_weekday=["mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag", "søndag"][yesterday.weekday()],
-        updated=now.strftime("%d.%m.%Y %H:%M UTC"),
-        feed_wtd_visits=feed_data["wtd_visits"],
-        feed_wtd_diff_label=feed_data["wtd_diff_label"],
-        feed_wtd_diff_color=feed_data["wtd_diff_color"],
-        feed_forecast=feed_data["forecast"],
-        feed_pace_pct=feed_data["pace_pct"],
-        feed_weekly_labels_json=json.dumps(feed_data["weekly_labels"]),
-        feed_weekly_values_json=json.dumps(feed_data["weekly_values"]),
-        feed_partial_idx=feed_data["weekly_partial_idx"],
-        pacing_weeks=PACING_WEEKS,
-        fd_section=fd_section,
-        fd_script=fd_script,
-    )
-
+    data = {
+        "through": yesterday.strftime("%d %b %Y"),
+        "weekday": yesterday.strftime("%A"),
+        "updated": now.strftime("%Y-%m-%d %H:%M UTC"),
+        "pacingWeeks": PACING_WEEKS,
+        "visits": {k: feed_data[k] for k in ("wtd_visits", "forecast", "pace_pct", "weekly_labels", "weekly_values", "weekly_partial_idx")},
+        "wtdDiff": feed_data["wtd_diff_label"],
+        "fd": fd,
+    }
+    with open(TEMPLATE, encoding="utf-8") as f:
+        html = f.read().replace("__DATA__", json.dumps(data, separators=(",", ":")))
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         f.write(html)
