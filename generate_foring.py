@@ -328,41 +328,166 @@ def build_fd_section(daily, fd, yesterday):
     }
 
 
+# --------------------------------------------------------------------------
+# Regions, FD feed history, FCR and feeding rate
+# --------------------------------------------------------------------------
+# Biomass, count-balance and class-weight helpers are shared with the control
+# report (generate_kontroll.py) so FCR here matches kontroll.html.
+import generate_kontroll as gk
+
 TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "foring_template.html")
+HIST_START = 2018 * 12          # Jan 2018
+
+
+def fetch_daily_visits_by_area(client, mmsi_list, yesterday):
+    job_config = bigquery.QueryJobConfig(query_parameters=[
+        bigquery.ArrayQueryParameter("mmsi_list", "INT64", mmsi_list),
+        bigquery.ScalarQueryParameter("start", "DATE", FEED_HISTORY_START),
+        bigquery.ScalarQueryParameter("end", "DATE", yesterday)])
+    rows = client.query("""
+        SELECT DATE(v.startTime) AS d, l.prodAreaCode AS po, COUNT(*) AS n
+        FROM salmofin.salmofin.vessel_visits v
+        LEFT JOIN salmofin.salmofin.localities l ON l.siteNr = v.localityNo
+        WHERE v.mmsi IN UNNEST(@mmsi_list) AND DATE(v.startTime) BETWEEN @start AND @end
+        GROUP BY 1, 2""", job_config=job_config).result()
+    daily = {a: defaultdict(int) for a in gk.AREAS}
+    for r in rows:
+        for a in gk.areas_of(r.po):
+            daily[a][r.d] += r.n
+    for a in gk.AREAS:
+        d = FEED_HISTORY_START
+        while d <= yesterday:
+            daily[a].setdefault(d, 0)
+            d += datetime.timedelta(days=1)
+        daily[a] = dict(daily[a])
+    return daily
+
+
+def monthly_history(salmon, trout, temp_po):
+    """Per area and month since 2018: feed (salmon+trout), and salmon inputs for FCR."""
+    T1 = max(r["t"] for r in salmon)
+    periods = [(2018, 2021), (2022, 2023), (2024, T1 // 12)]
+    weights = {p: gk.class_weights(salmon, *p) for p in periods}
+
+    def wfor(a, t):
+        return next(weights[p][a] for p in periods if p[0] <= t // 12 <= p[1])
+
+    M = {a: defaultdict(lambda: defaultdict(float)) for a in gk.AREAS}
+    for r in salmon + trout:
+        if r["t"] < HIST_START - 1:
+            continue
+        for a in gk.areas_of(r["po"]):
+            M[a][r["t"]]["feed_all"] += r["feed"]
+    tw = {a: defaultdict(lambda: [0.0, 0.0]) for a in gk.AREAS}
+    for r in salmon:
+        t = r["t"]
+        if t < HIST_START - 1:
+            continue
+        mw = r["bio"] / r["n"] if r["n"] else 0
+        T = temp_po.get((r["po"], t))
+        for a in gk.areas_of(r["po"]):
+            c = M[a][t]
+            c["feed"] += r["feed"]; c["bio"] += r["bio"]; c["ht"] += r["harv_t"]; c["db"] += r["dead"] * mw
+            if T is not None and r["po"] != "(null)":
+                tw[a][t][0] += T * r["bio"]; tw[a][t][1] += r["bio"]
+    # stocking by class (count balance, stocking-year generations)
+    G = {}
+    for r in salmon:
+        if r["y"] != r["g"]:
+            continue
+        k = (r["po"], r["g"], r["t"])
+        c = G.setdefault(k, defaultdict(float))
+        c["m"] = r["m"]; c["n"] += r["n"]; c["s"] += r["inp_s"]; c["u"] += r["inp"]; c["tf"] += r["tf"]
+        c["out"] += r["harv"] + r["dead"] + r["utk"] + r["rom"] + r["andre"] + r["andre_ny"]
+    big = {a: defaultdict(float) for a in gk.AREAS}
+    for (po, g, t), c in G.items():
+        prev = G.get((po, g, t - 1))
+        a_n = 0.0 if c["m"] == 1 else (prev["n"] if prev else 0.0)
+        res = a_n + c["u"] - c["out"] + c["tf"] - c["n"]
+        for a in gk.areas_of(po):
+            M[a][t]["lt"] += c["s"]; M[a][t]["mid"] += c["u"] - c["s"]; big[a][t] += -res
+    out = {}
+    for a in gk.AREAS:
+        rows = []
+        for t in range(HIST_START, T1 + 1):
+            c, p = M[a][t], M[a][t - 1]
+            w = wfor(a, t)
+            inb = (c["lt"] * w["lt"] + c["mid"] * w["mid"] + max(0.0, big[a][t]) * w["big"]) / 1000
+            dbio = c["bio"] - p["bio"]
+            grow = dbio + c["ht"] + c["db"] - inb
+            avg_bio = (c["bio"] + p["bio"]) / 2
+            tt = tw[a][t]
+            rows.append({"t": t, "feed": round(c["feed_all"]), "feedS": round(c["feed"]), "grow": round(grow),
+                         "g2": round(dbio + c["ht"]),
+                         "sfr": round(c["feed"] / avg_bio / gk.days_in_month(t) * 100, 3) if avg_bio else None,
+                         "temp": round(tt[0] / tt[1], 2) if tt[1] else None, "masked": t == gk.DEC_2022})
+        out[a] = rows
+    return out
+
+
+def area_payload(daily, fd_all_area, hist_rows, yesterday, current_monday, two_days_ago):
+    wrapped = {d: {"visits": v} for d, v in daily.items()}
+    vis = build_group_data(wrapped, current_monday, yesterday, two_days_ago)
+    fd = build_fd_section(daily, fd_all_area, yesterday)
+    years = defaultdict(lambda: [None] * 12)
+    for r in hist_rows:
+        years[r["t"] // 12][r["t"] % 12] = r["feed"]
+    est = {MONTHS.index(e["label"].split()[0]): e["value"] for e in fd["estimates"]}
+    roll, b12, e12 = [], [], []
+    for i in range(11, len(hist_rows)):
+        w = hist_rows[i - 11:i + 1]
+        roll.append(round(sum(r["feed"] for r in w)))
+        w = [r for r in w if not r["masked"]]       # Dec 2022 left out of the sums, not the whole window
+        b12.append(round(sum(r["feedS"] for r in w) / sum(r["grow"] for r in w), 3))
+        e12.append(round(sum(r["feedS"] for r in w) / sum(r["g2"] for r in w), 3))
+    last25 = hist_rows[-25:]
+    sfr, temp = defaultdict(lambda: [None] * 12), defaultdict(lambda: [None] * 12)
+    for r in hist_rows:
+        sfr[r["t"] // 12][r["t"] % 12] = r["sfr"]
+        temp[r["t"] // 12][r["t"] % 12] = r["temp"]
+    visits = {k: vis[k] for k in ("wtd_visits", "forecast", "pace_pct", "weekly_labels", "weekly_values", "weekly_partial_idx")}
+    visits["wtdDiff"] = vis["wtd_diff_label"]
+    return {
+        "visits": visits,
+        "fd": fd,
+        "yoy": {"years": {str(y): v for y, v in sorted(years.items())}, "est": est},
+        "roll": {"t": [r["t"] for r in hist_rows[11:]], "feed": roll, "bio": b12, "efcr": e12},
+        "fcr": {"t": [r["t"] for r in last25],
+                "bio": [None if r["masked"] or r["grow"] <= 0 else round(r["feedS"] / r["grow"], 3) for r in last25],
+                "efcr": [None if r["g2"] <= 0 else round(r["feedS"] / r["g2"], 3) for r in last25]},
+        "sfr": {str(y): v for y, v in sorted(sfr.items())},
+        "temp": {str(y): v for y, v in sorted(temp.items())},
+    }
 
 
 if __name__ == "__main__":
     mmsi_to_type = load_fleet()
     print(f"  {len(mmsi_to_type)} feed vessels in vessel_categories.csv")
-
-    days_back = (WEEKS_HISTORY + PACING_WEEKS) * 7
     client = get_bq_client()
-    rows = fetch_visit_rows(client, list(mmsi_to_type.keys()), days_back)
-    stats = build_daily_stats(rows, mmsi_to_type)
 
     today = datetime.date.today()
     yesterday = today - datetime.timedelta(days=1)
     two_days_ago = yesterday - datetime.timedelta(days=1)
     current_monday = monday_of(yesterday)
 
-    feed_daily = stats.get("Fish feed carrier", {})
-    feed_data = build_group_data(feed_daily, current_monday, yesterday, two_days_ago)
+    daily = fetch_daily_visits_by_area(client, list(mmsi_to_type.keys()), yesterday)
+    salmon, trout = gk.fetch_biomass(client)
+    temp_po = gk.fetch_temperature(client)
+    hist = monthly_history(salmon, trout, temp_po)
 
-    fd_daily = fetch_daily_feed_visits(client, list(mmsi_to_type.keys()), yesterday)
-    fd_feed = fetch_fd_feed(client)
-    fd = build_fd_section(fd_daily, fd_feed, yesterday)
-    print(f"  FD feed: last {fd['last_label']} {fd['last_value']} t; estimates {fd['estimates']}; walk-forward MAPE {fd['mape']}%")
+    areas = {}
+    for a in gk.AREAS:
+        fd_all = {(r["t"] // 12, r["t"] % 12 + 1): r["feed"] for r in hist[a]}
+        areas[a] = area_payload(daily[a], fd_all, hist[a], yesterday, current_monday, two_days_ago)
+        p = areas[a]
+        print(f"  {a}: last FD {p['fd']['last_label']} {p['fd']['last_value']} t; "
+              f"estimates {[(x['label'], x['value']) for x in p['fd']['estimates']]}; MAPE {p['fd']['mape']}%; "
+              f"12m bio FCR {p['roll']['bio'][-1]}, eFCR {p['roll']['efcr'][-1]}")
 
     now = datetime.datetime.now(datetime.timezone.utc)
-    data = {
-        "through": yesterday.strftime("%d %b %Y"),
-        "weekday": yesterday.strftime("%A"),
-        "updated": now.strftime("%Y-%m-%d %H:%M UTC"),
-        "pacingWeeks": PACING_WEEKS,
-        "visits": {k: feed_data[k] for k in ("wtd_visits", "forecast", "pace_pct", "weekly_labels", "weekly_values", "weekly_partial_idx")},
-        "wtdDiff": feed_data["wtd_diff_label"],
-        "fd": fd,
-    }
+    data = {"through": yesterday.strftime("%d %b %Y"), "weekday": yesterday.strftime("%A"),
+            "updated": now.strftime("%Y-%m-%d %H:%M UTC"), "pacingWeeks": PACING_WEEKS,
+            "curYear": yesterday.year, "areas": areas}
     with open(TEMPLATE, encoding="utf-8") as f:
         html = f.read().replace("__DATA__", json.dumps(data, separators=(",", ":")))
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)

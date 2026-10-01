@@ -105,17 +105,30 @@ code{font-family:var(--mono);font-size:.92em}
 @media(max-width:620px){.mast h1{font-size:24px}.period{margin-left:0;text-align:left}}
 @media (prefers-reduced-motion:reduce){.tip{transition:none}}
 </style>
+
+<style>
+.trio{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:720px){.trio{grid-template-columns:1fr}}
+.trio .chart svg{min-width:0}
+</style>
 </head><body>
 <div class="wrap">
   <div class="mast">
     <div>
       <div class="eyebrow">Feeding &middot; Norwegian salmon farming</div>
       <h1>Feed report</h1>
-      <div class="sub">Feed-vessel visits and actual feed consumption</div>
+      <div class="sub">Feed consumption, FCR, feeding rate and feed-vessel visits</div>
     </div>
-    <div class="period"><div class="big" id="per"></div><div class="lbl">Data through</div></div>
+    <div class="period"><div class="big" id="per"></div><div class="lbl">Visits through</div></div>
   </div>
   <div class="links"><a href="index.html">← salmofin</a> &middot; <a href="kontroll.html">Control report</a> &middot; <a href="traffic.html">Traffic</a> &middot; Updated <span id="upd"></span></div>
+
+  <div class="tabs" role="tablist" aria-label="Region">
+    <button role="tab" aria-selected="true" data-s="Norge">Norway</button>
+    <button role="tab" aria-selected="false" data-s="Vest">West &middot; PO 1&ndash;4</button>
+    <button role="tab" aria-selected="false" data-s="Midt">Mid &middot; PO 5&ndash;7</button>
+    <button role="tab" aria-selected="false" data-s="Nord">North &middot; PO 8&ndash;13</button>
+  </div>
 
   <section>
     <h2>Key figures</h2>
@@ -123,16 +136,21 @@ code{font-family:var(--mono);font-size:.92em}
   </section>
 
   <section>
-    <h2>Feed-vessel visits per week</h2>
+    <h2>Feed consumption by month, year on year</h2>
     <figure>
-      <div class="chart" id="chV"></div>
-      <div class="tip" id="tipV"></div>
+      <div class="legend" id="yleg"></div>
+      <div class="chart" id="chY"></div>
+      <div class="tip" id="tipY"></div>
     </figure>
-    <div class="note" id="vnote"></div>
+    <figure style="margin-top:14px">
+      <div class="mt">Rolling 12-month feed consumption, kt</div>
+      <div class="chart" id="chRoll"></div>
+      <div class="tip" id="tipRoll"></div>
+    </figure>
   </section>
 
   <section>
-    <h2>Feed consumption per month</h2>
+    <h2>Feed consumption, last 24 months</h2>
     <figure>
       <div class="legend">
         <span><i style="background:var(--accent)"></i>Fiskeridirektoratet</span>
@@ -158,6 +176,44 @@ code{font-family:var(--mono);font-size:.92em}
   </section>
 
   <section>
+    <h2>Feed conversion (salmon)</h2>
+    <figure>
+      <div class="legend">
+        <span><i class="ln" style="background:var(--accent)"></i>Biological FCR</span>
+        <span><i class="ln" style="background:repeating-linear-gradient(90deg,var(--ink-3) 0 5px,transparent 5px 9px)"></i>eFCR</span>
+      </div>
+      <div class="trio">
+        <div><div class="mt">Monthly, last 25 months</div><div class="chart" id="chF1"></div></div>
+        <div><div class="mt">Rolling 12 months since 2019</div><div class="chart" id="chF2"></div></div>
+      </div>
+      <div class="tip" id="tipF"></div>
+    </figure>
+    <div class="note">Biological FCR = feed ÷ growth at sea (adds mortality, removes stocked biomass). eFCR = feed ÷ (Δ biomass + harvest). Same method as the control report.</div>
+  </section>
+
+  <section>
+    <h2>Feeding rate and sea temperature</h2>
+    <figure>
+      <div class="legend" id="sleg"></div>
+      <div class="trio">
+        <div><div class="mt">Feed, % of biomass per day</div><div class="chart" id="chS"></div></div>
+        <div><div class="mt">Sea temperature, °C</div><div class="chart" id="chT"></div></div>
+      </div>
+      <div class="tip" id="tipS"></div>
+    </figure>
+    <div class="note">Feeding rate follows temperature; a year above the usual line at the same temperature means fish are being fed harder.</div>
+  </section>
+
+  <section>
+    <h2>Feed-vessel visits per week</h2>
+    <figure>
+      <div class="chart" id="chV"></div>
+      <div class="tip" id="tipV"></div>
+    </figure>
+    <div class="note">Last bar is the current week so far; the dashed outline is the full-week forecast.</div>
+  </section>
+
+  <section>
     <h2>Tonnes of feed per visit</h2>
     <figure>
       <div class="legend" id="rleg"></div>
@@ -168,82 +224,122 @@ code{font-family:var(--mono);font-size:.92em}
   </section>
 
   <footer>
-    <b>Sources:</b> feed-carrier visits to sites from BarentsWatch AIS (vessels in our fleet list); feed consumption (salmon and trout) from Fiskeridirektoratet's monthly biomass statistics, published ~7 weeks after month end.<br>
-    <b>Model:</b> feed per day = a + b × visits per day + seasonal harmonic + trend, fitted on all full months with both series. The same per-day formula converts daily visits into weekly tonnes.
-    A partial month is estimated once at least 7 days of visits exist, with the remaining days projected from the weekday pattern of the last 8 weeks.
-    <b>Week forecast</b> uses the average within-week pace of the last <span id="pw"></span> complete weeks.
+    <b>Sources:</b> feed consumption, biomass, harvest and mortality from Fiskeridirektoratet's monthly biomass statistics (~7 weeks lag); feed-carrier visits to sites from BarentsWatch AIS (vessels in our fleet list), assigned to regions by the site's production area; sea temperature from lice counts.
+    West = PO1&ndash;4, Mid = PO5&ndash;7, North = PO8&ndash;13; Norway includes rows and visits without production area.<br>
+    <b>Feed</b> totals include salmon and trout (feed vessels serve both); FCR and feeding rate use salmon only.
+    <b>Visit model:</b> feed per day = a + b × visits per day + seasonal harmonic + trend, fitted per region on all full months with both series.
+    A partial month is estimated once at least 7 days of visits exist. <b>Week forecast</b> uses the within-week pace of the last <span id="pw"></span> complete weeks.
   </footer>
 </div>
 
 <script>
-const D=__DATA__;const F=D.fd,V=D.visits;
+const D=__DATA__;let scope='Norge';const NAME={Norge:'Norway',Vest:'West',Midt:'Mid',Nord:'North'};
 const L='en-GB';const f=(v,d=0)=>(+v).toLocaleString(L,{minimumFractionDigits:d,maximumFractionDigits:d});const t=v=>f(Math.round(v));
+const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const ml=q=>MO[q%12]+' '+String(Math.floor(q/12)).slice(2);
 function tipper(fig,tip){return{show(h,x,y){tip.innerHTML=h;tip.style.opacity=1;const r=fig.getBoundingClientRect();let l=x-r.left+12;const w=tip.offsetWidth;if(l+w>r.width-6)l=x-r.left-w-12;tip.style.left=Math.max(4,l)+'px';tip.style.top=Math.max(4,y-r.top-10)+'px'},hide(){tip.style.opacity=0}}}
 function nice(lo,hi,n=4){const raw=(hi-lo)/n,p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p,st=(m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p;const a=Math.floor(lo/st)*st,o=[+a.toFixed(6)];while(o[o.length-1]<hi-1e-9)o.push(+(o[o.length-1]+st).toFixed(6));return o}
 const grid=(g,tk,y,Lm,R,W,fmt)=>{tk.forEach(v=>{g.push(`<line x1="${Lm}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule-2)"/><text x="${Lm-8}" y="${y(v)+4}" text-anchor="end">${fmt(v)}</text>`)})};
 const kfmt=v=>v>=1000?f(v/1000,0)+'k':f(v);
+const pl=(pts,c,w=2,ex='')=>`<polyline points="${pts.join(' ')}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round" ${ex}/>`;
+function yearColors(ys,cur){return Object.fromEntries(ys.map((y,i)=>{const age=ys.length-1-i;return [y,+y===cur?'var(--accent)':age===1?'var(--ink-2)':age===2?'var(--ink-3)':'var(--rule)']}))}
+function yearLegend(id,ys,cols){document.getElementById(id).innerHTML=ys.map(y=>`<span><i class="ln" style="background:${cols[y]}"></i>${y}</span>`).join('')}
+
+/* generic Jan–Dec multi-year line chart */
+function yearLines(id,tipId,series,opt){const ys=Object.keys(series).filter(y=>+y>=opt.from).sort();const cols=yearColors(ys,D.curYear);
+  const W=opt.W||960,H=opt.H||250,Lm=50,R=46,T=14,B=26,iw=W-Lm-R,ih=H-T-B;const all=ys.flatMap(y=>series[y]).concat(opt.extra||[]).filter(v=>v!=null);
+  const tk=nice(opt.zero?0:Math.min(...all)*0.95,Math.max(...all)*1.04);const lo=tk[0],hi=tk[tk.length-1];const x=i=>Lm+i*iw/11,y=v=>T+ih-(v-lo)/(hi-lo)*ih;const g=[];grid(g,tk,y,Lm,R,W,opt.yf);
+  ys.forEach(yr=>{const v=series[yr];const pts=v.map((q,i)=>q==null?null:x(i)+','+y(q)).filter(Boolean);const cur=+yr===D.curYear;g.push(pl(pts,cols[yr],cur?2.75:1.75));
+    if(cur&&opt.est){const li=v.map((q,i)=>q!=null?i:-1).filter(i=>i>=0).pop();const ep=Object.entries(opt.est).map(([i,q])=>[+i,q]).sort((a,b)=>a[0]-b[0]);
+      if(ep.length){g.push(pl([x(li)+','+y(v[li]),...ep.map(([i,q])=>x(i)+','+y(q))],'var(--accent)',2,'stroke-dasharray="5 4"'));ep.forEach(([i,q])=>g.push(`<circle cx="${x(i)}" cy="${y(q)}" r="3.5" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"/>`))}}
+    const li=v.map((q,i)=>q!=null?i:-1).filter(i=>i>=0).pop();if(li!=null&&(cur||+yr===D.curYear-1))g.push(`<text x="${x(li)+6}" y="${y(v[li])+4}" class="${cur?'strong':'lbl'}">${yr}</text>`)});
+  MO.forEach((m,i)=>g.push(`<text x="${x(i)}" y="${H-6}" text-anchor="middle">${m}</text><rect class="hit" data-i="${i}" x="${x(i)-iw/22}" y="${T}" width="${iw/11}" height="${ih}" fill="transparent"/>`));
+  const el=document.getElementById(id);el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${opt.aria}">${g.join('')}</svg>`;
+  const tp=tipper(el.closest('figure'),document.getElementById(tipId));
+  el.querySelectorAll('.hit').forEach(h=>{const i=+h.dataset.i;h.onmousemove=e=>tp.show(`<b>${NAME[scope]} · ${MO[i]}</b>`+ys.slice().reverse().map(yr=>`\n${yr}  ${series[yr][i]!=null?opt.tf(series[yr][i]):(+yr===D.curYear&&opt.est&&opt.est[i]!=null?opt.tf(opt.est[i])+' (est.)':'–')}`).join(''),e.clientX,e.clientY);h.onmouseleave=tp.hide});
+  return {ys,cols}}
+
+/* generic time line chart */
+function timeLines(id,tipId,ts,series,opt){const n=ts.length;const W=opt.W||960,H=opt.H||220,Lm=50,R=50,T=14,B=26,iw=W-Lm-R,ih=H-T-B;
+  const all=series.flatMap(s=>s.v).filter(v=>v!=null);const tk=opt.ticks||nice(Math.min(...all)*0.97,Math.max(...all)*1.03);const lo=tk[0],hi=tk[tk.length-1];
+  const x=i=>Lm+i*iw/(n-1),y=v=>T+ih-(Math.min(Math.max(v,lo),hi)-lo)/(hi-lo)*ih;const g=[];grid(g,tk,y,Lm,R,W,opt.yf);
+  series.forEach(s=>{let seg=[];const flush=()=>{if(seg.length>1)g.push(pl(seg,s.c,s.w||2,s.dash?'stroke-dasharray="5 4"':''));seg=[]};s.v.forEach((q,i)=>{if(q==null)flush();else seg.push(x(i)+','+y(q))});flush();
+    const li=s.v.map((q,i)=>q!=null?i:-1).filter(i=>i>=0).pop();if(li!=null&&s.label)g.push(`<text x="${x(li)+6}" y="${y(s.v[li])+4}" class="${s.w>2?'strong':'lbl'}">${opt.tf(s.v[li])}</text>`)});
+  const every=Math.ceil(n/(opt.nlab||8));ts.forEach((q,i)=>{if((i%every===0&&n-1-i>=every*0.6)||i===n-1)g.push(`<text x="${x(i)}" y="${H-6}" text-anchor="middle">${opt.xl(q)}</text>`)});
+  const step=iw/(n-1);ts.forEach((q,i)=>g.push(`<rect class="hit" data-i="${i}" x="${x(i)-step/2}" y="${T}" width="${step}" height="${ih}" fill="transparent"/>`));
+  const el=document.getElementById(id);el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${opt.aria}">${g.join('')}</svg>`;
+  const tp=tipper(el.closest('figure'),document.getElementById(tipId));
+  el.querySelectorAll('.hit').forEach(h=>{const i=+h.dataset.i;h.onmousemove=e=>tp.show(`<b>${NAME[scope]} · ${opt.xl(ts[i])}</b>`+series.map(s=>`\n${s.name.padEnd(12)} ${s.v[i]!=null?opt.tf(s.v[i]):'–'}`).join(''),e.clientX,e.clientY);h.onmouseleave=tp.hide})}
+
+function render(){const A=D.areas[scope],F=A.fd,V=A.visits;
+  /* KPIs */
+  const r12=A.roll,li=r12.bio.length-1,pi=li-12;
+  const items=[[`Feed, ${F.last_label}`,f(F.last_value/1000,1)+' kt',F.last_yoy!=null?`${F.last_yoy>0?'+':''}${f(F.last_yoy,1)}% vs year before`:'',F.last_yoy>=0?'up':'dn']];
+  F.estimates.forEach(e=>items.push([`Feed estimate, ${e.label}`,f(e.value/1000,1)+' kt',`±${f(e.band,0)}% · `+(e.partial?`visits through day ${e.days} of ${e.ndays}`:'full month of visits'),'flat']));
+  items.push(['Feed, rolling 12 months',f(r12.feed[li]/1000,0)+' kt',`${r12.feed[pi]?((r12.feed[li]/r12.feed[pi]-1)*100>0?'+':'')+f((r12.feed[li]/r12.feed[pi]-1)*100,1)+'% vs year before':''}`,r12.feed[li]>=r12.feed[pi]?'up':'dn']);
+  items.push(['Biological FCR, 12 months',r12.bio[li]!=null?f(r12.bio[li],2):'–',`eFCR ${r12.efcr[li]!=null?f(r12.efcr[li],2):'–'} · ${r12.bio[pi]!=null?(r12.bio[li]-r12.bio[pi]>0?'+':'')+f(r12.bio[li]-r12.bio[pi],2)+' y/y':''}`,r12.bio[li]<=r12.bio[pi]?'up':'dn']);
+  items.push(['Visits this week so far',t(V.wtd_visits),`${V.wtdDiff} vs same days last week`,V.wtdDiff.startsWith('-')?'dn':'up']);
+  items.push(['Visits, full-week forecast',t(V.forecast),`${V.pace_pct}% of a typical week done by ${D.weekday}`,'flat']);
+  const el=document.getElementById('kpis');el.style.gridTemplateColumns=`repeat(${items.length%3===0?3:Math.min(4,items.length)},1fr)`;
+  el.innerHTML=items.map(([k,v,u,c])=>`<div class="kpi"><div class="k">${k}</div><div class="v num">${v}</div><div class="d ${c}" style="font-weight:400">${u}</div></div>`).join('');
+
+  /* year on year */
+  const yy=yearLines('chY','tipY',A.yoy.years,{from:2018,est:A.yoy.est,yf:kfmt,tf:v=>t(v)+' t',zero:false,aria:'Feed per month by year'});yearLegend('yleg',yy.ys,yy.cols);
+  timeLines('chRoll','tipRoll',r12.t,[{name:'12 months',v:r12.feed.map(v=>v/1000),c:'var(--accent)',w:2.5,label:1}],{yf:v=>f(v),tf:v=>f(v,0)+' kt',xl:q=>ml(q),nlab:9,H:190,aria:'Rolling 12-month feed'});
+
+  /* monthly last 24 */
+  (function(){const lab=F.m_labels,n=lab.length;const W=960,H=250,Lm=52,R=12,T=16,B=30,iw=W-Lm-R,ih=H-T-B;
+    const all=[...F.m_actual,...F.m_est,...F.m_fit].filter(v=>v!=null);const tk=nice(0,Math.max(...all)*1.06);const top=tk[tk.length-1],y=v=>T+ih-v/top*ih;
+    const bw=iw/n,w=Math.min(26,bw*.65);const g=[];grid(g,tk,y,Lm,R,W,kfmt);
+    lab.forEach((l,i)=>{const cx=Lm+bw*i+bw/2;const a=F.m_actual[i],e=F.m_est[i];
+      if(a!=null)g.push(`<rect x="${cx-w/2}" y="${y(a)}" width="${w}" height="${T+ih-y(a)}" fill="var(--accent)" rx="2"/>`);
+      if(e!=null)g.push(`<rect x="${cx-w/2}" y="${y(e)}" width="${w}" height="${T+ih-y(e)}" fill="var(--accent-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/>`);
+      if(i%3===0||i===n-1)g.push(`<text x="${cx}" y="${H-10}" text-anchor="middle" class="${e!=null?'strong':''}">${l}</text>`);
+      g.push(`<rect class="hit" data-i="${i}" x="${Lm+bw*i}" y="${T}" width="${bw}" height="${ih}" fill="transparent"/>`)});
+    g.push(pl(F.m_fit.map((v,i)=>v==null?null:`${Lm+bw*i+bw/2},${y(v)}`).filter(Boolean),'var(--warn)'));
+    const el=document.getElementById('chM');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Feed consumption per month">${g.join('')}</svg>`;
+    const tp=tipper(el.parentElement,document.getElementById('tipM'));
+    el.querySelectorAll('.hit').forEach(h=>{const i=+h.dataset.i;h.onmousemove=e=>tp.show(`<b>${NAME[scope]} · ${lab[i]}</b>${F.m_actual[i]!=null?`\nFiskeridirektoratet ${t(F.m_actual[i])} t`:''}${F.m_est[i]!=null?`\nEstimate            ${t(F.m_est[i])} t`:''}${F.m_fit[i]!=null&&F.m_actual[i]!=null?`\nModel               ${t(F.m_fit[i])} t`:''}`,e.clientX,e.clientY);h.onmouseleave=tp.hide})})();
+
+  /* t/day weekly */
+  (function(){const lab=F.w_labels,n=lab.length;const W=960,H=230,Lm=52,R=60,T=14,B=28,iw=W-Lm-R,ih=H-T-B;
+    const all=[...F.w_model,...F.w_fd].filter(v=>v!=null);const tk=nice(Math.min(...all)*0.95,Math.max(...all)*1.03);const lo=tk[0],hi=tk[tk.length-1];
+    const x=i=>Lm+i*iw/(n-1),y=v=>T+ih-(v-lo)/(hi-lo)*ih;const g=[];grid(g,tk,y,Lm,R,W,v=>f(v));
+    let d='';F.w_fd.forEach((v,i)=>{if(v==null)return;const x0=x(i)-(i?iw/(n-1)/2:0),x1=x(i)+(i<n-1?iw/(n-1)/2:0);d+=`M${x0},${y(v)}H${x1}`});g.push(`<path d="${d}" fill="none" stroke="var(--ink)" stroke-width="1.5"/>`);
+    g.push(pl(F.w_model.map((v,i)=>x(i)+','+y(v)),'var(--accent)'));
+    F.w_model.forEach((v,i)=>g.push(`<circle cx="${x(i)}" cy="${y(v)}" r="${i===n-1?4:2.2}" fill="${i===n-1?'var(--surface)':'var(--accent)'}" stroke="var(--accent)" stroke-width="1.5"/>`));
+    lab.forEach((l,i)=>{if(i%3===0||i===n-1)g.push(`<text x="${x(i)}" y="${H-8}" text-anchor="middle" class="${i===n-1?'strong':''}">${l.replace('U','W')}</text>`)});
+    g.push(`<text x="${x(n-1)+8}" y="${y(F.w_model[n-1])+4}" class="strong">${t(F.w_model[n-1])}</text>`);
+    const step=iw/(n-1);lab.forEach((l,i)=>g.push(`<rect class="hit" data-i="${i}" x="${x(i)-step/2}" y="${T}" width="${step}" height="${ih}" fill="transparent"/>`));
+    const el=document.getElementById('chW');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Tonnes of feed per day by week">${g.join('')}</svg>`;
+    const tp=tipper(el.parentElement,document.getElementById('tipW'));
+    el.querySelectorAll('.hit').forEach(h=>{const i=+h.dataset.i;h.onmousemove=e=>tp.show(`<b>${NAME[scope]} · ${lab[i].replace('U','Week ')}</b>\nFrom visits  ${t(F.w_model[i])} t/day${F.w_fd[i]!=null?`\nFD month avg ${t(F.w_fd[i])} t/day`:'\nFD not yet published'}`,e.clientX,e.clientY);h.onmouseleave=tp.hide})})();
+
+  /* FCR */
+  timeLines('chF1','tipF',A.fcr.t,[{name:'Biological',v:A.fcr.bio,c:'var(--accent)',w:2.5,label:1},{name:'eFCR',v:A.fcr.efcr,c:'var(--ink-3)',dash:1}],{yf:v=>f(v,2),tf:v=>f(v,2),xl:q=>ml(q),nlab:5,W:470,H:200,ticks:[0.9,1.1,1.3,1.5,1.7],aria:'Monthly FCR'});
+  const rs=r12.t.map((q,i)=>i).filter(i=>r12.t[i]>=2019*12);
+  timeLines('chF2','tipF',rs.map(i=>r12.t[i]),[{name:'Biological',v:rs.map(i=>r12.bio[i]),c:'var(--accent)',w:2.5,label:1},{name:'eFCR',v:rs.map(i=>r12.efcr[i]),c:'var(--ink-3)',dash:1}],{yf:v=>f(v,2),tf:v=>f(v,2),xl:q=>ml(q),nlab:5,W:470,H:200,aria:'Rolling 12-month FCR'});
+
+  /* feeding rate & temperature */
+  const ss=yearLines('chS','tipS',A.sfr,{from:2019,yf:v=>f(v,2),tf:v=>f(v,2)+'%',W:470,H:220,aria:'Feeding rate by month'});
+  yearLines('chT','tipS',A.temp,{from:2019,yf:v=>f(v,0),tf:v=>f(v,1)+' °C',W:470,H:220,aria:'Sea temperature by month'});yearLegend('sleg',ss.ys,ss.cols);
+
+  /* weekly visits */
+  (function(){const lab=V.weekly_labels,val=V.weekly_values,pi=V.weekly_partial_idx;const W=960,H=210,Lm=46,R=12,T=16,B=28,iw=W-Lm-R,ih=H-T-B;
+    const tk=nice(0,Math.max(V.forecast,...val)*1.08);const top=tk[tk.length-1],y=v=>T+ih-v/top*ih;const bw=iw/lab.length,w=Math.min(46,bw*.6);const g=[];grid(g,tk,y,Lm,R,W,v=>f(v));
+    lab.forEach((l,i)=>{const cx=Lm+bw*i+bw/2,p=i===pi;
+      if(p)g.push(`<rect x="${cx-w/2}" y="${y(V.forecast)}" width="${w}" height="${T+ih-y(V.forecast)}" fill="none" stroke="var(--accent)" stroke-dasharray="4 3"/>`);
+      g.push(`<rect x="${cx-w/2}" y="${y(val[i])}" width="${w}" height="${T+ih-y(val[i])}" fill="${p?'var(--accent-2)':'var(--accent)'}" rx="2"/>`);
+      g.push(`<text x="${cx}" y="${H-8}" text-anchor="middle" class="${p?'strong':''}">${l.replace('U','W')}</text><rect class="hit" data-i="${i}" x="${Lm+bw*i}" y="${T}" width="${bw}" height="${ih}" fill="transparent"/>`)});
+    const el=document.getElementById('chV');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Feed-vessel visits per week">${g.join('')}</svg>`;
+    const tp=tipper(el.parentElement,document.getElementById('tipV'));
+    el.querySelectorAll('.hit').forEach(h=>{const i=+h.dataset.i;h.onmousemove=e=>tp.show(`<b>${NAME[scope]} · ${lab[i].replace('U','Week ')}</b>\nVisits  ${t(val[i])}${i===pi?`\nForecast ${t(V.forecast)}`:''}`,e.clientX,e.clientY);h.onmouseleave=tp.hide})})();
+
+  /* t per visit */
+  const ry=Object.fromEntries(Object.entries(F.ratio));const rr=yearLines('chR','tipR',ry,{from:2024,yf:v=>f(v),tf:v=>f(v,1)+' t',H:210,aria:'Tonnes of feed per visit'});yearLegend('rleg',rr.ys,rr.cols);
+  document.getElementById('rnote').innerHTML=`Loads are larger in summer and autumn and have grown year on year, so raw visit counts flatten both peaks and lows. The model corrects for both; out-of-sample error for ${NAME[scope]} is ±${f(F.mape,1)}% per month (${F.n_fit} months).`}
 
 document.getElementById('per').textContent=D.through;document.getElementById('upd').textContent=D.updated;document.getElementById('pw').textContent=D.pacingWeeks;
-
-/* KPIs */
-(function(){const items=[['Visits this week so far',t(V.wtd_visits),`${D.wtdDiff} vs same days last week`,D.wtdDiff.startsWith('-')?'dn':'up'],
-  ['Visits, full-week forecast',t(V.forecast),`${V.pace_pct}% of a typical week done by ${D.weekday}`,'flat'],
-  [`Feed, ${F.last_label} (Fiskeridirektoratet)`,f(F.last_value/1000,1)+' kt',F.last_yoy!=null?`${F.last_yoy>0?'+':''}${f(F.last_yoy,1)}% vs year before`:'',F.last_yoy>=0?'up':'dn']];
-  F.estimates.forEach(e=>items.push([`Feed estimate, ${e.label}`,f(e.value/1000,1)+' kt',`±${f(e.band,0)}% · `+(e.partial?`visits through day ${e.days} of ${e.ndays}`:'full month of visits'),'flat']));
-  const cols=items.length>=4?4:items.length;const el=document.getElementById('kpis');el.style.gridTemplateColumns=`repeat(${cols},1fr)`;
-  el.innerHTML=items.map(([k,v,u,c])=>`<div class="kpi"><div class="k">${k}</div><div class="v num">${v}</div><div class="d ${c}" style="font-weight:400">${u}</div></div>`).join('')})();
-
-/* weekly visits */
-(function(){const lab=V.weekly_labels,val=V.weekly_values,pi=V.weekly_partial_idx;const W=960,H=220,Lm=46,R=12,T=16,B=28,iw=W-Lm-R,ih=H-T-B;
-  const tk=nice(0,Math.max(V.forecast,...val)*1.08);const top=tk[tk.length-1],y=v=>T+ih-v/top*ih;const bw=iw/lab.length,w=Math.min(46,bw*.6);const g=[];grid(g,tk,y,Lm,R,W,v=>f(v));
-  lab.forEach((l,i)=>{const cx=Lm+bw*i+bw/2,p=i===pi;
-    if(p)g.push(`<rect x="${cx-w/2}" y="${y(V.forecast)}" width="${w}" height="${T+ih-y(V.forecast)}" fill="none" stroke="var(--accent)" stroke-dasharray="4 3"/>`);
-    g.push(`<rect x="${cx-w/2}" y="${y(val[i])}" width="${w}" height="${T+ih-y(val[i])}" fill="${p?'var(--accent-2)':'var(--accent)'}" rx="2"/>`);
-    g.push(`<text x="${cx}" y="${H-8}" text-anchor="middle" class="${p?'strong':''}">${l.replace('U','W')}</text><rect class="hit" data-i="${i}" x="${Lm+bw*i}" y="${T}" width="${bw}" height="${ih}" fill="transparent"/>`)});
-  const el=document.getElementById('chV');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Feed-vessel visits per week">${g.join('')}</svg>`;
-  const tp=tipper(el.parentElement,document.getElementById('tipV'));
-  el.querySelectorAll('.hit').forEach(h=>{const i=+h.dataset.i;h.onmousemove=e=>tp.show(`<b>${lab[i].replace('U','Week ')}</b>\nVisits  ${t(val[i])}${i===pi?`\nForecast ${t(V.forecast)}`:''}`,e.clientX,e.clientY);h.onmouseleave=tp.hide});
-  document.getElementById('vnote').textContent=`Last bar is the current week so far; the dashed outline is the full-week forecast.`})();
-
-/* monthly feed */
-(function(){const lab=F.m_labels,n=lab.length;const W=960,H=250,Lm=52,R=12,T=16,B=30,iw=W-Lm-R,ih=H-T-B;
-  const all=[...F.m_actual,...F.m_est,...F.m_fit].filter(v=>v!=null);const tk=nice(0,Math.max(...all)*1.06);const top=tk[tk.length-1],y=v=>T+ih-v/top*ih;
-  const bw=iw/n,w=Math.min(26,bw*.65);const g=[];grid(g,tk,y,Lm,R,W,kfmt);
-  lab.forEach((l,i)=>{const cx=Lm+bw*i+bw/2;const a=F.m_actual[i],e=F.m_est[i];
-    if(a!=null)g.push(`<rect x="${cx-w/2}" y="${y(a)}" width="${w}" height="${T+ih-y(a)}" fill="var(--accent)" rx="2"/>`);
-    if(e!=null)g.push(`<rect x="${cx-w/2}" y="${y(e)}" width="${w}" height="${T+ih-y(e)}" fill="var(--accent-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/>`);
-    if(i%3===0||i===n-1)g.push(`<text x="${cx}" y="${H-10}" text-anchor="middle" class="${e!=null?'strong':''}">${l}</text>`);
-    g.push(`<rect class="hit" data-i="${i}" x="${Lm+bw*i}" y="${T}" width="${bw}" height="${ih}" fill="transparent"/>`)});
-  const pts=F.m_fit.map((v,i)=>v==null?null:`${Lm+bw*i+bw/2},${y(v)}`).filter(Boolean);g.push(`<polyline points="${pts.join(' ')}" fill="none" stroke="var(--warn)" stroke-width="2" stroke-linejoin="round"/>`);
-  const el=document.getElementById('chM');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Feed consumption per month">${g.join('')}</svg>`;
-  const tp=tipper(el.parentElement,document.getElementById('tipM'));
-  el.querySelectorAll('.hit').forEach(h=>{const i=+h.dataset.i;h.onmousemove=e=>tp.show(`<b>${lab[i]}</b>${F.m_actual[i]!=null?`\nFiskeridirektoratet ${t(F.m_actual[i])} t`:''}${F.m_est[i]!=null?`\nEstimate            ${t(F.m_est[i])} t`:''}${F.m_fit[i]!=null&&F.m_actual[i]!=null?`\nModel               ${t(F.m_fit[i])} t`:''}`,e.clientX,e.clientY);h.onmouseleave=tp.hide})})();
-
-/* t/day weekly */
-(function(){const lab=F.w_labels,n=lab.length;const W=960,H=230,Lm=52,R=60,T=14,B=28,iw=W-Lm-R,ih=H-T-B;
-  const all=[...F.w_model,...F.w_fd].filter(v=>v!=null);const tk=nice(Math.min(...all)*0.95,Math.max(...all)*1.03);const lo=tk[0],hi=tk[tk.length-1];
-  const x=i=>Lm+i*iw/(n-1),y=v=>T+ih-(v-lo)/(hi-lo)*ih;const g=[];grid(g,tk,y,Lm,R,W,v=>f(v));
-  let d='';F.w_fd.forEach((v,i)=>{if(v==null)return;const x0=x(i)-(i?iw/(n-1)/2:0),x1=x(i)+(i<n-1?iw/(n-1)/2:0);d+=`M${x0},${y(v)}H${x1}`});g.push(`<path d="${d}" fill="none" stroke="var(--ink)" stroke-width="1.5"/>`);
-  g.push(`<polyline points="${F.w_model.map((v,i)=>x(i)+','+y(v)).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`);
-  F.w_model.forEach((v,i)=>{g.push(`<circle cx="${x(i)}" cy="${y(v)}" r="${i===n-1?4:2.2}" fill="${i===n-1?'var(--surface)':'var(--accent)'}" stroke="var(--accent)" stroke-width="1.5"/>`)});
-  lab.forEach((l,i)=>{if(i%3===0||i===n-1)g.push(`<text x="${x(i)}" y="${H-8}" text-anchor="middle" class="${i===n-1?'strong':''}">${l.replace('U','W')}</text>`)});
-  g.push(`<text x="${x(n-1)+8}" y="${y(F.w_model[n-1])+4}" class="strong">${t(F.w_model[n-1])}</text>`);
-  const step=iw/(n-1);lab.forEach((l,i)=>g.push(`<rect class="hit" data-i="${i}" x="${x(i)-step/2}" y="${T}" width="${step}" height="${ih}" fill="transparent"/>`));
-  const el=document.getElementById('chW');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Tonnes of feed per day by week">${g.join('')}</svg>`;
-  const tp=tipper(el.parentElement,document.getElementById('tipW'));
-  el.querySelectorAll('.hit').forEach(h=>{const i=+h.dataset.i;h.onmousemove=e=>tp.show(`<b>${lab[i].replace('U','Week ')}</b>\nFrom visits  ${t(F.w_model[i])} t/day${F.w_fd[i]!=null?`\nFD month avg ${t(F.w_fd[i])} t/day`:'\nFD not yet published'}`,e.clientX,e.clientY);h.onmouseleave=tp.hide})})();
-
-/* t per visit */
-(function(){const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const ys=Object.keys(F.ratio).sort();const cols=ys.map((y,i)=>i===ys.length-1?'var(--accent)':i===ys.length-2?'var(--ink-3)':'var(--rule)');
-  document.getElementById('rleg').innerHTML=ys.map((y,i)=>`<span><i class="ln" style="background:${cols[i]}"></i>${y}</span>`).join('');
-  const W=960,H=210,Lm=46,R=40,T=14,B=28,iw=W-Lm-R,ih=H-T-B;const all=ys.flatMap(y=>F.ratio[y]).filter(v=>v!=null);const tk=nice(Math.min(...all)*0.95,Math.max(...all)*1.03);const lo=tk[0],hi=tk[tk.length-1];
-  const x=i=>Lm+i*iw/11,y=v=>T+ih-(v-lo)/(hi-lo)*ih;const g=[];grid(g,tk,y,Lm,R,W,v=>f(v));
-  ys.forEach((yr,k)=>{const v=F.ratio[yr];const pts=v.map((q,i)=>q==null?null:x(i)+','+y(q)).filter(Boolean);g.push(`<polyline points="${pts.join(' ')}" fill="none" stroke="${cols[k]}" stroke-width="${k===ys.length-1?2.5:2}" stroke-linejoin="round"/>`);
-    const li=v.map((q,i)=>q!=null?i:-1).filter(i=>i>=0).pop();g.push(`<text x="${x(li)+6}" y="${y(v[li])+4}" class="lbl">${yr}</text>`)});
-  M.forEach((m,i)=>g.push(`<text x="${x(i)}" y="${H-8}" text-anchor="middle">${m}</text><rect class="hit" data-i="${i}" x="${x(i)-iw/22}" y="${T}" width="${iw/11}" height="${ih}" fill="transparent"/>`));
-  const el=document.getElementById('chR');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Tonnes of feed per visit">${g.join('')}</svg>`;
-  const tp=tipper(el.parentElement,document.getElementById('tipR'));
-  el.querySelectorAll('.hit').forEach(h=>{const i=+h.dataset.i;h.onmousemove=e=>tp.show(`<b>${M[i]}</b>`+ys.map(yr=>`\n${yr}  ${F.ratio[yr][i]!=null?f(F.ratio[yr][i],1)+' t':'–'}`).join(''),e.clientX,e.clientY);h.onmouseleave=tp.hide});
-  document.getElementById('rnote').innerHTML=`Loads are larger in summer and autumn and have grown year on year, so raw visit counts flatten both peaks and lows. The model corrects for both; out-of-sample error is ±${f(F.mape,1)}% per month (${F.n_fit} months).`})();
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected','false'));b.setAttribute('aria-selected','true');scope=b.dataset.s;render()}));
+render();
 </script>
 </body></html>
