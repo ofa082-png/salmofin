@@ -94,7 +94,7 @@ figure{margin:0;background:var(--surface);border:1px solid var(--rule);padding:1
 .chart text{font-family:var(--mono);font-size:10.5px;fill:var(--ink-3)}
 .chart .lbl{fill:var(--ink-2);font-weight:500}
 .chart .strong{fill:var(--ink);font-weight:600}
-.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.duo{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px}
 @media(max-width:720px){.duo{grid-template-columns:1fr}}
 .duo .chart svg{min-width:0}
 .mt{font-size:12px;color:var(--ink-2);font-weight:600;margin:0 0 6px 2px}
@@ -329,7 +329,7 @@ function fcrChart(){const s=SS[scope],n=13,w=s.slice(-n),wy=s.slice(-n-12,-12);
     12 months: biological <b>${f(r.feed/r.grow,2)}</b> (${ab(r.feed/r.grow-ry.feed/ry.grow)} y/y), eFCR <b>${f(r.feed/r.g2,2)}</b>.`}
 
 function tempChart(){const s=SS[scope],n=13,w=s.slice(-n);const fig=document.getElementById('chT').closest('figure');const tp=tipper(fig,document.getElementById('tipT'));
-  const one=(id,src,key,dg,band)=>{const W=470,H=170,Lm=34,R=36,T=12,B=22,iw=W-Lm-R,ih=H-T-B;
+  const one=(id,src,key,dg,band)=>{const W=960,H=190,Lm=34,R=36,T=12,B=22,iw=W-Lm-R,ih=H-T-B;
     const cur=w.map(d=>src[d.t]),prev=w.map(d=>src[d.t-12]),prev2=w.map(d=>src[d.t-24]),nor=w.map(d=>D.norm[scope][d.t%12][key]);const bl=band?w.map(d=>band[d.t]):[];
     const v=[...cur,...prev,...prev2,...nor,...bl].filter(q=>q!=null);const tk=nice(Math.min(...v)*0.95,Math.max(...v)*1.03,4);const lo=tk[0],hi=tk[tk.length-1];
     const x=i=>Lm+i*iw/(n-1),y=q=>T+ih-(q-lo)/(hi-lo)*ih;let g='';
@@ -359,7 +359,7 @@ function flows(){const s=SS[scope],n=13,w=s.slice(-n);
   const el=document.getElementById('chM');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Biomass in and out per month">${g}</svg>`;
   const tp=tipper(el.parentElement,document.getElementById('tipM'));
   el.querySelectorAll('.hit').forEach(h=>{const d=w[+h.dataset.i];h.onmousemove=ev=>tp.show(`<b>${NAME[scope]} · ${ml(d.t)}</b>\nIn   ${t(d.grow+d.inT)} t\n  growth    ${t(d.grow)} t\n  stocked   ${t(d.inT)} t\nOut  ${t(d.ht+d.db)} t\n  harvest   ${t(d.ht)} t\n  mortality ${t(d.db)} t\nNet ${(d.bio-d.prev>=0?'+':'')+t(d.bio-d.prev)} t → ${t(d.bio)} t`,ev.clientX,ev.clientY);h.onmouseleave=tp.hide});
-  const mini=(id,k,div)=>{const W=470,H=160,Lm=40,R=40,T=12,B=22,iw=W-Lm-R,ih=H-T-B;const v=w.map(d=>d[k]/div);
+  const mini=(id,k,div)=>{const W=960,H=180,Lm=40,R=40,T=12,B=22,iw=W-Lm-R,ih=H-T-B;const v=w.map(d=>d[k]/div);
     const hv=off=>w.map(d=>{const o=D.hist[scope][d.t-off];return o?o[k]/div:null});const p1=hv(12),p2=hv(24);
     const all=[...v,...p1,...p2].filter(q=>q!=null);const tk=nice(Math.min(...all)*0.97,Math.max(...all)*1.02,3);const lo=tk[0],hi=tk[tk.length-1];
     const x=i=>Lm+i*iw/(n-1),y=q=>T+ih-(q-lo)/(hi-lo)*ih;let g='';tk.forEach(q=>{g+=`<line x1="${Lm}" x2="${Lm+iw}" y1="${y(q)}" y2="${y(q)}" stroke="var(--rule-2)"/><text x="${Lm-6}" y="${y(q)+4}" text-anchor="end">${f(q)}</text>`});
