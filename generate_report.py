@@ -1,240 +1,212 @@
 """
 generate_report.py
 -------------------
-Renders a static HTML disease report from BigQuery data and writes it
-to docs/fiskehelse.html, for GitHub Pages to serve. Nightly script.
+Renders the fish health report and writes it to docs/fiskehelse.html, for
+GitHub Pages to serve. Nightly script.
 
-Moved off docs/index.html (2026-08-16) — that path is now the hub
-frontpage (see generate_hub.py), which links here instead of this
-page being the site root.
+Rebuilt 2026-10-02 in the control-report visual system (English, region tabs,
+templates/fiskehelse_template.html). Four parts:
+  1. Mortality: Fiskeridirektoratet dead fish per month vs an estimate from
+     silage-vessel visits (silage boats collect dead fish), fitted per region
+     as dead tonnes = a + b x silage visits per day. Months past FD's latest
+     month are estimated from visits once >= 7 days of visits exist.
+  2. The vessel fish-health indicator (silage / feed-carrier visits, the same
+     ratio as dodelighet.html) against the mortality rate.
+  3. ISA and PD: sites with suspected or confirmed disease per month
+     (BarentsWatch disease table).
+  4. Current Mattilsynet cases: snapshot counts, last-14-day table and map.
 
-Scope narrowed to lice+mortality-free disease tracking only, in two
-steps on 2026-08-19: Lusenivå/Avlusningsfartøy moved out first to
-generate_lakselus.py/lakselus.html, then Dødelighet/Utkast/
-Fiskehelseindikator moved out to generate_dodelighet.py/dodelighet.html
-— this page was bundling three conceptually separate signals (lice,
-mortality, disease) and kept growing. Now it's just sykdomstilfeller
-tracking (active cases, new cases, the map).
+Earlier history: moved off docs/index.html 2026-08-16; lice and mortality
+content split out to lakselus.html / dodelighet.html 2026-08-19.
 """
 
 import os
+import csv
 import json
+import math
 import datetime
+from collections import defaultdict
 from google.cloud import bigquery
-from google.oauth2 import service_account
 
-PROJECT_ID = "salmofin"
-OUT_PATH   = os.path.join(os.path.dirname(__file__), "docs", "fiskehelse.html")
+import generate_kontroll as gk
 
-STATUS_LABEL = {
-    "PANKREASSYKDOM": "PD",
-    "INFEKSIOES_LAKSEANEMI": "ILA",
-    "BAKTERIELL_NYRESYKE": "BKD",
-    "FRANCISELLOSE": "Francisellose",
-}
-DISEASE_COLOR = {
-    "PANKREASSYKDOM": "#2a78d6",
-    "INFEKSIOES_LAKSEANEMI": "#1baf7a",
-    "BAKTERIELL_NYRESYKE": "#eda100",
-    "FRANCISELLOSE": "#008300",
-}
+BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
+OUT_PATH  = os.path.join(BASE_DIR, "docs", "fiskehelse.html")
+TEMPLATE  = os.path.join(BASE_DIR, "templates", "fiskehelse_template.html")
+FLEET_CSV = os.path.join(BASE_DIR, "vessel_categories.csv")
+VESSEL_START = (2024, 1)      # vessel_visits coverage starts here
+DISEASE_START = 2018
+MIN_DAYS_PARTIAL = 7
 
-def get_bq_client():
-    credentials_info = json.loads(os.environ["GOOGLE_CREDENTIALS"])
-    credentials = service_account.Credentials.from_service_account_info(
-        credentials_info,
-        scopes=["https://www.googleapis.com/auth/cloud-platform"]
-    )
-    return bigquery.Client(credentials=credentials, project=PROJECT_ID)
+DISEASE_LABEL = {"PANKREASSYKDOM": "PD", "INFEKSIOES_LAKSEANEMI": "ISA", "INFEKSIØS_LAKSEANEMI": "ISA",
+                 "BAKTERIELL_NYRESYKE": "BKD", "FRANCISELLOSE": "Francisellosis",
+                 "SYSTEMISK_INFEKSJON_MED_FLAVOBACTERIUM_PSYCHROPHILUM": "Flavobacteriosis"}
 
-def fetch_data(client):
-    kpis = list(client.query("""
-        SELECT
-          (SELECT COUNT(*) FROM salmofin.salmofin.mattilsynet_helsestatus) AS active_cases,
-          (SELECT COUNT(DISTINCT lokalitetsnummer) FROM salmofin.salmofin.mattilsynet_helsestatus) AS active_localities,
-          (SELECT COUNT(DISTINCT sykdomstype) FROM salmofin.salmofin.mattilsynet_helsestatus) AS active_diseases,
-          (SELECT COUNT(DISTINCT id) FROM salmofin.salmofin.mattilsynet_disease
-             WHERE opprettet >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY)) AS new_cases_14d
-    """).result())[0]
 
+def load_fleet():
+    out = {}
+    with open(FLEET_CSV, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            m, t = (row.get("MMSI") or "").strip(), (row.get("Type") or "").strip()
+            if m.isdigit() and t in ("Silage", "Fish feed carrier"):
+                out[int(m)] = t
+    return out
+
+
+def fetch_visits(client, fleet):
+    """Visits per area x month x vessel type, plus days covered per month."""
+    cfg = bigquery.QueryJobConfig(query_parameters=[
+        bigquery.ArrayQueryParameter("m", "INT64", list(fleet))])
+    rows = client.query("""
+        SELECT DATE(v.startTime) d, v.mmsi, l.prodAreaCode po, COUNT(*) n
+        FROM salmofin.salmofin.vessel_visits v
+        LEFT JOIN salmofin.salmofin.localities l ON l.siteNr = v.localityNo
+        WHERE v.mmsi IN UNNEST(@m) AND DATE(v.startTime) < CURRENT_DATE()
+        GROUP BY 1, 2, 3""", job_config=cfg).result()
+    V = defaultdict(float)
+    last = None
+    for r in rows:
+        t = gk.ym(r.d.year, r.d.month)
+        for a in gk.areas_of(r.po):
+            V[(a, t, fleet[r.mmsi])] += r.n
+        last = r.d if last is None or r.d > last else last
+    return V, last
+
+
+def fetch_disease_history(client):
+    rows = client.query(f"""
+        WITH po AS (SELECT Lokalitetsnummer loc, ANY_VALUE(ProduksjonsomraadeId) po
+                    FROM salmofin.salmofin.lice_bw WHERE ProduksjonsomraadeId IS NOT NULL GROUP BY 1),
+        d AS (SELECT DISTINCT Ar, Uke, Lokalitetsnummer loc, Sykdom
+              FROM salmofin.salmofin.disease
+              WHERE Ar >= {DISEASE_START} AND Sykdom IN ('ILA', 'PD') AND Status IN ('Påvist', 'Mistanke')),
+        dm AS (SELECT loc, Sykdom,
+                 DATE_ADD(DATE_TRUNC(DATE(Ar, 1, 4), ISOWEEK), INTERVAL (Uke - 1) * 7 + 3 DAY) dt FROM d)
+        SELECT EXTRACT(YEAR FROM dt) y, EXTRACT(MONTH FROM dt) m, po.po, Sykdom s, COUNT(DISTINCT dm.loc) n
+        FROM dm LEFT JOIN po USING (loc) GROUP BY 1, 2, 3, 4""").result()
+    H = defaultdict(lambda: {"pd": 0, "ila": 0})
+    for r in rows:
+        for a in gk.areas_of(r.po):
+            H[(a, gk.ym(r.y, r.m))]["pd" if r.s == "PD" else "ila"] += r.n
+    return H
+
+
+def fetch_cases(client):
+    snap = list(client.query("""
+        SELECT h.lokalitetsnummer loc, h.lokalitetsnavn name, h.sykdomstype s, l.prodAreaCode po,
+               l.latitude lat, l.longitude lon
+        FROM salmofin.salmofin.mattilsynet_helsestatus h
+        LEFT JOIN salmofin.salmofin.localities l ON h.lokalitetsnummer = l.siteNr""").result())
     recent = list(client.query("""
-        SELECT lokalitetsnummer, lokalitetsnavn, sykdomstype,
-          CASE WHEN avslutningsdato IS NOT NULL THEN 'Avsluttet'
-               WHEN diagnosedato IS NOT NULL THEN 'Bekreftet'
-               ELSE 'Mistanke' END AS status,
-          COALESCE(avslutningsdato, diagnosedato, kvalitetssikretMistankedato, varslingsdato, opprettet) AS status_date
-        FROM salmofin.salmofin.mattilsynet_disease
+        SELECT d.lokalitetsnummer loc, d.lokalitetsnavn name, d.sykdomstype s, l.prodAreaCode po,
+          CASE WHEN avslutningsdato IS NOT NULL THEN 'Closed'
+               WHEN diagnosedato IS NOT NULL THEN 'Confirmed' ELSE 'Suspected' END status,
+          COALESCE(avslutningsdato, diagnosedato, kvalitetssikretMistankedato, varslingsdato, opprettet) dt,
+          opprettet >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY) is_new
+        FROM salmofin.salmofin.mattilsynet_disease d
+        LEFT JOIN salmofin.salmofin.localities l ON d.lokalitetsnummer = l.siteNr
         WHERE COALESCE(avslutningsdato, diagnosedato, kvalitetssikretMistankedato, varslingsdato, opprettet)
               >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY)
-        ORDER BY status_date DESC
-        LIMIT 15
-    """).result())
+        ORDER BY dt DESC""").result())
+    sites = {}
+    for r in snap:
+        s = sites.setdefault(r.loc, {"name": (r.name or "").title(), "po": r.po, "lat": r.lat, "lon": r.lon, "d": []})
+        s["d"].append(DISEASE_LABEL.get(r.s, r.s))
+    return {
+        "sites": [dict(v, id=k) for k, v in sites.items()],
+        "recent": [{"name": (r.name or "").title(), "d": DISEASE_LABEL.get(r.s, r.s), "po": r.po, "status": r.status,
+                    "dt": r.dt.strftime("%d %b") if r.dt else "", "new": bool(r.is_new)} for r in recent],
+    }
 
-    map_rows = list(client.query("""
-        SELECT h.lokalitetsnummer, h.lokalitetsnavn, h.sykdomstype, l.latitude, l.longitude
-        FROM salmofin.salmofin.mattilsynet_helsestatus h
-        LEFT JOIN salmofin.salmofin.localities l ON h.lokalitetsnummer = l.siteNr
-        WHERE l.latitude IS NOT NULL
-    """).result())
 
-    return kpis, recent, map_rows
+def ols1(xs, ys):
+    n = len(xs); mx, my = sum(xs) / n, sum(ys) / n
+    sxx = sum((x - mx) ** 2 for x in xs); sxy = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    b = sxy / sxx
+    return my - b * mx, b
 
-def build_sites_json(map_rows):
-    by_site = {}
-    for r in map_rows:
-        s = by_site.setdefault(r.lokalitetsnummer, {
-            "id": str(r.lokalitetsnummer), "name": r.lokalitetsnavn.title(),
-            "lat": r.latitude, "lon": r.longitude, "diseases": []
-        })
-        s["diseases"].append(r.sykdomstype)
-    return list(by_site.values())
 
-def build_table_rows(recent):
-    status_bg = {"Mistanke": "#fac775", "Bekreftet": "#f7c1c1", "Avsluttet": "#c0dd97"}
-    status_fg = {"Mistanke": "#633806", "Bekreftet": "#791f1f", "Avsluttet": "#27500a"}
-    rows = []
-    for r in recent:
-        label = STATUS_LABEL.get(r.sykdomstype, r.sykdomstype)
-        date_str = r.status_date.strftime("%d.%m") if r.status_date else ""
-        rows.append(f"""
-      <tr style="border-top:0.5px solid var(--border);">
-        <td style="padding:8px 10px;">{r.lokalitetsnavn.title()}</td>
-        <td style="padding:8px 10px;">{label}</td>
-        <td style="padding:8px 10px;"><span style="background:{status_bg[r.status]};color:{status_fg[r.status]};font-size:11px;padding:2px 8px;border-radius:4px;">{r.status}</span></td>
-        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">{date_str}</td>
-      </tr>""")
-    return "".join(rows)
+def corr(xs, ys):
+    p = [(x, y) for x, y in zip(xs, ys) if x is not None and y is not None]
+    if len(p) < 4:
+        return None
+    mx = sum(x for x, _ in p) / len(p); my = sum(y for _, y in p) / len(p)
+    sxy = sum((x - mx) * (y - my) for x, y in p)
+    return round(sxy / math.sqrt(sum((x - mx) ** 2 for x, _ in p) * sum((y - my) ** 2 for _, y in p)), 2)
 
-TEMPLATE = """<!doctype html>
-<html lang="no">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fiskehelse — ukesrapport</title>
-<style>
-  :root {{ --surface-1:#f5f4f0; --surface-2:#ffffff; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781; --border:#e1e0d9; }}
-  @media (prefers-color-scheme: dark) {{
-    :root {{ --surface-1:#242422; --surface-2:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781; --border:#2c2c2a; }}
-  }}
-  body {{ background:var(--surface-1); color:var(--text-primary); font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:0; padding:2rem 1rem; }}
-  .wrap {{ max-width:680px; margin:0 auto; }}
-  table {{ border-collapse:collapse; }}
-  a {{ color:var(--text-secondary); }}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.25rem;">
-    <div>
-      <div style="font-size:18px;font-weight:500;">Fiskehelse — ukesrapport</div>
-      <div style="font-size:13px;color:var(--text-muted)">Uke {week}, {year} · oppdatert {updated}</div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:baseline;">
-      <a href="index.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">hjem →</a>
-      <a href="dodelighet.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">dødelighet →</a>
-      <a href="lakselus.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">lakselus →</a>
-      <a href="traffic.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">trafikk →</a>
-      <a href="foring.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">fôring →</a>
-      <div style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;">kilde: mattilsynet.io</div>
-    </div>
-  </div>
 
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;">
-    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Aktive sykdomstilfeller</div>
-      <div style="font-size:24px;font-weight:500;">{active_cases}</div>
-    </div>
-    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Aktive lokaliteter</div>
-      <div style="font-size:24px;font-weight:500;">{active_localities}</div>
-    </div>
-    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Ulike sykdommer</div>
-      <div style="font-size:24px;font-weight:500;">{active_diseases}</div>
-    </div>
-    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Nye siste 14 dager</div>
-      <div style="font-size:24px;font-weight:500;">{new_cases_14d}</div>
-    </div>
-  </div>
+def build(salmon, V, last_visit, H):
+    T1 = max(r["t"] for r in salmon)
+    M = defaultdict(lambda: defaultdict(float))
+    for r in salmon:
+        for a in gk.areas_of(r["po"]):
+            x = M[(a, r["t"])]
+            x["dead"] += r["dead"]; x["n"] += r["n"]
+            if r["n"]:
+                x["deadt"] += r["dead"] * r["bio"] / r["n"]       # dead count x mean weight (t)
+    t0 = gk.ym(*VESSEL_START)
+    tlast = gk.ym(last_visit.year, last_visit.month)
+    out = {"T1": T1, "areas": {}}
+    for a in gk.AREAS:
+        rows = []
+        for t in range(t0, tlast + 1):
+            days = gk.days_in_month(t) if t < tlast else last_visit.day
+            sil, feed = V.get((a, t, "Silage"), 0.0), V.get((a, t, "Fish feed carrier"), 0.0)
+            m = M.get((a, t)) if t <= T1 else None
+            prev_n = M[(a, t - 1)]["n"] if (a, t - 1) in M else None
+            rate = None
+            if m and m["n"]:
+                nbar = (prev_n + m["n"]) / 2 if prev_n else m["n"]
+                rate = round((1 - math.exp(-m["dead"] / nbar)) * 100, 3)
+            rows.append({"t": t, "days": days, "sil": round(sil), "feed": round(feed), "silpd": round(sil / days, 2),
+                         "ratio": round(sil / feed, 3) if feed else None,
+                         "deadt": round(m["deadt"]) if m else None, "dead": round(m["dead"] / 1e6, 3) if m else None,
+                         "rate": rate})
+        fit = [r for r in rows if r["deadt"] is not None and r["days"] == gk.days_in_month(r["t"])]
+        a0, b0 = ols1([r["silpd"] for r in fit], [r["deadt"] for r in fit])
+        # leave-one-out error
+        errs = []
+        for i, r in enumerate(fit):
+            rest = fit[:i] + fit[i + 1:]
+            ai, bi = ols1([q["silpd"] for q in rest], [q["deadt"] for q in rest])
+            errs.append(abs(ai + bi * r["silpd"] - r["deadt"]) / r["deadt"])
+        for r in rows:
+            r["est"] = round(a0 + b0 * r["silpd"]) if r["days"] >= MIN_DAYS_PARTIAL else None
+        d = {r["t"]: r for r in fit}
+        yoy = [(math.log(d[t]["sil"] / d[t - 12]["sil"]), math.log(d[t]["deadt"] / d[t - 12]["deadt"]))
+               for t in d if t - 12 in d and d[t]["sil"] and d[t - 12]["sil"] and d[t]["deadt"] and d[t - 12]["deadt"]]
+        dis = [{"t": t, **H[(a, t)]} for t in range(DISEASE_START * 12, tlast + 1) if (a, t) in H]
+        out["areas"][a] = {
+            "rows": rows, "dis": dis,
+            "model": {"a": round(a0, 1), "b": round(b0, 1), "mape": round(sum(errs) / len(errs) * 100, 1), "n": len(fit),
+                      "r_t": corr([r["silpd"] for r in fit], [r["deadt"] for r in fit]),
+                      "r_rate": corr([r["ratio"] for r in fit], [r["rate"] for r in fit]),
+                      "r_yoy": corr([x for x, _ in yoy], [y for _, y in yoy]), "n_yoy": len(yoy)},
+        }
+    out["lastVisit"] = last_visit.isoformat()
+    return out
 
-  <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Nye og pågående sykdomstilfeller, siste 14 dager</div>
-  <div style="border:0.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.75rem;">
-    <table style="width:100%;font-size:13px;table-layout:fixed;">
-      <tr style="background:var(--surface-2);">
-        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Lokalitet</td>
-        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Sykdom</td>
-        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Status</td>
-        <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Dato</td>
-      </tr>
-      {table_rows}
-    </table>
-  </div>
 
-  <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Kart over aktive tilfeller</div>
-  <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:8px;font-size:12px;color:var(--text-secondary);">
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#2a78d6;"></span>PD</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#1baf7a;"></span>ILA</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#eda100;"></span>BKD</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#008300;"></span>Francisellose</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#4a3aa7;"></span>Flere</span>
-  </div>
-  <div id="map" style="width:100%;margin-bottom:1.5rem;"></div>
-
-  <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
-    Data: Mattilsynet offentlig API, via salmofin BigQuery-pipeline. "Aktive sykdomstilfeller"/"aktive lokaliteter"/"ulike sykdommer" er et øyeblikksbilde (mattilsynet_helsestatus), ikke en rullerende periode. Generert automatisk hver natt.
-  </div>
-</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
-<script>
-const sites = {sites_json};
-const diseaseColor = {{ 'PANKREASSYKDOM': '#2a78d6', 'INFEKSIOES_LAKSEANEMI': '#1baf7a', 'BAKTERIELL_NYRESYKE': '#eda100', 'FRANCISELLOSE': '#008300', 'multi': '#4a3aa7' }};
-function colorFor(d) {{ return d.diseases.length > 1 ? diseaseColor.multi : diseaseColor[d.diseases[0]]; }}
-const mw = 640, mh = 620;
-const msvg = d3.select('#map').append('svg').attr('viewBox', `0 0 ${{mw}} ${{mh}}`).attr('width', '100%');
-const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
-d3.json('https://cdn.jsdelivr.net/npm/datamaps@0.5.10/src/js/data/nor.topo.json').then(topo => {{
-  const geoms = topo.objects.nor.geometries.filter(g => g.id && g.id.startsWith('NO.'));
-  const features = topojson.feature(topo, {{ type: 'GeometryCollection', geometries: geoms }});
-  const projection = d3.geoMercator().fitSize([mw, mh], features);
-  const path = d3.geoPath(projection);
-  msvg.append('g').selectAll('path').data(features.features).join('path')
-    .attr('d', path).attr('fill', isDark ? '#2c2c2a' : '#e1e0d9')
-    .attr('stroke', isDark ? '#1a1a19' : '#fcfcfb').attr('stroke-width', 0.75);
-  msvg.append('g').selectAll('circle').data(sites).join('circle')
-    .attr('cx', d => projection([d.lon, d.lat])[0]).attr('cy', d => projection([d.lon, d.lat])[1])
-    .attr('r', 5).attr('fill', colorFor).attr('fill-opacity', 0.85)
-    .attr('stroke', isDark ? '#1a1a19' : '#fcfcfb').attr('stroke-width', 1.2);
-}});
-</script>
-</body>
-</html>
-"""
-
-if __name__ == "__main__":
-    print("Fetching data from BigQuery...")
-    client = get_bq_client()
-    kpis, recent, map_rows = fetch_data(client)
-
-    sites = build_sites_json(map_rows)
-    table_rows = build_table_rows(recent)
-    now = datetime.datetime.now(datetime.timezone.utc)
-
-    html = TEMPLATE.format(
-        week=now.isocalendar()[1],
-        year=now.year,
-        updated=now.strftime("%d.%m.%Y"),
-        active_cases=kpis.active_cases,
-        active_localities=kpis.active_localities,
-        active_diseases=kpis.active_diseases,
-        new_cases_14d=kpis.new_cases_14d,
-        table_rows=table_rows,
-        sites_json=json.dumps(sites, ensure_ascii=False),
-    )
-
+def main():
+    client = gk.get_bq_client()
+    print("Fetching biomass...")
+    salmon, _ = gk.fetch_biomass(client)
+    print("Fetching vessel visits...")
+    V, last_visit = fetch_visits(client, load_fleet())
+    print("Fetching disease history and cases...")
+    H = fetch_disease_history(client)
+    data = build(salmon, V, last_visit, H)
+    data["cases"] = fetch_cases(client)
+    data["updated"] = datetime.datetime.now(datetime.timezone.utc).strftime("%d %b %Y")
+    with open(TEMPLATE, encoding="utf-8") as f:
+        html = f.read().replace("__DATA__", json.dumps(data, separators=(",", ":"), ensure_ascii=False))
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         f.write(html)
+    for a in gk.AREAS:
+        print(a, data["areas"][a]["model"])
     print(f"Wrote {OUT_PATH} ({len(html):,} chars)")
+
+
+if __name__ == "__main__":
+    main()

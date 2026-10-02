@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fish Health Report</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+:root{
+  --ground:#EEF2F3; --surface:#FFFFFF; --surface-2:#F6F9F9;
+  --ink:#0C1417; --ink-2:#55666D; --ink-3:#84969C;
+  --rule:#D3DDE0; --rule-2:#E5ECEE;
+  --accent:#14606B; --accent-soft:#DCEBEC; --accent-2:#7FB3BA;
+  --good:#2A6B54; --bad:#9B3A31; --warn:#8A6310;
+  --c-grow:#14606B; --c-harv:#84969C; --c-dead:#B4473B; --c-in:#C08A1E;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --serif:'IBM Plex Serif',Georgia,serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0A1114; --surface:#101A1E; --surface-2:#152227;
+    --ink:#E4ECEE; --ink-2:#8FA2A9; --ink-3:#6B7E85;
+    --rule:#1E2C32; --rule-2:#182429;
+    --accent:#4FAEB8; --accent-soft:#123034; --accent-2:#2D6B72;
+    --good:#5FB08F; --bad:#D2776C; --warn:#C9A24A;
+    --c-grow:#4FAEB8; --c-harv:#6B7E85; --c-dead:#D2776C; --c-in:#C9A24A;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0A1114; --surface:#101A1E; --surface-2:#152227;
+  --ink:#E4ECEE; --ink-2:#8FA2A9; --ink-3:#6B7E85;
+  --rule:#1E2C32; --rule-2:#182429;
+  --accent:#4FAEB8; --accent-soft:#123034; --accent-2:#2D6B72;
+  --good:#5FB08F; --bad:#D2776C; --warn:#C9A24A;
+  --c-grow:#4FAEB8; --c-harv:#6B7E85; --c-dead:#D2776C; --c-in:#C9A24A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1060px;margin:0 auto;padding:28px 20px 64px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.mast{display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:22px}
+.mast h1{font-family:var(--serif);font-weight:600;font-size:29px;line-height:1.1;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.mast .sub{font-size:13px;color:var(--ink-2);margin-top:5px}
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);font-weight:500}
+.period{margin-left:auto;text-align:right}
+.period .big{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.01em}
+.period .lbl{font-size:11.5px;color:var(--ink-3);letter-spacing:.04em}
+.links{font-size:12.5px;color:var(--ink-2);margin:-8px 0 20px}
+.links a{color:var(--accent)}
+.tabs{display:flex;flex-wrap:wrap;gap:0;margin:0 0 24px;border:1px solid var(--rule);border-radius:3px;overflow:hidden;width:fit-content;max-width:100%;background:var(--surface)}
+.tabs button{font-family:var(--sans);font-size:13px;font-weight:500;border:0;background:transparent;color:var(--ink-2);padding:7px 16px;cursor:pointer;border-right:1px solid var(--rule)}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--surface)}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+h2{font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin:0 0 12px}
+section{margin-bottom:34px}
+.bal{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));background:var(--surface);border:1px solid var(--rule)}
+.bal .cell{padding:14px 15px;border-right:1px solid var(--rule-2);position:relative}
+.bal .cell:last-child{border-right:0}
+.bal .op{font-family:var(--mono);font-size:15px;color:var(--ink-3);position:absolute;top:14px;right:9px}
+.bal .k{font-size:11.5px;color:var(--ink-2);letter-spacing:.03em;margin-bottom:5px}
+.bal .v{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.02em}
+.bal .u{font-size:11px;color:var(--ink-3);margin-top:2px}
+.bal .cell.term{background:var(--surface-2)}
+.bal .cell.term .v{color:var(--accent)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule)}
+@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:430px){.kpis{grid-template-columns:1fr}}
+.kpi{background:var(--surface);padding:14px 16px}
+.kpi .k{font-size:11.5px;color:var(--ink-2);margin-bottom:6px}
+.kpi .v{font-family:var(--mono);font-size:25px;font-weight:500;letter-spacing:-.02em;line-height:1.1}
+.kpi .u{font-size:11px;color:var(--ink-3)}
+.kpi .d{margin-top:7px;font-family:var(--mono);font-size:11.5px;font-weight:500}
+.up{color:var(--good)} .dn{color:var(--bad)} .flat{color:var(--ink-3)}
+table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface)}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--rule-2);white-space:nowrap}
+th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);font-weight:600;border-bottom:1px solid var(--rule)}
+th:first-child,td:first-child{text-align:left}
+tbody tr:last-child td{border-bottom:0}
+tr.tot td{font-weight:600;border-top:1px solid var(--rule);background:var(--surface-2)}
+td .s{display:block;font-size:11px;font-weight:500;margin-top:1px}
+.scroll{overflow-x:auto;border:1px solid var(--rule)}
+.note{font-size:12.5px;color:var(--ink-2);line-height:1.65;margin-top:12px;border-left:2px solid var(--rule);padding-left:13px;max-width:72ch}
+.note b{color:var(--ink);font-weight:600}
+.warnbox{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--warn);padding:12px 15px;font-size:13px;color:var(--ink-2);line-height:1.6}
+.warnbox b{color:var(--ink)}
+.warnbox ul{margin:6px 0 0;padding-left:18px}
+figure{margin:0;background:var(--surface);border:1px solid var(--rule);padding:14px 14px 8px;position:relative}
+.legend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-2);margin:0 0 10px 2px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:1px;margin-right:5px;vertical-align:-1px}
+.legend i.ln{height:3px;width:16px;vertical-align:3px}
+.chart{overflow-x:auto}
+.chart svg{display:block;width:100%;min-width:600px;height:auto}
+.chart text{font-family:var(--mono);font-size:10.5px;fill:var(--ink-3)}
+.chart .lbl{fill:var(--ink-2);font-weight:500}
+.chart .strong{fill:var(--ink);font-weight:600}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:720px){.duo{grid-template-columns:1fr}}
+.duo .chart svg{min-width:0}
+.mt{font-size:12px;color:var(--ink-2);font-weight:600;margin:0 0 6px 2px}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--surface);font:11.5px/1.5 var(--mono);padding:7px 9px;border-radius:3px;white-space:pre;opacity:0;transition:opacity .08s;z-index:4}
+footer{margin-top:34px;padding-top:14px;border-top:1px solid var(--rule);font-size:11.5px;color:var(--ink-3);line-height:1.7}
+footer b{color:var(--ink-2)}
+code{font-family:var(--mono);font-size:.92em}
+@media(max-width:620px){.mast h1{font-size:24px}.period{margin-left:0;text-align:left}}
+@media (prefers-reduced-motion:reduce){.tip{transition:none}}
+</style>
+<style>
+.duo2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:720px){.duo2{grid-template-columns:1fr}}
+.duo2 .chart svg{min-width:0}
+.pill{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:2px}
+.pill.Suspected{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.pill.Confirmed{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
+.pill.Closed{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good)}
+th.l{text-align:left}
+td.new::after{content:'new';margin-left:6px;font-size:10px;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+#map svg{display:block;width:100%;height:auto;max-height:620px}
+.kpi .d.p{color:var(--good)} .kpi .d.n{color:var(--bad)}
+</style>
+</head><body>
+<div class="wrap">
+  <div class="mast">
+    <div>
+      <div class="eyebrow">Fish health &middot; Norwegian salmon farming</div>
+      <h1>Fish health report</h1>
+      <div class="sub">Mortality, the silage-vessel indicator, ISA and PD, and current disease cases</div>
+    </div>
+    <div class="period"><div class="big" id="per"></div><div class="lbl">Visits through</div></div>
+  </div>
+  <div class="links"><a href="index.html">← salmofin</a> &middot; <a href="kontroll.html">Control report</a> &middot; <a href="dodelighet.html">Mortality</a> &middot; <a href="lakselus.html">Lice</a> &middot; Updated <span id="upd"></span></div>
+
+  <div class="tabs" role="tablist" aria-label="Region">
+    <button role="tab" aria-selected="true" data-s="Norge">Norway</button>
+    <button role="tab" aria-selected="false" data-s="Vest">West &middot; PO 1&ndash;4</button>
+    <button role="tab" aria-selected="false" data-s="Midt">Mid &middot; PO 5&ndash;7</button>
+    <button role="tab" aria-selected="false" data-s="Nord">North &middot; PO 8&ndash;13</button>
+  </div>
+
+  <section>
+    <h2>Key figures</h2>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section>
+    <h2>Dead fish per month: reported vs silage-vessel estimate</h2>
+    <figure>
+      <div class="legend">
+        <span><i style="background:var(--c-dead)"></i>Fiskeridirektoratet, tonnes</span>
+        <span><i class="ln" style="background:var(--ink)"></i>Estimate from silage visits</span>
+        <span><i style="background:transparent;border:1px dashed var(--c-dead)"></i>Not yet reported: estimate only</span>
+      </div>
+      <div class="chart" id="chA"></div>
+      <div class="tip" id="tipA"></div>
+    </figure>
+    <div class="note" id="noteA"></div>
+  </section>
+
+  <section>
+    <h2>Fish health indicator vs mortality rate</h2>
+    <figure>
+      <div class="duo2">
+        <div><div class="mt">Mortality rate, % of fish per month</div><div class="chart" id="chR"></div></div>
+        <div><div class="mt">Indicator: silage visits ÷ feed-carrier visits</div><div class="chart" id="chI"></div></div>
+      </div>
+      <div class="tip" id="tipR"></div>
+    </figure>
+    <div class="note" id="noteR"></div>
+  </section>
+
+  <section>
+    <h2>ISA and PD, sites per month</h2>
+    <figure>
+      <div class="legend">
+        <span><i class="ln" style="background:var(--accent)"></i>PD</span>
+        <span><i class="ln" style="background:var(--c-dead)"></i>ISA</span>
+      </div>
+      <div class="chart" id="chD"></div>
+      <div class="tip" id="tipD"></div>
+    </figure>
+    <div class="note">Sites with a suspected or confirmed case at any point in the month.</div>
+  </section>
+
+  <section>
+    <h2>Disease cases, last 14 days</h2>
+    <div class="scroll"><table id="tbl"></table></div>
+  </section>
+
+  <section>
+    <h2>Active cases on the map</h2>
+    <figure>
+      <div class="legend" id="mleg"></div>
+      <div id="map"></div>
+    </figure>
+  </section>
+
+  <footer>
+    <b>Mortality</b> from Fiskeridirektoratet's monthly biomass statistics (salmon, ~7 weeks lag). Tonnes = dead fish × mean weight of their generation that month. Rate = 1 − e<sup>−dead ÷ average stock</sup>, the Veterinary Institute's formula on pooled area data.
+    <b>Silage estimate:</b> silage vessels collect dead fish, so dead tonnes per month = a + b × silage visits per day, fitted per region on all reported months since January 2024 (when the visit data starts). The error shown is leave-one-month-out.
+    <b>Indicator</b> = silage visits ÷ feed-carrier visits (AIS, our fleet list), the same ratio as on the mortality page.
+    <b>ISA and PD</b> from BarentsWatch weekly disease status. <b>Current cases</b> from Mattilsynet's public API: the counts are a snapshot, not a period.
+    West = PO1&ndash;4, Mid = PO5&ndash;7, North = PO8&ndash;13; Norway includes sites without a production area.
+  </footer>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script>
+const D=__DATA__;let scope='Norge';const NAME={Norge:'Norway',Vest:'West',Midt:'Mid',Nord:'North'};
+const f=(v,d=0)=>v==null?'–':(+v).toLocaleString('en-GB',{minimumFractionDigits:d,maximumFractionDigits:d});
+const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const ml=q=>MO[q%12]+' '+String(Math.floor(q/12)).slice(2);
+const region=po=>{const p=+po;return !p?null:p<=4?'Vest':p<=7?'Midt':'Nord'};const inScope=po=>scope==='Norge'||region(po)===scope;
+function tipper(fig,tip){return{show(h,x,y){tip.innerHTML=h;tip.style.opacity=1;const r=fig.getBoundingClientRect();let l=x-r.left+12;const w=tip.offsetWidth;if(l+w>r.width-6)l=x-r.left-w-12;tip.style.left=Math.max(4,l)+'px';tip.style.top=Math.max(4,y-r.top-10)+'px'},hide(){tip.style.opacity=0}}}
+function nice(lo,hi,n=4){const raw=(hi-lo)/n,p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p,st=(m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p;const a=Math.floor(lo/st)*st,o=[+a.toFixed(6)];while(o[o.length-1]<hi-1e-9)o.push(+(o[o.length-1]+st).toFixed(6));return o}
+const grid=(g,tk,y,Lm,R,W,fmt)=>tk.forEach(v=>g.push(`<line x1="${Lm}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule-2)"/><text x="${Lm-8}" y="${y(v)+4}" text-anchor="end">${fmt(v)}</text>`));
+const pl=(pts,c,w=2,ex='')=>`<polyline points="${pts.join(' ')}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round" ${ex}/>`;
+function hover(el,n,x0,step,fn,tipEl){const s=el.querySelector('svg');const fig=el.closest('figure');const tp=tipper(fig,tipEl);
+  s.addEventListener('mousemove',e=>{const r=s.getBoundingClientRect(),vb=s.viewBox.baseVal;const sx=(e.clientX-r.left)/r.width*vb.width;const i=Math.round((sx-x0)/step);if(i<0||i>=n){tp.hide();return}const h=fn(i);if(h)tp.show(h,e.clientX,e.clientY);else tp.hide()});s.addEventListener('mouseleave',()=>tp.hide())}
+
+function chartA(A){const rows=A.rows,W=900,H=300,Lm=52,R=14,T=12,B=30,n=rows.length,step=(W-Lm-R)/n,bw=step*0.68;
+  const mx=Math.max(...rows.map(r=>Math.max(r.deadt||0,r.est||0)));const tk=nice(0,mx);const top=tk[tk.length-1];const y=v=>T+(1-v/top)*(H-T-B);
+  const g=[];grid(g,tk,y,Lm,R,W,v=>v>=1000?f(v/1000,0)+'k':f(v));
+  rows.forEach((r,i)=>{const x=Lm+i*step+(step-bw)/2;
+    if(r.deadt!=null)g.push(`<rect x="${x}" y="${y(r.deadt)}" width="${bw}" height="${y(0)-y(r.deadt)}" fill="var(--c-dead)" opacity=".85"/>`);
+    else if(r.est!=null)g.push(`<rect x="${x}" y="${y(r.est)}" width="${bw}" height="${y(0)-y(r.est)}" fill="transparent" stroke="var(--c-dead)" stroke-dasharray="3 2"/>`);
+    if(r.t%12===0||i===0)g.push(`<text x="${x+bw/2}" y="${H-10}" text-anchor="middle">${ml(r.t)}</text>`);
+    else if(r.t%3===0)g.push(`<text x="${x+bw/2}" y="${H-10}" text-anchor="middle">${MO[r.t%12]}</text>`)});
+  const pts=rows.map((r,i)=>r.est==null?null:`${Lm+i*step+step/2},${y(r.est)}`).filter(Boolean);g.push(pl(pts,'var(--ink)',1.8));
+  rows.forEach((r,i)=>{if(r.est!=null)g.push(`<circle cx="${Lm+i*step+step/2}" cy="${y(r.est)}" r="2.6" fill="var(--ink)"/>`)});
+  const el=document.getElementById('chA');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Dead fish per month">${g.join('')}</svg>`;
+  hover(el,n,Lm+step/2,step,i=>{const r=rows[i];return `<b>${MO[r.t%12]} ${Math.floor(r.t/12)}</b>${r.days<30&&r.deadt==null?` · ${r.days} days of visits`:''}\nReported   ${r.deadt==null?'not yet':f(r.deadt)+' t'}\nEstimate   ${r.est==null?'–':f(r.est)+' t'}\nSilage     ${f(r.sil)} visits${r.deadt!=null?`\nDead fish  ${f(r.dead,2)} M`:''}`},document.getElementById('tipA'))}
+
+function line2(id,rows,key,dec,col,tipEl,other){const W=440,H=210,Lm=46,R=10,T=10,B=26,n=rows.length,step=(W-Lm-R)/(n-1);
+  const v=rows.map(r=>r[key]).filter(x=>x!=null);const tk=nice(Math.min(...v)*0.9,Math.max(...v));const lo=tk[0],hi=tk[tk.length-1];const y=q=>T+(1-(q-lo)/(hi-lo))*(H-T-B);const x=i=>Lm+i*step;
+  const g=[];grid(g,tk,y,Lm,R,W,q=>f(q,dec));
+  rows.forEach((r,i)=>{if(r.t%12===0||i===0)g.push(`<text x="${x(i)}" y="${H-8}" text-anchor="middle">${ml(r.t)}</text>`)});
+  g.push(pl(rows.map((r,i)=>r[key]==null?null:`${x(i)},${y(r[key])}`).filter(Boolean),col,2));
+  rows.forEach((r,i)=>{if(r[key]!=null&&r.deadt==null)g.push(`<circle cx="${x(i)}" cy="${y(r[key])}" r="3.2" fill="var(--surface)" stroke="${col}" stroke-width="1.6"/>`)});
+  const el=document.getElementById(id);el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img">${g.join('')}</svg>`;
+  hover(el,n,Lm,step,i=>{const r=rows[i];return `<b>${MO[r.t%12]} ${Math.floor(r.t/12)}</b>\nMortality  ${r.rate==null?'not yet':f(r.rate,2)+'%'}\nIndicator  ${f(r.ratio,3)}\nSilage     ${f(r.sil)} · feed ${f(r.feed)}`},tipEl)}
+
+function chartD(A){const rows=A.dis,W=900,H=240,Lm=40,R=14,T=12,B=26,n=rows.length,step=(W-Lm-R)/(n-1);
+  const tk=nice(0,Math.max(...rows.map(r=>Math.max(r.pd,r.ila)),5));const top=tk[tk.length-1];const y=v=>T+(1-v/top)*(H-T-B);const x=i=>Lm+i*step;
+  const g=[];grid(g,tk,y,Lm,R,W,v=>f(v));rows.forEach((r,i)=>{if(r.t%12===0)g.push(`<text x="${x(i)}" y="${H-8}" text-anchor="middle">${Math.floor(r.t/12)}</text>`)});
+  g.push(pl(rows.map((r,i)=>`${x(i)},${y(r.pd)}`),'var(--accent)',2));g.push(pl(rows.map((r,i)=>`${x(i)},${y(r.ila)}`),'var(--c-dead)',2));
+  const el=document.getElementById('chD');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="ISA and PD sites">${g.join('')}</svg>`;
+  hover(el,n,Lm,step,i=>{const r=rows[i];return `<b>${MO[r.t%12]} ${Math.floor(r.t/12)}</b>\nPD   ${r.pd} sites\nISA  ${r.ila} sites`},document.getElementById('tipD'))}
+
+function kpis(A){const rows=A.rows,rep=rows.filter(r=>r.deadt!=null),last=rep[rep.length-1],ly=rows.find(r=>r.t===last.t-12);
+  const nx=rows.filter(r=>r.deadt==null&&r.est!=null),nxt=nx[0],nly=nxt?rows.find(r=>r.t===nxt.t-12):null;
+  const dis=A.dis,dl=dis[dis.length-2]||dis[dis.length-1],dly=dis.find(r=>r.t===dl.t-12);
+  const sites=D.cases.sites.filter(s=>inScope(s.po));const pct=(a,b)=>b?(a/b-1)*100:null;
+  const dd=(v,suf,good,txt='vs a year earlier')=>v==null?'':`<div class="d ${good?'p':'n'}">${v>0?'+':''}${f(v,0)}${suf} ${txt}</div>`;
+  const k=[
+    [`Mortality · ${MO[last.t%12]} ${Math.floor(last.t/12)}`,f(last.rate,2)+'%',`${f(last.dead,2)} M fish · ${f(last.deadt)} t`,dd(pct(last.deadt,ly&&ly.deadt),'% tonnes',ly&&last.deadt<ly.deadt)],
+    nxt?[`Estimate · ${MO[nxt.t%12]} ${Math.floor(nxt.t/12)}`,f(nxt.est)+' t',`from ${f(nxt.sil)} silage visits${nxt.days<28?` (${nxt.days} days)`:''}`,dd(pct(nxt.est,nly&&nly.deadt),'%',nly&&nxt.est<nly.deadt,`vs ${MO[nxt.t%12]} ${Math.floor(nxt.t/12)-1} reported`)]:['Estimate','–','',''],
+    [`ISA + PD · ${MO[dl.t%12]} ${Math.floor(dl.t/12)}`,f(dl.pd+dl.ila),`sites (PD ${dl.pd}, ISA ${dl.ila})`,dly?dd(dl.pd+dl.ila-dly.pd-dly.ila,' sites',dl.pd+dl.ila<=dly.pd+dly.ila):''],
+    ['Active cases now',f(sites.reduce((s,x)=>s+x.d.length,0)),`at ${sites.length} sites · Mattilsynet`,'']];
+  document.getElementById('kpis').innerHTML=k.map(([a,b,c,d])=>`<div class="kpi"><div class="k">${a}</div><div class="v">${b}</div><div class="u">${c}</div>${d}</div>`).join('')}
+
+function table(){const R=D.cases.recent.filter(r=>inScope(r.po));
+  document.getElementById('tbl').innerHTML='<thead><tr><th>Site</th><th class="l">Disease</th><th class="l">Status</th><th>Date</th></tr></thead><tbody>'+
+    (R.length?R.map(r=>`<tr><td class="${r.new?'new':''}">${r.name}</td><td style="text-align:left">${r.d}</td><td style="text-align:left"><span class="pill ${r.status}">${r.status}</span></td><td>${r.dt}</td></tr>`).join(''):'<tr><td colspan="4" style="color:var(--ink-3)">No new or changed cases in this region in the last 14 days.</td></tr>')+'</tbody>'}
+
+const DC={PD:'var(--accent)',ISA:'var(--c-dead)',BKD:'var(--warn)',Francisellosis:'var(--good)',multi:'var(--ink)'};let MAP=null;
+document.getElementById('mleg').innerHTML=Object.entries({PD:'PD',ISA:'ISA',BKD:'BKD',Francisellosis:'Francisellosis',multi:'Several'}).map(([k,l])=>`<span><i style="background:${DC[k]};border-radius:50%"></i>${l}</span>`).join('');
+function drawMap(){const mw=640,mh=620;const el=document.getElementById('map');if(typeof d3==='undefined'){el.innerHTML='<div class="note">Map could not load.</div>';return}
+  const go=topo=>{const geoms=topo.objects.nor.geometries.filter(g=>g.id&&g.id.startsWith('NO.'));const fe=topojson.feature(topo,{type:'GeometryCollection',geometries:geoms});const pr=d3.geoMercator().fitSize([mw,mh],fe);const path=d3.geoPath(pr);
+    const pts=D.cases.sites.filter(s=>s.lat&&inScope(s.po));
+    el.innerHTML=`<svg viewBox="0 0 ${mw} ${mh}" role="img" aria-label="Active disease cases">${fe.features.map(ft=>`<path d="${path(ft)}" fill="var(--rule-2)" stroke="var(--surface)" stroke-width=".75"/>`).join('')}${pts.map(s=>{const[x,y]=pr([s.lon,s.lat]);return `<circle cx="${x}" cy="${y}" r="5" fill="${s.d.length>1?DC.multi:(DC[s.d[0]]||DC.multi)}" fill-opacity=".85" stroke="var(--surface)" stroke-width="1.2"><title>${s.name}: ${s.d.join(', ')}</title></circle>`}).join('')}</svg>`};
+  if(MAP)go(MAP);else d3.json('https://cdn.jsdelivr.net/npm/datamaps@0.5.10/src/js/data/nor.topo.json').then(t=>{MAP=t;go(t)}).catch(()=>{el.innerHTML='<div class="note">Map could not load.</div>'})}
+
+function render(){const A=D.areas[scope];const m=A.model;
+  document.getElementById('per').textContent=new Date(D.lastVisit).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});document.getElementById('upd').textContent=D.updated;
+  kpis(A);chartA(A);line2('chR',A.rows,'rate',2,'var(--c-dead)',document.getElementById('tipR'));line2('chI',A.rows,'ratio',2,'var(--ink-2)',document.getElementById('tipR'));chartD(A);table();drawMap();
+  document.getElementById('noteA').innerHTML=`<b>${NAME[scope]}:</b> silage visits per day explain dead tonnes with r = ${f(m.r_t,2)} over ${m.n} months; typical error ${f(m.mape,0)}% per month. Year-on-year changes in visits and dead tonnes agree with r = ${f(m.r_yoy,2)} (${m.n_yoy} months). Months Fiskeridirektoratet has not yet published are shown as estimates.`;
+  document.getElementById('noteR').innerHTML=`The ratio and the mortality rate move together with r = ${f(m.r_rate,2)}. Dividing by feed-carrier visits adjusts for how busy the sites are, but feed visits also swing with season, so the ratio rises in winter when feeding is low. Silage visits alone track dead tonnes more closely. Open circles are months not yet reported.`}
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected','false'));b.setAttribute('aria-selected','true');scope=b.dataset.s;render()}));
+render();
+</script>
+</body></html>
