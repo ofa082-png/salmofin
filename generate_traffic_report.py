@@ -3,7 +3,9 @@ generate_traffic_report.py
 ---------------------------
 Renders a weekly-focused vessel traffic report for traders/exporters,
 scoped to Wellboat + Processing vessel — the harvest-signal fleet —
-in vessel_categories.csv. Sections:
+in vessel_categories.csv. Rendered into templates/traffic_template.html
+(English, control-report style; rebuilt 2026-10-02 with a 52-week export
+model-vs-actual chart). Sections:
 
   A/B. Harvest signal — Wellboat + Processing vessel locality visits
        (vessel_visits) and harvest-plant deliveries (harvest_plant_visits
@@ -32,23 +34,19 @@ from google.oauth2 import service_account
 PROJECT_ID   = "salmofin"
 BASE_DIR     = os.path.dirname(__file__)
 OUT_PATH     = os.path.join(BASE_DIR, "docs", "traffic.html")
+TEMPLATE     = os.path.join(BASE_DIR, "templates", "traffic_template.html")
 FLEET_CSV    = os.path.join(BASE_DIR, "vessel_categories.csv")
 
 WEEKS_HISTORY = 10   # weeks shown in bar charts, including the current (partial) week
 PACING_WEEKS  = 8     # completed weeks used to build the weekday-pacing curve for forecasts
 PLANT_WEEKS_HISTORY = WEEKS_HISTORY  # kept equal to the locality-visit lookback for a consistent trend window
 
-HARVEST_LABELS = {
-    "Alle":              "Alle",
-    "Wellboat":          "Brønnbåt",
-    "Processing vessel": "Prosesseringsfartøy",
-}
 HARVEST_ORDER = ["Alle", "Wellboat", "Processing vessel"]
 
-NO_WEEKDAY = ["mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag", "søndag"]
-NO_WEEKDAY_SHORT = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"]
 
 def get_bq_client():
+    if not os.environ.get("GOOGLE_CREDENTIALS"):
+        return bigquery.Client(project=PROJECT_ID)
     credentials_info = json.loads(os.environ["GOOGLE_CREDENTIALS"])
     credentials = service_account.Credentials.from_service_account_info(
         credentials_info,
@@ -206,6 +204,8 @@ def fetch_export_regression(client, harvest_mmsi_list):
         "r2": r2,
         "rmse_pct": round(rmse / my * 100) if my else 0,
         "n_weeks": m,
+        "series": [{"monday": mondays[i + 1].isoformat(), "wk": wks[i], "visits": xs[i],
+                    "actual": round(ys[i]), "fit": round(preds[i])} for i in range(m)],
     }
 
 def _predict_export(regression, visits, prev_visits, monday):
@@ -263,44 +263,6 @@ def build_export_backtest_rows(regression, weekly_mondays, weekly_visits, export
             "diff_pct": diff_pct,
         })
     return rows
-
-def build_export_backtest_section(rows):
-    """Small predicted-vs-actual table for the last few completed weeks —
-    the most recent row(s) typically show "ikke publisert ennå" since
-    official export stats lag ~3-4 days behind the week, and the rest
-    let you see how the model has actually been tracking."""
-    if not rows:
-        return ""
-    trs = []
-    for r in rows:
-        actual_cell = f"{r['actual']:,.0f} t" if r["actual"] is not None else '<span style="color:var(--text-muted);">ikke publisert ennå</span>'
-        if r["diff_pct"] is not None:
-            color = "#008300" if abs(r["diff_pct"]) <= 10 else "#a32d2d"
-            diff_cell = f'<span style="color:{color};">{diff_label(r["diff_pct"])}</span>'
-        else:
-            diff_cell = ""
-        trs.append(f"""
-      <tr style="border-top:0.5px solid var(--border);">
-        <td style="padding:8px 10px;">{r['label']}</td>
-        <td style="padding:8px 10px;text-align:right;">{r['predicted']:,.0f} t</td>
-        <td style="padding:8px 10px;text-align:right;">{actual_cell}</td>
-        <td style="padding:8px 10px;text-align:right;">{diff_cell}</td>
-      </tr>""")
-    return f"""
-    <div style="font-size:12px;color:var(--text-muted);margin:8px 0;">Prognose vs. faktisk eksportvolum, siste uker (begge tall bruker kun kjente anløp — ingen prognoseusikkerhet):</div>
-    <div style="border:0.5px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto;margin-bottom:14px;">
-      <table style="font-size:13px;table-layout:fixed;">
-        <thead>
-        <tr style="background:var(--surface-2);">
-          <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Uke</td>
-          <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Anslått</td>
-          <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Faktisk</td>
-          <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Avvik</td>
-        </tr>
-        </thead>
-        <tbody>{"".join(trs)}</tbody>
-      </table>
-    </div>"""
 
 def build_daily_stats(rows, mmsi_to_type):
     """{vessel_type: {date: {"visits": int, "localities": set, "vessels": set}}}"""
@@ -480,6 +442,14 @@ def build_harvest_group_data(daily, current_monday, yesterday, two_days_ago, pla
 
     return result
 
+# Last complete day shown on the page. Set in __main__ to the latest day that BOTH
+# farm-site visits and harvest-plant calls cover (never today), so the two
+# sources always stop on the same complete day.
+REF_DAY = datetime.date.today() - datetime.timedelta(days=1)
+
+def _entry_day(row):
+    return datetime.date.fromisoformat(row["entry_time"][:10])
+
 def all_plant_csvs():
     return sorted(glob.glob(os.path.join(BASE_DIR, "data", "harvest_plant_visits_*.csv")))
 
@@ -487,7 +457,7 @@ def current_week_plant_path():
     """Path to the in-progress week's plant CSV, refreshed daily by
     fetch_harvest_visits.py — may not exist yet (e.g. very early Monday
     before the first vessel track has any pings)."""
-    iso = datetime.date.today().isocalendar()
+    iso = REF_DAY.isocalendar()
     path = os.path.join(BASE_DIR, "data", f"harvest_plant_visits_{iso[0]}_W{iso[1]:02d}.csv")
     return path if os.path.exists(path) else None
 
@@ -512,6 +482,8 @@ def fetch_plant_current_week_counts():
     counts = {"Alle": 0, "Wellboat": 0, "Processing vessel": 0}
     with open(path, encoding="utf-8") as f:
         for row in csv.DictReader(f):
+            if _entry_day(row) > REF_DAY:
+                continue
             counts["Alle"] += 1
             vtype = row["vessel_type"].strip()
             if vtype in counts:
@@ -529,12 +501,14 @@ def fetch_plant_weekday_this_week():
         return {k: [None] * 7 for k in result}
     with open(path, encoding="utf-8") as f:
         for row in csv.DictReader(f):
+            if _entry_day(row) > REF_DAY:
+                continue
             vtype = row["vessel_type"].strip()
-            weekday = datetime.date.fromisoformat(row["entry_time"][:10]).weekday()
+            weekday = _entry_day(row).weekday()
             for key in ("Alle", vtype):
                 result[key][weekday] += 1
-    today_weekday = datetime.date.today().weekday()
-    return {k: [v if i <= today_weekday else None for i, v in enumerate(vals)] for k, vals in result.items()}
+    ref_weekday = REF_DAY.weekday()
+    return {k: [v if i <= ref_weekday else None for i, v in enumerate(vals)] for k, vals in result.items()}
 
 def fetch_plant_status():
     """Latest-week plant ranking per vessel type — every plant with
@@ -562,11 +536,7 @@ def fetch_plant_status():
     }
     return ranked_by_type, week_label
 
-NO_PLANT_DATA_ROW = ('<tr><td colspan="5" style="padding:14px 10px;color:var(--text-muted);'
-                      'text-align:center;">Ingen slakterianløp registrert for denne fartøytypen.</td></tr>')
-
 PLANT_MATRIX_WEEKS = 8   # weeks of history shown in the per-plant sparkline column
-SPARK_BAR_H = 24         # px
 
 def fetch_plant_visit_matrix(ranked_by_type, n_weeks):
     """Per type: weekly visit counts for each of that type's ranked plants,
@@ -584,6 +554,8 @@ def fetch_plant_visit_matrix(ranked_by_type, n_weeks):
     for idx, path in enumerate(files):
         with open(path, encoding="utf-8") as f:
             for row in csv.DictReader(f):
+                if _entry_day(row) > REF_DAY:
+                    continue
                 vtype = row["vessel_type"].strip()
                 name = row["plant_name"]
                 for key in ("Alle", vtype):
@@ -595,38 +567,6 @@ def fetch_plant_visit_matrix(ranked_by_type, n_weeks):
         max_val = max((max(vals) for vals in rows.values()), default=0)
         matrix_by_type[type_key] = {"labels": labels, "partial_idx": partial_idx, "rows": rows, "max_val": max_val}
     return matrix_by_type
-
-def render_sparkline(values, labels, partial_idx, max_val):
-    bars = []
-    for i, v in enumerate(values):
-        h = max(2, round((v / max_val) * SPARK_BAR_H)) if v and max_val else 1
-        opacity = "0.5" if i == partial_idx else "1"
-        bars.append(
-            f'<div title="{labels[i]}: {v}" style="width:5px;height:{h}px;'
-            f'background:var(--accent);opacity:{opacity};border-radius:1px;"></div>'
-        )
-    return (f'<div style="display:flex;align-items:flex-end;gap:2px;height:{SPARK_BAR_H}px;">'
-            f'{"".join(bars)}</div>')
-
-def build_plant_rows(ranked, matrix=None):
-    if not ranked:
-        return NO_PLANT_DATA_ROW
-    rows = []
-    for name, p in ranked:
-        last_date = p["last_exit"][:10] if p["last_exit"] else ""
-        if matrix and name in matrix["rows"]:
-            anlop_cell = render_sparkline(matrix["rows"][name], matrix["labels"], matrix["partial_idx"], matrix["max_val"])
-        else:
-            anlop_cell = str(p["visits"])
-        rows.append(f"""
-      <tr style="border-top:0.5px solid var(--border);">
-        <td style="padding:8px 10px;">{name.title()}</td>
-        <td style="padding:8px 10px;">{p['company'].title()}</td>
-        <td style="padding:8px 10px;">{anlop_cell}</td>
-        <td style="padding:8px 10px;text-align:right;">{p['capacity']:,.0f} t</td>
-        <td style="padding:8px 10px;text-align:right;color:var(--text-secondary);">{last_date}</td>
-      </tr>""")
-    return "".join(rows)
 
 def fetch_plant_weekly_series(n_weeks):
     """Weekly plant-visit totals per vessel type, from the last n_weeks
@@ -676,225 +616,14 @@ def fetch_plant_weekday_series(n_weeks):
         }
     return result
 
-def build_export_forecast_card(regression, this_week_forecast, last_week_actual, current_monday):
-    """Card showing this week's projected total export tonnage, derived
-    from this week's harvest-locality-visit forecast *and* last week's
-    already-known actual visit count, via a regression fit live against
-    BigQuery export data — now also accounting for seasonal position
-    (current_monday's ISO week) and long-run trend, not just the two
-    visit terms. Independent of the Alle/Brønnbåt/Prosesseringsfartøy
-    pill — exports aren't a per-vessel-type quantity, so this always
-    uses the combined ("Alle") numbers regardless of which pill is
-    currently selected."""
-    if regression is None or last_week_actual is None:
-        return ""
-    predicted = round(_predict_export(regression, this_week_forecast, last_week_actual, current_monday))
-    return f"""
-    <div class="card" style="margin-bottom:14px;border:1px solid var(--accent);">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Anslått eksportvolum denne uken</div>
-      <div style="font-size:24px;font-weight:500;">{predicted:,.0f} t</div>
-      <div style="font-size:12px;color:var(--text-muted);">Utledet fra anløpsprognose denne uken + faktiske anløp forrige uke (begge Alle), justert for sesongvariasjon og trend. Modell tilpasset live mot eksportdata: R²={regression['r2']:.2f}, avvik ~±{regression['rmse_pct']}% (siste {regression['n_weeks']} uker). Ikke offisielle tall.</div>
-    </div>"""
+def plant_table(ranked, matrix):
+    out = []
+    for name, p in ranked or []:
+        out.append({"name": name.title(), "company": (p["company"] or "").title(), "cap": round(p["capacity"]),
+                    "visits": p["visits"], "last": (p["last_exit"] or "")[:10],
+                    "spark": matrix["rows"].get(name, []) if matrix else []})
+    return out
 
-TEMPLATE = """<!doctype html>
-<html lang="no">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trafikkrapport — vessel- og anleggstrafikk</title>
-<style>
-  :root {{ --surface-1:#f5f4f0; --surface-2:#ffffff; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781; --border:#e1e0d9; --accent:#2a78d6; --accent2:#d68a2a; }}
-  @media (prefers-color-scheme: dark) {{
-    :root {{ --surface-1:#242422; --surface-2:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781; --border:#2c2c2a; }}
-  }}
-  body {{ background:var(--surface-1); color:var(--text-primary); font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:0; padding:2rem 1rem; }}
-  .wrap {{ max-width:680px; margin:0 auto; }}
-  table {{ border-collapse:collapse; width:100%; }}
-  a {{ color:var(--text-secondary); }}
-  .pill {{ font-size:12px; border:0.5px solid var(--border); border-radius:999px; padding:5px 12px; cursor:pointer; background:var(--surface-2); color:var(--text-secondary); white-space:nowrap; }}
-  .pill.active {{ background:var(--accent); border-color:var(--accent); color:#fff; }}
-  .card {{ background:var(--surface-2); border-radius:8px; padding:1rem; }}
-  .section-title {{ font-size:16px; font-weight:500; margin-bottom:2px; }}
-  .section-sub {{ font-size:12px; color:var(--text-muted); margin-bottom:10px; }}
-  section {{ margin-bottom:2.25rem; }}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.5rem;">
-    <div>
-      <div style="font-size:18px;font-weight:500;">Trafikkrapport</div>
-      <div style="font-size:13px;color:var(--text-muted)">Data t.o.m. {yesterday_label} · oppdatert {updated}</div>
-    </div>
-    <div style="display:flex;gap:6px;">
-      <a href="index.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">hjem →</a>
-      <a href="foring.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">fôring →</a>
-      <a href="big_vessels.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">store fartøy →</a>
-      <a href="fiskehelse.html" style="font-size:11px;border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">fiskehelse →</a>
-    </div>
-  </div>
-
-  <section>
-    <div class="section-title">Slakteaktivitet — lokalitetsanløp</div>
-    <div class="section-sub">Brønnbåt og prosesseringsfartøy ved oppdrettslokaliteter (ikke slakteri). BarentsWatch AIS.</div>
-    <div id="harvestPills" style="display:flex;gap:6px;margin-bottom:12px;">{harvest_pills}</div>
-
-    {export_forecast_card}
-    {export_backtest_section}
-
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px;">
-      <div class="card">
-        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Hittil denne uken</div>
-        <div id="h-wtd" style="font-size:24px;font-weight:500;"></div>
-        <div id="h-wtddiff" style="font-size:12px;"></div>
-      </div>
-      <div class="card">
-        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Anslag hele uken</div>
-        <div id="h-forecast" style="font-size:24px;font-weight:500;"></div>
-        <div id="h-pace" style="font-size:12px;color:var(--text-muted);"></div>
-      </div>
-    </div>
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
-      I går: <span id="h-yesterday"></span> anløp (<span id="h-ydiff"></span> vs. i forgårs) · <span id="h-vessels"></span> fartøy · <span id="h-localities"></span> lokaliteter
-    </div>
-
-    <div style="position:relative;width:100%;height:150px;margin-bottom:4px;">
-      <canvas id="harvestChart" width="640" height="150"></canvas>
-    </div>
-    <div style="font-size:11px;color:var(--text-muted);margin-bottom:16px;">Siste søyle er inneværende uke (delvis).</div>
-
-    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:2px;">Ukedagsmønster: denne uken og forrige uke mot snitt (siste {pacing_weeks} fullførte uker)</div>
-    <div style="position:relative;width:100%;height:150px;">
-      <canvas id="harvestWeekdayChart" width="640" height="150"></canvas>
-    </div>
-  </section>
-
-  <section>
-    <div class="section-title">Slakterianløp</div>
-    <div class="section-sub">Fysiske anløp ved slakteri, forrige fullførte uke ({plant_week}) mot uken før — samme fartøyfilter som over.</div>
-
-    <div class="card" style="margin-bottom:14px;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Forrige uke ({plant_week})</div>
-      <div id="p-lastweek" style="font-size:24px;font-weight:500;"></div>
-      <div id="p-diff" style="font-size:12px;"></div>
-    </div>
-
-    <div style="position:relative;width:100%;height:150px;margin-bottom:14px;">
-      <canvas id="plantWeeklyChart" width="640" height="150"></canvas>
-    </div>
-
-    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:2px;">Ukedagsmønster: denne uken (delvis) og forrige uke ({plant_week}) mot snitt (siste {plant_weeks_history} uker)</div>
-    <div style="position:relative;width:100%;height:150px;margin-bottom:14px;">
-      <canvas id="plantWeekdayChart" width="640" height="150"></canvas>
-    </div>
-
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Status per slakteri, uke {plant_week}. Kapasitet = summert fartøykapasitet ved anløp, ikke bekreftet levert volum. Siste (lysere) søyle i Anløp-kolonnen er inneværende uke (delvis).</div>
-    <div style="border:0.5px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto;">
-      <table style="font-size:13px;table-layout:fixed;">
-        <thead>
-        <tr style="background:var(--surface-2);">
-          <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Anlegg</td>
-          <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Selskap</td>
-          <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;">Anløp, siste {plant_matrix_weeks} uker</td>
-          <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Kapasitet</td>
-          <td style="padding:8px 10px;color:var(--text-secondary);font-weight:500;text-align:right;">Siste</td>
-        </tr>
-        </thead>
-        <tbody id="plantRows"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
-    Lokalitetsanløp: BarentsWatch AIS, kun fartøy i vår flåteliste (vessel_categories.csv). Slakterianløp: BarentsWatch fiskehelse, oppdatert ukentlig for forrige fullførte uke. Anslag hele uken bruker gjennomsnittlig ukentlig fremdriftsmønster fra de siste {pacing_weeks} fullførte ukene. Via salmofin BigQuery-pipeline.
-  </div>
-</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script>
-const HARVEST_DATA = {harvest_data_json};
-const PLANT_ROWS_BY_TYPE = {plant_rows_json};
-const YESTERDAY_WEEKDAY = {yesterday_weekday_json};
-
-function barColors(labels, partialIdx, base) {{
-  return labels.map((_, i) => i === partialIdx ? base + '80' : base);
-}}
-
-const harvestChart = new Chart(document.getElementById('harvestChart'), {{
-  type: 'bar',
-  data: {{ labels: [], datasets: [{{ data: [], backgroundColor: '#2a78d6', borderRadius: 4 }}] }},
-  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
-    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
-}});
-
-const plantWeeklyChart = new Chart(document.getElementById('plantWeeklyChart'), {{
-  type: 'bar',
-  data: {{ labels: [], datasets: [{{ data: [], backgroundColor: '#2a78d6', borderRadius: 4 }}] }},
-  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
-    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
-}});
-
-const harvestWeekdayChart = new Chart(document.getElementById('harvestWeekdayChart'), {{
-  data: {{ labels: {no_weekday_short_json}, datasets: [
-    {{ type: 'bar', label: 'Snitt', data: [], backgroundColor: '#e1e0d9', borderRadius: 3, order: 3 }},
-    {{ type: 'line', label: 'Forrige uke', data: [], borderColor: '#898781', backgroundColor: '#898781', tension: 0.25, pointRadius: 3, order: 2 }},
-    {{ type: 'line', label: 'Denne uken', data: [], borderColor: '#2a78d6', backgroundColor: '#2a78d6', tension: 0.25, pointRadius: 3, order: 1, spanGaps: false }}
-  ] }},
-  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: true, labels: {{ color: '#898781', font: {{ size: 11 }}, boxWidth: 10 }} }} }},
-    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
-}});
-
-const plantWeekdayChart = new Chart(document.getElementById('plantWeekdayChart'), {{
-  data: {{ labels: {no_weekday_short_json}, datasets: [
-    {{ type: 'bar', label: 'Snitt', data: [], backgroundColor: '#e1e0d9', borderRadius: 3, order: 3 }},
-    {{ type: 'line', label: 'Forrige uke', data: [], borderColor: '#898781', backgroundColor: '#898781', tension: 0.25, pointRadius: 3, order: 2 }},
-    {{ type: 'line', label: 'Denne uken', data: [], borderColor: '#2a78d6', backgroundColor: '#2a78d6', tension: 0.25, pointRadius: 3, order: 1, spanGaps: false }}
-  ] }},
-  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: true, labels: {{ color: '#898781', font: {{ size: 11 }}, boxWidth: 10 }} }} }},
-    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
-}});
-
-function showHarvest(key) {{
-  const d = HARVEST_DATA[key];
-  if (!d) return;
-  document.getElementById('h-wtd').textContent = d.wtd_visits;
-  const wd = document.getElementById('h-wtddiff'); wd.textContent = d.wtd_diff_label + ' vs. samme periode forrige uke'; wd.style.color = d.wtd_diff_color;
-  document.getElementById('h-forecast').textContent = d.forecast;
-  document.getElementById('h-pace').textContent = 'basert på ' + d.pace_pct + '% typisk fremdrift til ' + YESTERDAY_WEEKDAY;
-  document.getElementById('h-yesterday').textContent = d.yesterday_visits;
-  const yd = document.getElementById('h-ydiff'); yd.textContent = d.y_diff_label; yd.style.color = d.y_diff_color;
-  document.getElementById('h-vessels').textContent = d.yesterday_vessels;
-  document.getElementById('h-localities').textContent = d.yesterday_localities;
-  harvestChart.data.labels = d.weekly_labels;
-  harvestChart.data.datasets[0].data = d.weekly_values;
-  harvestChart.data.datasets[0].backgroundColor = barColors(d.weekly_labels, d.weekly_partial_idx, '#2a78d6');
-  harvestChart.update();
-  document.getElementById('plantRows').innerHTML = PLANT_ROWS_BY_TYPE[key] || '';
-  document.getElementById('p-lastweek').textContent = d.plant_last_week;
-  const pd = document.getElementById('p-diff'); pd.textContent = d.plant_diff_label + ' vs. uken før'; pd.style.color = d.plant_diff_color;
-  plantWeeklyChart.data.labels = d.plant_weekly_labels;
-  plantWeeklyChart.data.datasets[0].data = d.plant_weekly_values;
-  plantWeeklyChart.data.datasets[0].backgroundColor = d.plant_weekly_partial_idx === null
-    ? '#2a78d6' : barColors(d.plant_weekly_labels, d.plant_weekly_partial_idx, '#2a78d6');
-  plantWeeklyChart.update();
-  harvestWeekdayChart.data.datasets[0].data = d.weekday_avg;
-  harvestWeekdayChart.data.datasets[1].data = d.weekday_last_week;
-  harvestWeekdayChart.data.datasets[2].data = d.weekday_this_week;
-  harvestWeekdayChart.update();
-  plantWeekdayChart.data.datasets[0].data = d.plant_weekday_avg;
-  plantWeekdayChart.data.datasets[1].data = d.plant_weekday_last_week;
-  plantWeekdayChart.data.datasets[2].data = d.plant_weekday_this_week;
-  plantWeekdayChart.update();
-  document.querySelectorAll('#harvestPills .pill').forEach(el => el.classList.toggle('active', el.dataset.type === key));
-}}
-
-document.querySelectorAll('#harvestPills .pill').forEach(el => {{
-  el.addEventListener('click', () => showHarvest(el.dataset.type));
-}});
-showHarvest('Alle');
-</script>
-</body>
-</html>
-"""
 
 if __name__ == "__main__":
     print("Loading fleet list...")
@@ -907,23 +636,23 @@ if __name__ == "__main__":
     rows = fetch_visit_rows(client, list(mmsi_to_type.keys()), days_back)
     stats = build_daily_stats(rows, mmsi_to_type)
 
+    # Common cutoff: last complete day covered by both sources
     today = datetime.date.today()
-    yesterday = today - datetime.timedelta(days=1)
+    site_last = max((r.visit_date for r in rows if r.visit_date < today), default=today - datetime.timedelta(days=1))
+    plant_last = max((_entry_day(row) for path in all_plant_csvs()[-2:]
+                      for row in csv.DictReader(open(path, encoding="utf-8")) if _entry_day(row) < today),
+                     default=site_last)
+    REF_DAY = min(today - datetime.timedelta(days=1), site_last, plant_last)
+    print(f"  site visits through {site_last}, plant calls through {plant_last} -> showing through {REF_DAY}")
+    yesterday = REF_DAY
     two_days_ago = yesterday - datetime.timedelta(days=1)
     current_monday = monday_of(yesterday)
 
-    # --- Plant (slakteri) section — computed first so it can feed into harvest_data ---
+    # --- Plant (slakteri) section ---
     plant_ranked_by_type, plant_week = fetch_plant_status()
     plant_matrix = fetch_plant_visit_matrix(plant_ranked_by_type, PLANT_MATRIX_WEEKS)
-    plant_rows_by_type = {
-        t: build_plant_rows(plant_ranked_by_type.get(t, []), matrix=plant_matrix.get(t))
-        for t in HARVEST_ORDER
-    }
     plant_current = fetch_plant_current_week_counts()
-    # The current partial week gets appended to this series separately (see
-    # build_harvest_group_data), so fetch one fewer completed week when it
-    # exists — otherwise the plant chart would show one more bar than the
-    # harvest chart even though both use the same *_WEEKS_HISTORY value.
+    # the current partial week is appended separately, so fetch one fewer completed week when it exists
     plant_weekly = fetch_plant_weekly_series(PLANT_WEEKS_HISTORY - 1 if plant_current else PLANT_WEEKS_HISTORY)
     plant_weekday = fetch_plant_weekday_series(PLANT_WEEKS_HISTORY)
     plant_weekday_this_week = fetch_plant_weekday_this_week()
@@ -943,51 +672,42 @@ if __name__ == "__main__":
         )
         for key, daily in harvest_daily.items()
     }
-    harvest_pills = "".join(
-        f'<button class="pill" data-type="{t}">{HARVEST_LABELS[t]}</button>' for t in HARVEST_ORDER
-    )
+    for key in HARVEST_ORDER:
+        d = harvest_data[key]
+        for k in ("wtd_diff_color", "y_diff_color", "plant_diff_color"):
+            d.pop(k, None)
+        d["plants"] = plant_table(plant_ranked_by_type.get(key, []), plant_matrix.get(key))
+    spark_labels = next(iter(plant_matrix.values()))["labels"] if plant_matrix else []
+    spark_partial = next(iter(plant_matrix.values()))["partial_idx"] if plant_matrix else None
 
-    # --- Export volume forecast (regression fit live against BigQuery) ---
+    # --- Export volume (regression fit live against BigQuery) ---
     harvest_mmsi_list = [mmsi for mmsi, t in mmsi_to_type.items() if t in ("Wellboat", "Processing vessel")]
-    export_regression = fetch_export_regression(client, harvest_mmsi_list)
+    reg = fetch_export_regression(client, harvest_mmsi_list)
     alle_weekly_values = harvest_data["Alle"]["weekly_values"]
     last_week_actual = alle_weekly_values[-2] if len(alle_weekly_values) >= 2 else None
-    export_forecast_card = build_export_forecast_card(export_regression, harvest_data["Alle"]["forecast"], last_week_actual, current_monday)
-
-    # Predicted-vs-actual backtest table: last few *completed* weeks only
-    # (drop the current partial week — its own prediction is the card above).
-    weekly_mondays = [current_monday - datetime.timedelta(weeks=i) for i in range(WEEKS_HISTORY - 1, -1, -1)]
-    completed_mondays = weekly_mondays[:-1]
-    completed_visits = alle_weekly_values[:-1]
-    export_backtest_section = ""
-    if export_regression:
+    export = None
+    if reg:
+        weekly_mondays = [current_monday - datetime.timedelta(weeks=i) for i in range(WEEKS_HISTORY - 1, -1, -1)]
         export_lookup = fetch_export_lookup(client, current_monday.year - 1)
-        backtest_rows = build_export_backtest_rows(
-            export_regression, completed_mondays, completed_visits, export_lookup, n_weeks=6
-        )
-        export_backtest_section = build_export_backtest_section(backtest_rows)
+        backtest = build_export_backtest_rows(reg, weekly_mondays[:-1], alle_weekly_values[:-1], export_lookup, n_weeks=8)
+        forecast = round(_predict_export(reg, harvest_data["Alle"]["forecast"], last_week_actual, current_monday)) if last_week_actual is not None else None
+        export = {"forecast": forecast, "week": current_monday.isocalendar()[1], "monday": current_monday.isoformat(),
+                  "r2": round(reg["r2"], 2), "rmse_pct": reg["rmse_pct"], "n_weeks": reg["n_weeks"],
+                  "series": reg["series"][-78:], "backtest": backtest}
 
-    now = datetime.datetime.now(datetime.timezone.utc)
-    html = TEMPLATE.format(
-        yesterday_label=yesterday.strftime("%d.%m.%Y"),
-        yesterday_weekday=NO_WEEKDAY[yesterday.weekday()],
-        yesterday_weekday_json=json.dumps(NO_WEEKDAY[yesterday.weekday()]),
-        updated=now.strftime("%d.%m.%Y %H:%M UTC"),
-        harvest_pills=harvest_pills,
-        export_forecast_card=export_forecast_card,
-        export_backtest_section=export_backtest_section,
-        harvest_data_json=json.dumps(harvest_data),
-        plant_rows_json=json.dumps(plant_rows_by_type),
-        plant_week=plant_week or "-",
-        plant_weeks_history=PLANT_WEEKS_HISTORY,
-        plant_matrix_weeks=PLANT_MATRIX_WEEKS,
-        no_weekday_short_json=json.dumps(NO_WEEKDAY_SHORT),
-        pacing_weeks=PACING_WEEKS,
-    )
-
+    data = {
+        "updated": datetime.datetime.now(datetime.timezone.utc).strftime("%d %b %Y %H:%M UTC"),
+        "yesterday": yesterday.isoformat(), "monday": current_monday.isoformat(),
+        "pacingWeeks": PACING_WEEKS, "plantWeek": plant_week or "-",
+        "sparkLabels": spark_labels, "sparkPartial": spark_partial,
+        "types": harvest_data, "export": export,
+    }
+    with open(TEMPLATE, encoding="utf-8") as f:
+        html = f.read().replace("__DATA__", json.dumps(data, separators=(",", ":"), ensure_ascii=False))
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         f.write(html)
     print(f"Wrote {OUT_PATH} ({len(html):,} chars)")
     print(f"Harvest (Alle): WTD={harvest_data['Alle']['wtd_visits']} forecast={harvest_data['Alle']['forecast']} ({harvest_data['Alle']['pace_pct']}% typical pace)")
-    print(f"Plant last week ({plant_week}): {harvest_data['Alle']['plant_last_week']} ({harvest_data['Alle']['plant_diff_label']} vs prev week)")
+    if export:
+        print(f"Export forecast week {export['week']}: {export['forecast']} t (R2 {export['r2']}, ±{export['rmse_pct']}%)")
