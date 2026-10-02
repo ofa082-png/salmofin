@@ -167,14 +167,12 @@ td.e{color:var(--ink-3)}
     <h2>Weekday pattern</h2>
     <figure>
       <div class="legend">
-        <span><i class="ln" style="background:var(--accent)"></i>This week</span>
+        <span><i class="ln" style="background:var(--accent)"></i>This week, complete days</span>
         <span><i class="ln" style="background:var(--ink-2)"></i>Last week</span>
         <span><i class="ln" style="background:repeating-linear-gradient(90deg,var(--ink-3) 0 5px,transparent 5px 9px)"></i>Average, recent weeks</span>
       </div>
-      <div class="duo2">
-        <div><div class="mt">Farm-site visits</div><div class="chart" id="chW1"></div></div>
-        <div><div class="mt">Harvest-plant visits</div><div class="chart" id="chW2"></div></div>
-      </div>
+      <div class="mt">Farm-site visits</div><div class="chart" id="chW1"></div>
+      <div class="mt" style="margin-top:14px">Harvest-plant calls</div><div class="chart" id="chW2"></div>
       <div class="tip" id="tipW"></div>
     </figure>
   </section>
@@ -223,7 +221,7 @@ function bars(id,tipId,labels,vals,partial,forecast,unit){const W=900,H=240,Lm=4
   const el=document.getElementById(id);el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img">${g.join('')}</svg>`;
   hover(el,n,Lm+step/2,step,i=>`<b>${labels[i].replace('U','Week ')}</b>${i===partial?' · so far':''}\n${f(vals[i])} ${unit}${i===partial&&forecast?`\nForecast  ${f(forecast)}`:''}`,document.getElementById(tipId))}
 
-function weekday(id,avg,last,cur){const W=440,H=200,Lm=36,R=10,T=10,B=24,step=(W-Lm-R)/6;
+function weekday(id,avg,last,cur){const W=900,H=190,Lm=44,R=10,T=10,B=24,step=(W-Lm-R)/6;
   const all=[...avg,...last,...cur.filter(v=>v!=null)];const tk=nice(0,Math.max(...all,1));const top=tk[tk.length-1];const y=v=>T+(1-v/top)*(H-T-B);const x=i=>Lm+i*step;
   const g=[];grid(g,tk,y,Lm,R,W,v=>f(v));DAY.forEach((d,i)=>g.push(`<text x="${x(i)}" y="${H-7}" text-anchor="middle">${d}</text>`));
   g.push(pl(avg.map((v,i)=>`${x(i)},${y(v)}`),'var(--ink-3)',1.6,'stroke-dasharray="5 3"'));g.push(pl(last.map((v,i)=>`${x(i)},${y(v)}`),'var(--ink-2)',1.6));

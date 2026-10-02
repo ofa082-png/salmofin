@@ -159,10 +159,8 @@ td.new::after{content:'new';margin-left:6px;font-size:10px;color:var(--accent);f
   <section>
     <h2>Fish health indicator vs mortality rate</h2>
     <figure>
-      <div class="duo2">
-        <div><div class="mt">Mortality rate, % of fish per month</div><div class="chart" id="chR"></div></div>
-        <div><div class="mt">Indicator: silage visits ÷ feed-carrier visits</div><div class="chart" id="chI"></div></div>
-      </div>
+      <div class="mt">Mortality rate, % of fish per month</div><div class="chart" id="chR"></div>
+      <div class="mt" style="margin-top:14px">Indicator: silage visits ÷ feed-carrier visits</div><div class="chart" id="chI"></div>
       <div class="tip" id="tipR"></div>
     </figure>
     <div class="note" id="noteR"></div>
@@ -229,7 +227,7 @@ function chartA(A){const rows=A.rows,W=900,H=300,Lm=52,R=14,T=12,B=30,n=rows.len
   const el=document.getElementById('chA');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Dead fish per month">${g.join('')}</svg>`;
   hover(el,n,Lm+step/2,step,i=>{const r=rows[i];return `<b>${MO[r.t%12]} ${Math.floor(r.t/12)}</b>${r.days<30&&r.deadt==null?` · ${r.days} days of visits`:''}\nReported   ${r.deadt==null?'not yet':f(r.deadt)+' t'}\nEstimate   ${r.est==null?'–':f(r.est)+' t'}\nSilage     ${f(r.sil)} visits${r.deadt!=null?`\nDead fish  ${f(r.dead,2)} M`:''}`},document.getElementById('tipA'))}
 
-function line2(id,rows,key,dec,col,tipEl,other){const W=440,H=210,Lm=46,R=10,T=10,B=26,n=rows.length,step=(W-Lm-R)/(n-1);
+function line2(id,rows,key,dec,col,tipEl,other){const W=900,H=200,Lm=52,R=10,T=10,B=26,n=rows.length,step=(W-Lm-R)/(n-1);
   const v=rows.map(r=>r[key]).filter(x=>x!=null);const tk=nice(Math.min(...v)*0.9,Math.max(...v));const lo=tk[0],hi=tk[tk.length-1];const y=q=>T+(1-(q-lo)/(hi-lo))*(H-T-B);const x=i=>Lm+i*step;
   const g=[];grid(g,tk,y,Lm,R,W,q=>f(q,dec));
   rows.forEach((r,i)=>{if(r.t%12===0||i===0)g.push(`<text x="${x(i)}" y="${H-8}" text-anchor="middle">${ml(r.t)}</text>`)});

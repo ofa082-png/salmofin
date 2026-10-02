@@ -442,6 +442,14 @@ def build_harvest_group_data(daily, current_monday, yesterday, two_days_ago, pla
 
     return result
 
+# Last complete day shown on the page. Set in __main__ to the latest day that BOTH
+# farm-site visits and harvest-plant calls cover (never today), so the two
+# sources always stop on the same complete day.
+REF_DAY = datetime.date.today() - datetime.timedelta(days=1)
+
+def _entry_day(row):
+    return datetime.date.fromisoformat(row["entry_time"][:10])
+
 def all_plant_csvs():
     return sorted(glob.glob(os.path.join(BASE_DIR, "data", "harvest_plant_visits_*.csv")))
 
@@ -449,7 +457,7 @@ def current_week_plant_path():
     """Path to the in-progress week's plant CSV, refreshed daily by
     fetch_harvest_visits.py — may not exist yet (e.g. very early Monday
     before the first vessel track has any pings)."""
-    iso = datetime.date.today().isocalendar()
+    iso = REF_DAY.isocalendar()
     path = os.path.join(BASE_DIR, "data", f"harvest_plant_visits_{iso[0]}_W{iso[1]:02d}.csv")
     return path if os.path.exists(path) else None
 
@@ -474,6 +482,8 @@ def fetch_plant_current_week_counts():
     counts = {"Alle": 0, "Wellboat": 0, "Processing vessel": 0}
     with open(path, encoding="utf-8") as f:
         for row in csv.DictReader(f):
+            if _entry_day(row) > REF_DAY:
+                continue
             counts["Alle"] += 1
             vtype = row["vessel_type"].strip()
             if vtype in counts:
@@ -491,12 +501,14 @@ def fetch_plant_weekday_this_week():
         return {k: [None] * 7 for k in result}
     with open(path, encoding="utf-8") as f:
         for row in csv.DictReader(f):
+            if _entry_day(row) > REF_DAY:
+                continue
             vtype = row["vessel_type"].strip()
-            weekday = datetime.date.fromisoformat(row["entry_time"][:10]).weekday()
+            weekday = _entry_day(row).weekday()
             for key in ("Alle", vtype):
                 result[key][weekday] += 1
-    today_weekday = datetime.date.today().weekday()
-    return {k: [v if i <= today_weekday else None for i, v in enumerate(vals)] for k, vals in result.items()}
+    ref_weekday = REF_DAY.weekday()
+    return {k: [v if i <= ref_weekday else None for i, v in enumerate(vals)] for k, vals in result.items()}
 
 def fetch_plant_status():
     """Latest-week plant ranking per vessel type — every plant with
@@ -542,6 +554,8 @@ def fetch_plant_visit_matrix(ranked_by_type, n_weeks):
     for idx, path in enumerate(files):
         with open(path, encoding="utf-8") as f:
             for row in csv.DictReader(f):
+                if _entry_day(row) > REF_DAY:
+                    continue
                 vtype = row["vessel_type"].strip()
                 name = row["plant_name"]
                 for key in ("Alle", vtype):
@@ -622,8 +636,15 @@ if __name__ == "__main__":
     rows = fetch_visit_rows(client, list(mmsi_to_type.keys()), days_back)
     stats = build_daily_stats(rows, mmsi_to_type)
 
+    # Common cutoff: last complete day covered by both sources
     today = datetime.date.today()
-    yesterday = today - datetime.timedelta(days=1)
+    site_last = max((r.visit_date for r in rows if r.visit_date < today), default=today - datetime.timedelta(days=1))
+    plant_last = max((_entry_day(row) for path in all_plant_csvs()[-2:]
+                      for row in csv.DictReader(open(path, encoding="utf-8")) if _entry_day(row) < today),
+                     default=site_last)
+    REF_DAY = min(today - datetime.timedelta(days=1), site_last, plant_last)
+    print(f"  site visits through {site_last}, plant calls through {plant_last} -> showing through {REF_DAY}")
+    yesterday = REF_DAY
     two_days_ago = yesterday - datetime.timedelta(days=1)
     current_monday = monday_of(yesterday)
 
