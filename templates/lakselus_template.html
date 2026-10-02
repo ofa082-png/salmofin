@@ -114,7 +114,7 @@ code{font-family:var(--mono);font-size:.92em}
     <div>
       <div class="eyebrow">Fish health &middot; Norwegian salmon farming</div>
       <h1>Lice and treatments</h1>
-      <div class="sub">Adult female lice per fish, the outlook to year end, life stages, treatments and delousing vessels</div>
+      <div class="sub">Adult female lice per fish, the outlook to year end, treatments and delousing vessels</div>
     </div>
     <div class="period"><div class="big" id="per"></div><div class="lbl">Latest complete week</div></div>
   </div>
@@ -146,21 +146,6 @@ code{font-family:var(--mono);font-size:.92em}
       <div class="tip" id="tipS"></div>
     </figure>
     <div class="note" id="noteS"></div>
-  </section>
-
-  <section>
-    <h2>Life stages against normal, last 12 weeks</h2>
-    <figure>
-      <div class="legend">
-        <span><i class="ln" style="background:var(--accent)"></i>Adult female</span>
-        <span><i class="ln" style="background:var(--c-in)"></i>Mobile</span>
-        <span><i class="ln" style="background:var(--ink-3)"></i>Attached</span>
-        <span>% vs normal for the week</span>
-      </div>
-      <div class="chart" id="chL"></div>
-      <div class="tip" id="tipL"></div>
-    </figure>
-    <div class="note">Each stage as % above or below its own normal for that week (2017 onwards). Attached and mobile lice become the adult females of the coming weeks: since 2017, a surplus of attached lice has gone with a rise in adult females over the next 2–6 weeks in the West and Mid. In the North, where the water is colder, the link is weak.</div>
   </section>
 
   <section>
@@ -228,13 +213,6 @@ function season(A){const W=900,H=320,L=48,R=14,T=12,B=28;const x=w=>L+(w-1)/51*(
   hover(el,52,L,(W-L-R)/51,i=>{const w=i+1,fc=A.fc.find(q=>q.w===w);const v=(o)=>o[w]?f(o[w][0]):'–';
     return `<b>Week ${w}</b>\n${Y0}      ${cur[w]?f(cur[w][0]):fc?'outlook '+f(fc.mid)+' ('+f(fc.lo)+'–'+f(fc.hi)+')':'–'}\n${Y0-1}      ${v(prv)}\n${Y0-2}      ${v(prv2)}\nNormal    ${f(A.norm[w])}\nRange     ${A.band[w]?f(A.band[w][0])+'–'+f(A.band[w][1]):'–'}`},document.getElementById('tipS'))}
 
-function stages(A){const S=A.stages,W=900,H=230,L=48,R=14,T=12,B=28,n=S.length,step=(W-L-R)/(n-1);const x=i=>L+i*step;
-  const vv=S.flatMap(s=>[s.afP,s.mobP,s.attP]).filter(v=>v!=null);const tk=nice(Math.min(-10,...vv),Math.max(10,...vv));const lo=tk[0],hi=tk[tk.length-1];const y=v=>T+(1-(v-lo)/(hi-lo))*(H-T-B);
-  const g=[];grid(g,tk,y,L,R,W,v=>(v>0?'+':'')+f(v,0)+'%');g.push(`<line x1="${L}" x2="${W-R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--ink-3)"/>`);S.forEach((s,i)=>g.push(`<text x="${x(i)}" y="${H-8}" text-anchor="middle">wk ${s.w}</text>`));
-  [['attP','var(--ink-3)',1.8],['mobP','var(--c-in)',1.8],['afP','var(--accent)',2.6]].forEach(([k,c,sw])=>g.push(`<path d="${path(S.map((s,i)=>s[k]==null?null:x(i)+','+y(s[k])).filter(Boolean))}" fill="none" stroke="${c}" stroke-width="${sw}"/>`));
-  const p=v=>v==null?'–':(v>0?'+':'')+f(v,0)+'%';
-  const el=document.getElementById('chL');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img">${g.join('')}</svg>`;
-  hover(el,n,L,step,i=>{const s=S[i];return `<b>Week ${s.w} · ${s.y}</b>     per fish  normal  vs normal\nAdult female  ${f(s.af)}    ${f(s.afN)}    ${p(s.afP)}\nMobile        ${f(s.mob)}    ${f(s.mobN)}    ${p(s.mobP)}\nAttached      ${f(s.att)}    ${f(s.attN)}    ${p(s.attP)}\nOver limit    ${f(s.ov,1)}% of ${s.ns} sites`},document.getElementById('tipL'))}
 
 const TC=['var(--accent)','var(--c-dead)','var(--accent-2)','var(--warn)','var(--rule)','var(--c-in)','var(--good)'];
 function treat(A){const R0=A.treat,W=900,H=260,L=44,R=12,T=12,B=28,n=R0.length,step=(W-L-R)/n,bw=step*0.74;
@@ -274,7 +252,7 @@ function render(){const A=D.areas[scope],N=A.now;document.getElementById('per').
     [`Treatments · week ${W0}`,f(tn,0),`sites treated · ${f(rate,1)} per 100 counted`,rateLY!=null?d(0,`${f(A.treatLY,0)} a year ago (${f(rateLY,1)} per 100)`,rate<=rateLY):''],
     fe?[`Outlook · week ${fe.w}`,f(fe.mid),`range ${f(fe.lo)}–${f(fe.hi)}`,d(0,`normal ${f(A.norm[fe.w])}`,fe.mid<=A.norm[fe.w])]:['Outlook','–','',''],
   ].map(([a,b,c,e])=>`<div class="kpi"><div class="k">${a}</div><div class="v">${b}</div><div class="u">${c}</div>${e}</div>`).join('');
-  season(A);stages(A);treat(A);vessels(A);const s=scatter(A);
+  season(A);treat(A);vessels(A);const s=scatter(A);
   document.getElementById('tleg').innerHTML=D.types.map((t,j)=>`<span><i style="background:${TC[j]}"></i>${t}</span>`).join('');
   document.getElementById('noteS').innerHTML=`<b>${NAME[scope]}</b> is ${f(Math.abs(gap),0)}% ${gap<0?'below':'above'} the normal for week ${W0}.`+(fe?` The outlook to week ${fe.w} is ${f(fe.mid)} (${f(fe.lo)}–${f(fe.hi)}). Backtested from week ${W0} in ${A.model.n} past years, its typical error is ${f(A.model.mae,3)} lice per fish; sharp late rises are what it misses.`:'');
   document.getElementById('noteX').innerHTML=s?`Each extra degree in weeks 28–36 has gone with about <b>${f(s.b,2)}</b> more lice per fish in weeks 36–44 (r = ${f(s.r,2)}). `+(s.cur?`${Y0} had ${f(s.cur.T,1)} °C, which on that line points to ${f(s.a+s.b*s.cur.T)}; the autumn weeks so far average ${f(s.cur.L)}.`:''):''}

@@ -17,7 +17,6 @@ Sections:
     gap, the other lets it fade at the rate seen since 2017 (AR(1) on the gap,
     plus the sea-temperature anomaly, which also fades). Leave-one-year-out
     backtest from the same week gives the typical error, added to the band.
-  * Life stages (attached, mobile, adult female), last 12 weeks.
   * Lice treatments per week by type (BarentsWatch; type is only recorded from
     2024 week 10, earlier non-medicinal treatments are "unspecified").
   * Late-summer sea temperature (weeks 28-36) against autumn lice (36-44).
@@ -43,7 +42,6 @@ OUT_PATH  = os.path.join(BASE_DIR, "docs", "lakselus.html")
 TEMPLATE  = os.path.join(BASE_DIR, "templates", "lakselus_template.html")
 FLEET_CSV = os.path.join(BASE_DIR, "vessel_categories.csv")
 FIRST_YEAR = 2017          # traffic-light era; normal and model fit from here
-STAGE_WEEKS = 12
 TREAT_WEEKS = 52
 VESSEL_WEEKS = 26
 MAX_HORIZON = 12
@@ -210,23 +208,6 @@ def area_payload(lice, treat, vessels, last):
     band = {w: [round(min(S[(y, w)][0] for y in fit_years if (y, w) in S), 3),
                 round(max(S[(y, w)][0] for y in fit_years if (y, w) in S), 3)]
             for w in al if any((y, w) in S for y in fit_years)}
-    # life stages, last STAGE_WEEKS complete weeks
-    def stage_norm(st, w):
-        v = [math.log(lice[(y, w)][st] / lice[(y, w)]["n"]) for y in fit_years
-             if (y, w) in lice and lice[(y, w)]["n"] and lice[(y, w)][st] > 0]
-        return math.exp(sum(v) / len(v)) if v else None
-    stages, k = [], (y0, w0)
-    for _ in range(STAGE_WEEKS):
-        x = lice.get(k)
-        if x and x["n"]:
-            e = {"y": k[0], "w": k[1], "ov": round(x["ov"] / x["n"] * 100, 1), "ns": int(x["n"])}
-            for st in ("af", "mob", "att"):
-                v, nm = x[st] / x["n"], stage_norm(st, k[1])
-                e[st] = round(v, 3); e[st + "N"] = round(nm, 3) if nm else None
-                e[st + "P"] = round((v / nm - 1) * 100, 1) if nm else None
-            stages.append(e)
-        k = prev(*k)
-    stages.reverse()
     # treatments, last TREAT_WEEKS weeks, plus same week a year earlier
     tr, k = [], (y0, w0)
     for _ in range(TREAT_WEEKS):
@@ -255,7 +236,7 @@ def area_payload(lice, treat, vessels, last):
         "weeks": weeks, "norm": {w: round(math.exp(v), 3) for w, v in al.items()},
         "tnorm": {w: round(v, 2) for w, v in th.items()}, "band": band, "fc": fc,
         "model": {"mae": round(mae, 3), "n": len(bt), "rho": round(rho, 2)}, "bt": bt,
-        "stages": stages, "treat": tr, "treatLY": int(sum(ly.values())),
+        "treat": tr, "treatLY": int(sum(ly.values())),
         "swLY": int(lyx["ns"]) if lyx else None, "seas": seas, "vessels": ves,
         "now": {"af": round(cur["af"] / cur["n"], 3), "ov": round(cur["ov"] / cur["n"] * 100, 1), "sites": int(cur["n"]),
                 "temp": round(cur["ts"] / cur["tn"], 1) if cur["tn"] else None,
