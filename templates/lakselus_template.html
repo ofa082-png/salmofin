@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lice and Treatments</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+:root{
+  --ground:#EEF2F3; --surface:#FFFFFF; --surface-2:#F6F9F9;
+  --ink:#0C1417; --ink-2:#55666D; --ink-3:#84969C;
+  --rule:#D3DDE0; --rule-2:#E5ECEE;
+  --accent:#14606B; --accent-soft:#DCEBEC; --accent-2:#7FB3BA;
+  --good:#2A6B54; --bad:#9B3A31; --warn:#8A6310;
+  --c-grow:#14606B; --c-harv:#84969C; --c-dead:#B4473B; --c-in:#C08A1E;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --serif:'IBM Plex Serif',Georgia,serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0A1114; --surface:#101A1E; --surface-2:#152227;
+    --ink:#E4ECEE; --ink-2:#8FA2A9; --ink-3:#6B7E85;
+    --rule:#1E2C32; --rule-2:#182429;
+    --accent:#4FAEB8; --accent-soft:#123034; --accent-2:#2D6B72;
+    --good:#5FB08F; --bad:#D2776C; --warn:#C9A24A;
+    --c-grow:#4FAEB8; --c-harv:#6B7E85; --c-dead:#D2776C; --c-in:#C9A24A;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0A1114; --surface:#101A1E; --surface-2:#152227;
+  --ink:#E4ECEE; --ink-2:#8FA2A9; --ink-3:#6B7E85;
+  --rule:#1E2C32; --rule-2:#182429;
+  --accent:#4FAEB8; --accent-soft:#123034; --accent-2:#2D6B72;
+  --good:#5FB08F; --bad:#D2776C; --warn:#C9A24A;
+  --c-grow:#4FAEB8; --c-harv:#6B7E85; --c-dead:#D2776C; --c-in:#C9A24A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1060px;margin:0 auto;padding:28px 20px 64px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.mast{display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:22px}
+.mast h1{font-family:var(--serif);font-weight:600;font-size:29px;line-height:1.1;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.mast .sub{font-size:13px;color:var(--ink-2);margin-top:5px}
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);font-weight:500}
+.period{margin-left:auto;text-align:right}
+.period .big{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.01em}
+.period .lbl{font-size:11.5px;color:var(--ink-3);letter-spacing:.04em}
+.links{font-size:12.5px;color:var(--ink-2);margin:-8px 0 20px}
+.links a{color:var(--accent)}
+.tabs{display:flex;flex-wrap:wrap;gap:0;margin:0 0 24px;border:1px solid var(--rule);border-radius:3px;overflow:hidden;width:fit-content;max-width:100%;background:var(--surface)}
+.tabs button{font-family:var(--sans);font-size:13px;font-weight:500;border:0;background:transparent;color:var(--ink-2);padding:7px 16px;cursor:pointer;border-right:1px solid var(--rule)}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--surface)}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+h2{font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin:0 0 12px}
+section{margin-bottom:34px}
+.bal{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));background:var(--surface);border:1px solid var(--rule)}
+.bal .cell{padding:14px 15px;border-right:1px solid var(--rule-2);position:relative}
+.bal .cell:last-child{border-right:0}
+.bal .op{font-family:var(--mono);font-size:15px;color:var(--ink-3);position:absolute;top:14px;right:9px}
+.bal .k{font-size:11.5px;color:var(--ink-2);letter-spacing:.03em;margin-bottom:5px}
+.bal .v{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.02em}
+.bal .u{font-size:11px;color:var(--ink-3);margin-top:2px}
+.bal .cell.term{background:var(--surface-2)}
+.bal .cell.term .v{color:var(--accent)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule)}
+@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:430px){.kpis{grid-template-columns:1fr}}
+.kpi{background:var(--surface);padding:14px 16px}
+.kpi .k{font-size:11.5px;color:var(--ink-2);margin-bottom:6px}
+.kpi .v{font-family:var(--mono);font-size:25px;font-weight:500;letter-spacing:-.02em;line-height:1.1}
+.kpi .u{font-size:11px;color:var(--ink-3)}
+.kpi .d{margin-top:7px;font-family:var(--mono);font-size:11.5px;font-weight:500}
+.up{color:var(--good)} .dn{color:var(--bad)} .flat{color:var(--ink-3)}
+table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface)}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--rule-2);white-space:nowrap}
+th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);font-weight:600;border-bottom:1px solid var(--rule)}
+th:first-child,td:first-child{text-align:left}
+tbody tr:last-child td{border-bottom:0}
+tr.tot td{font-weight:600;border-top:1px solid var(--rule);background:var(--surface-2)}
+td .s{display:block;font-size:11px;font-weight:500;margin-top:1px}
+.scroll{overflow-x:auto;border:1px solid var(--rule)}
+.note{font-size:12.5px;color:var(--ink-2);line-height:1.65;margin-top:12px;border-left:2px solid var(--rule);padding-left:13px;max-width:72ch}
+.note b{color:var(--ink);font-weight:600}
+.warnbox{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--warn);padding:12px 15px;font-size:13px;color:var(--ink-2);line-height:1.6}
+.warnbox b{color:var(--ink)}
+.warnbox ul{margin:6px 0 0;padding-left:18px}
+figure{margin:0;background:var(--surface);border:1px solid var(--rule);padding:14px 14px 8px;position:relative}
+.legend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-2);margin:0 0 10px 2px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:1px;margin-right:5px;vertical-align:-1px}
+.legend i.ln{height:3px;width:16px;vertical-align:3px}
+.chart{overflow-x:auto}
+.chart svg{display:block;width:100%;min-width:600px;height:auto}
+.chart text{font-family:var(--mono);font-size:10.5px;fill:var(--ink-3)}
+.chart .lbl{fill:var(--ink-2);font-weight:500}
+.chart .strong{fill:var(--ink);font-weight:600}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:720px){.duo{grid-template-columns:1fr}}
+.duo .chart svg{min-width:0}
+.mt{font-size:12px;color:var(--ink-2);font-weight:600;margin:0 0 6px 2px}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--surface);font:11.5px/1.5 var(--mono);padding:7px 9px;border-radius:3px;white-space:pre;opacity:0;transition:opacity .08s;z-index:4}
+footer{margin-top:34px;padding-top:14px;border-top:1px solid var(--rule);font-size:11.5px;color:var(--ink-3);line-height:1.7}
+footer b{color:var(--ink-2)}
+code{font-family:var(--mono);font-size:.92em}
+@media(max-width:620px){.mast h1{font-size:24px}.period{margin-left:0;text-align:left}}
+@media (prefers-reduced-motion:reduce){.tip{transition:none}}
+</style>
+<style>
+.kpi .d.p{color:var(--good)} .kpi .d.n{color:var(--bad)}
+</style>
+</head><body>
+<div class="wrap">
+  <div class="mast">
+    <div>
+      <div class="eyebrow">Fish health &middot; Norwegian salmon farming</div>
+      <h1>Lice and treatments</h1>
+      <div class="sub">Adult female lice per fish, the outlook to year end, treatments and delousing vessels</div>
+    </div>
+    <div class="period"><div class="big" id="per"></div><div class="lbl">Latest complete week</div></div>
+  </div>
+  <div class="links"><a href="index.html">← salmofin</a> &middot; <a href="kontroll.html">Control report</a> &middot; <a href="fiskehelse.html">Fish health</a> &middot; <a href="dodelighet.html">Mortality</a> &middot; Updated <span id="upd"></span></div>
+
+  <div class="tabs" role="tablist" aria-label="Region">
+    <button role="tab" aria-selected="true" data-s="Norge">Norway</button>
+    <button role="tab" aria-selected="false" data-s="Vest">West &middot; PO 1&ndash;4</button>
+    <button role="tab" aria-selected="false" data-s="Midt">Mid &middot; PO 5&ndash;7</button>
+    <button role="tab" aria-selected="false" data-s="Nord">North &middot; PO 8&ndash;13</button>
+  </div>
+
+  <section>
+    <h2>Key figures</h2>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section>
+    <h2>Season curve and outlook</h2>
+    <figure>
+      <div class="legend">
+        <span><i class="ln" style="background:var(--accent)"></i><span id="ycur"></span></span>
+        <span><i style="background:var(--accent-soft);border:1px dashed var(--accent)"></i>Outlook range</span>
+        <span><i class="ln" style="background:var(--c-in)"></i><span id="yprev"></span></span>
+        <span><i class="ln" style="background:var(--ink-3)"></i>Normal</span>
+        <span><i style="background:var(--rule-2)"></i>Lowest to highest</span>
+      </div>
+      <div class="chart" id="chS"></div>
+      <div class="tip" id="tipS"></div>
+    </figure>
+    <div class="note" id="noteS"></div>
+  </section>
+
+  <section>
+    <h2>Lice treatments per week</h2>
+    <figure>
+      <div class="legend" id="tleg"></div>
+      <div class="chart" id="chT"></div>
+      <div class="tip" id="tipT"></div>
+    </figure>
+    <div class="note">Sites reporting each type of treatment in the week. A site using two methods in a week counts twice. The method is only recorded from 2024 week 10; earlier non-medicinal treatments show as unspecified.</div>
+  </section>
+
+  <section>
+    <h2>Why autumns differ</h2>
+    <figure>
+      <div class="legend"><span>Late-summer sea temperature (weeks 28–36) against autumn lice (weeks 36–44), one dot per year (hover for the year)</span></div>
+      <div class="chart" id="chX"></div>
+    </figure>
+    <div class="note" id="noteX"></div>
+  </section>
+
+  <section>
+    <h2>Delousing-vessel visits per week</h2>
+    <figure>
+      <div class="chart" id="chV"></div>
+      <div class="tip" id="tipV"></div>
+    </figure>
+    <div class="note">Visits by delousing vessels in our fleet list to farm sites (AIS). Descriptive only: these vessels account for about a quarter of registered treatments.</div>
+  </section>
+
+  <footer>
+    <b>Lice</b> = mean adult female lice per fish across sites that counted that week (sites marked as probably without fish left out). A week is shown once at least 90% of the usual number of sites have reported; treatments and vessel visits stop at the same week.
+    <b>Normal</b> = geometric mean for each week since 2017 (traffic-light era), excluding the current year.
+    <b>Outlook</b> starts from how far the latest week sits from its normal. One method keeps that gap, the other lets it fade at the rate seen since 2017 and adds the sea-temperature anomaly, which also fades. The range covers both plus the typical backtest error (each past year forecast from the same week with that year left out). Up to 12 weeks ahead.
+    Source: BarentsWatch weekly lice counts, sea temperatures and treatments; BarentsWatch AIS for vessel visits.
+  </footer>
+</div>
+<script>
+const D=__DATA__;let scope='Norge';const NAME={Norge:'Norway',Vest:'West',Midt:'Mid',Nord:'North'};
+const f=(v,d=2)=>v==null?'–':(+v).toLocaleString('en-GB',{minimumFractionDigits:d,maximumFractionDigits:d});
+const Y0=D.last[0],W0=D.last[1];
+function tipper(fig,tip){return{show(h,x,y){tip.innerHTML=h;tip.style.opacity=1;const r=fig.getBoundingClientRect();let l=x-r.left+12;const w=tip.offsetWidth;if(l+w>r.width-6)l=x-r.left-w-12;tip.style.left=Math.max(4,l)+'px';tip.style.top=Math.max(4,y-r.top-10)+'px'},hide(){tip.style.opacity=0}}}
+function nice(lo,hi,n=4){const raw=(hi-lo)/n||1,p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p,st=(m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p;const a=Math.floor(lo/st)*st,o=[+a.toFixed(6)];while(o[o.length-1]<hi-1e-9)o.push(+(o[o.length-1]+st).toFixed(6));return o}
+const grid=(g,tk,y,Lm,R,W,fmt)=>tk.forEach(v=>g.push(`<line x1="${Lm}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule-2)"/><text x="${Lm-8}" y="${y(v)+4}" text-anchor="end">${fmt(v)}</text>`));
+const path=(pts)=>pts.length?`M${pts.join('L')}`:'';
+function hover(el,n,x0,step,fn,tipEl){const s=el.querySelector('svg');const tp=tipper(el.closest('figure'),tipEl);
+  s.addEventListener('mousemove',e=>{const r=s.getBoundingClientRect(),vb=s.viewBox.baseVal;const i=Math.round(((e.clientX-r.left)/r.width*vb.width-x0)/step);if(i<0||i>=n){tp.hide();return}const h=fn(i);h?tp.show(h,e.clientX,e.clientY):tp.hide()});s.addEventListener('mouseleave',()=>tp.hide())}
+
+function season(A){const W=900,H=320,L=48,R=14,T=12,B=28;const x=w=>L+(w-1)/51*(W-L-R);
+  const cur=A.weeks[Y0]||{},prv=A.weeks[Y0-1]||{},prv2=A.weeks[Y0-2]||{};
+  const vals=[...Object.values(A.band).map(b=>b[1]),...A.fc.map(f=>f.hi),...Object.values(cur).map(v=>v[0])];
+  const tk=nice(0,Math.min(0.6,Math.max(...vals)));const top=tk[tk.length-1];const y=v=>T+(1-Math.min(v,top)/top)*(H-T-B);
+  const g=[];grid(g,tk,y,L,R,W,v=>f(v,2));[1,10,20,30,40,52].forEach(w=>g.push(`<text x="${x(w)}" y="${H-8}" text-anchor="middle">wk ${w}</text>`));
+  const bw=Object.keys(A.band).map(Number).sort((a,b)=>a-b);
+  g.push(`<path d="${path(bw.map(w=>x(w)+','+y(A.band[w][1])))}L${bw.slice().reverse().map(w=>x(w)+','+y(A.band[w][0])).join('L')}Z" fill="var(--rule-2)"/>`);
+  const ln=(o,c,sw,da='')=>{const k=Object.keys(o).map(Number).sort((a,b)=>a-b);return `<path d="${path(k.map(w=>x(w)+','+y(o[w][0])))}" fill="none" stroke="${c}" stroke-width="${sw}" ${da} stroke-linejoin="round"/>`};
+  g.push(ln(prv2,'var(--c-in)',1.1,'opacity=".55"'));g.push(ln(prv,'var(--c-in)',1.5));
+  const nw=Object.keys(A.norm).map(Number).sort((a,b)=>a-b);g.push(`<path d="${path(nw.map(w=>x(w)+','+y(A.norm[w])))}" fill="none" stroke="var(--ink-3)" stroke-width="1.6" stroke-dasharray="5 3"/>`);
+  if(A.fc.length&&cur[W0]){const p0=`${x(W0)},${y(cur[W0][0])}`;
+    g.push(`<path d="M${p0}L${A.fc.map(q=>x(q.w)+','+y(q.hi)).join('L')}L${A.fc.slice().reverse().map(q=>x(q.w)+','+y(q.lo)).join('L')}Z" fill="var(--accent-soft)" stroke="var(--accent)" stroke-dasharray="3 3"/>`);
+    g.push(`<path d="M${p0}L${A.fc.map(q=>x(q.w)+','+y(q.mid)).join('L')}" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="5 3"/>`)}
+  g.push(ln(cur,'var(--accent)',2.6));
+  if(cur[W0])g.push(`<circle cx="${x(W0)}" cy="${y(cur[W0][0])}" r="4" fill="var(--accent)"/><text class="strong" x="${x(W0)+8}" y="${y(cur[W0][0])-8}">${f(cur[W0][0])}</text>`);
+  const el=document.getElementById('chS');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Lice season curve">${g.join('')}</svg>`;
+  hover(el,52,L,(W-L-R)/51,i=>{const w=i+1,fc=A.fc.find(q=>q.w===w);const v=(o)=>o[w]?f(o[w][0]):'–';
+    return `<b>Week ${w}</b>\n${Y0}      ${cur[w]?f(cur[w][0]):fc?'outlook '+f(fc.mid)+' ('+f(fc.lo)+'–'+f(fc.hi)+')':'–'}\n${Y0-1}      ${v(prv)}\n${Y0-2}      ${v(prv2)}\nNormal    ${f(A.norm[w])}\nRange     ${A.band[w]?f(A.band[w][0])+'–'+f(A.band[w][1]):'–'}`},document.getElementById('tipS'))}
+
+
+const TC=['var(--accent)','var(--c-dead)','var(--accent-2)','var(--warn)','var(--rule)','var(--c-in)','var(--good)'];
+function treat(A){const R0=A.treat,W=900,H=260,L=44,R=12,T=12,B=28,n=R0.length,step=(W-L-R)/n,bw=step*0.74;
+  const tot=r=>Object.values(r.by).reduce((a,b)=>a+b,0);const tk=nice(0,Math.max(...R0.map(tot),1));const top=tk[tk.length-1];const y=v=>T+(1-v/top)*(H-T-B);
+  const g=[];grid(g,tk,y,L,R,W,v=>f(v,0));
+  R0.forEach((r,i)=>{let acc=0;const x0=L+i*step+(step-bw)/2;D.types.forEach((t,j)=>{const v=r.by[t]||0;if(!v)return;g.push(`<rect x="${x0}" y="${y(acc+v)}" width="${bw}" height="${y(acc)-y(acc+v)}" fill="${TC[j]}"/>`);acc+=v});
+    if(r.w%4===1)g.push(`<text x="${x0+bw/2}" y="${H-8}" text-anchor="middle">${r.w===1?r.y:'wk '+r.w}</text>`)});
+  const el=document.getElementById('chT');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Treatments per week">${g.join('')}</svg>`;
+  hover(el,n,L+step/2,step,i=>{const r=R0[i];return `<b>Week ${r.w} · ${r.y}</b>  ${tot(r)} total\n`+D.types.filter(t=>r.by[t]).map(t=>`${t.padEnd(27)}${r.by[t]}`).join('\n')},document.getElementById('tipT'))}
+
+function scatter(A){const P=A.seas.filter(s=>s.y<Y0),cur=A.seas.find(s=>s.y===Y0),all=A.seas;if(P.length<3){document.getElementById('chX').innerHTML='';return null}
+  const W=900,H=300,L=48,R=110,T=12,B=30;const x0=Math.floor(Math.min(...all.map(s=>s.T))*2)/2-0.25,x1=Math.ceil(Math.max(...all.map(s=>s.T))*2)/2+0.25;
+  const tk=nice(Math.min(...all.map(s=>s.L))*0.85,Math.max(...all.map(s=>s.L))*1.05);const y0=tk[0],y1=tk[tk.length-1];
+  const x=v=>L+(v-x0)/(x1-x0)*(W-L-R),y=v=>T+(1-(v-y0)/(y1-y0))*(H-T-B);const g=[];grid(g,tk,y,L,R,W,v=>f(v,2));
+  for(let v=Math.ceil(x0);v<=x1;v++)g.push(`<text x="${x(v)}" y="${H-8}" text-anchor="middle">${v} °C</text>`);
+  const n=P.length,mx=P.reduce((s,p)=>s+p.T,0)/n,my=P.reduce((s,p)=>s+p.L,0)/n,sxy=P.reduce((s,p)=>s+(p.T-mx)*(p.L-my),0),sxx=P.reduce((s,p)=>s+(p.T-mx)**2,0),syy=P.reduce((s,p)=>s+(p.L-my)**2,0);
+  const b=sxy/sxx,a=my-b*mx,r=sxy/Math.sqrt(sxx*syy);g.push(`<line x1="${x(x0)}" y1="${y(a+b*x0)}" x2="${x(x1)}" y2="${y(a+b*x1)}" stroke="var(--ink-3)" stroke-dasharray="4 3"/>`);
+  const lab=new Set([P.reduce((p,q)=>q.L>p.L?q:p).y,P.reduce((p,q)=>q.T>p.T?q:p).y,P.reduce((p,q)=>q.L<p.L?q:p).y,Y0-1]);
+  P.forEach(s=>{const hi=s.y>=Y0-2;g.push(`<circle cx="${x(s.T)}" cy="${y(s.L)}" r="5" fill="${hi?'var(--c-in)':'var(--ink-3)'}"><title>${s.y}: ${f(s.T,1)} °C, ${f(s.L)} lice</title></circle>`);if(lab.has(s.y))g.push(`<text x="${x(s.T)+8}" y="${y(s.L)+4}">${s.y}</text>`)});
+  if(cur)g.push(`<circle cx="${x(cur.T)}" cy="${y(cur.L)}" r="6" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.2"><title>${Y0}: ${f(cur.T,1)} °C, ${f(cur.L)} lice so far</title></circle><text class="strong" x="${x(cur.T)+9}" y="${y(cur.L)+4}">${Y0} so far</text>`);
+  document.getElementById('chX').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img">${g.join('')}</svg>`;return {a,b,r,cur}}
+
+function vessels(A){const V=A.vessels,W=900,H=210,L=40,R=12,T=12,B=28,n=V.length,step=(W-L-R)/n,bw=step*0.66;
+  const tk=nice(0,Math.max(...V.map(v=>v.n),1));const top=tk[tk.length-1];const y=v=>T+(1-v/top)*(H-T-B);const g=[];grid(g,tk,y,L,R,W,v=>f(v,0));
+  V.forEach((v,i)=>{const x0=L+i*step+(step-bw)/2;g.push(`<rect x="${x0}" y="${y(v.n)}" width="${bw}" height="${y(0)-y(v.n)}" fill="var(--accent)" opacity=".85"/>`);if(i%2===(n-1)%2)g.push(`<text x="${x0+bw/2}" y="${H-8}" text-anchor="middle">wk ${v.w}</text>`)});
+  const el=document.getElementById('chV');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img">${g.join('')}</svg>`;
+  hover(el,n,L+step/2,step,i=>`<b>Week ${V[i].w} · ${V[i].y}</b>\n${V[i].n} visits`,document.getElementById('tipV'))}
+
+function render(){const A=D.areas[scope],N=A.now;document.getElementById('per').textContent=`Week ${W0} · ${Y0}`;document.getElementById('upd').textContent=D.updated;
+  document.getElementById('ycur').textContent=Y0;document.getElementById('yprev').textContent=`${Y0-1} and ${Y0-2}`;
+  const nm=A.norm[W0],gap=(N.af/nm-1)*100;const tl=A.treat[A.treat.length-1],tn=Object.values(tl.by).reduce((a,b)=>a+b,0);
+  const rate=tl.sw?tn/tl.sw*100:null,rateLY=A.swLY?A.treatLY/A.swLY*100:null;const fe=A.fc[A.fc.length-1];
+  const d=(v,txt,good)=>`<div class="d ${good?'p':'n'}">${txt}</div>`;
+  document.getElementById('kpis').innerHTML=[
+    [`Lice · week ${W0}`,f(N.af),'adult females per fish',d(gap,`${gap>0?'+':''}${f(gap,0)}% vs normal ${f(nm)}${N.afLY!=null?' · '+f(N.afLY)+' a year ago':''}`,gap<=0)],
+    ['Sites over the limit',f(N.ov,1)+'%',`of ${N.sites} sites counted`,''],
+    [`Treatments · week ${W0}`,f(tn,0),`sites treated · ${f(rate,1)} per 100 counted`,rateLY!=null?d(0,`${f(A.treatLY,0)} a year ago (${f(rateLY,1)} per 100)`,rate<=rateLY):''],
+    fe?[`Outlook · week ${fe.w}`,f(fe.mid),`range ${f(fe.lo)}–${f(fe.hi)}`,d(0,`normal ${f(A.norm[fe.w])}`,fe.mid<=A.norm[fe.w])]:['Outlook','–','',''],
+  ].map(([a,b,c,e])=>`<div class="kpi"><div class="k">${a}</div><div class="v">${b}</div><div class="u">${c}</div>${e}</div>`).join('');
+  season(A);treat(A);vessels(A);const s=scatter(A);
+  document.getElementById('tleg').innerHTML=D.types.map((t,j)=>`<span><i style="background:${TC[j]}"></i>${t}</span>`).join('');
+  document.getElementById('noteS').innerHTML=`<b>${NAME[scope]}</b> is ${f(Math.abs(gap),0)}% ${gap<0?'below':'above'} the normal for week ${W0}.`+(fe?` The outlook to week ${fe.w} is ${f(fe.mid)} (${f(fe.lo)}–${f(fe.hi)}). Backtested from week ${W0} in ${A.model.n} past years, its typical error is ${f(A.model.mae,3)} lice per fish; sharp late rises are what it misses.`:'');
+  document.getElementById('noteX').innerHTML=s?`Each extra degree in weeks 28–36 has gone with about <b>${f(s.b,2)}</b> more lice per fish in weeks 36–44 (r = ${f(s.r,2)}). `+(s.cur?`${Y0} had ${f(s.cur.T,1)} °C, which on that line points to ${f(s.a+s.b*s.cur.T)}; the autumn weeks so far average ${f(s.cur.L)}.`:''):''}
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected','false'));b.setAttribute('aria-selected','true');scope=b.dataset.s;render()}));
+render();
+</script>
+</body></html>

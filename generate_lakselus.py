@@ -1,352 +1,284 @@
 """
 generate_lakselus.py
 ---------------------
-Renders the lice-pressure/treatment report and writes it to
-docs/lakselus.html, for GitHub Pages to serve. Nightly script.
+Renders the lice and treatment report and writes it to docs/lakselus.html,
+for GitHub Pages to serve. Nightly script.
 
-Split out of generate_report.py on 2026-08-19 — Lusenivå (lice level)
-and Avlusningsfartøy (delousing vessel traffic) used to live on
-fiskehelse.html alongside mortality/disease content, but that page was
-getting bloated bundling two conceptually separate signals together.
-This page owns lice pressure + treatment activity; fiskehelse.html
-owns mortality + disease.
+Rebuilt 2026-10-02 in the control-report visual system (English, region tabs,
+templates/lakselus_template.html). Complete weeks only: a week is shown once at
+least 90% of the usual number of sites have reported lice counts, and treatments
+and delousing-vessel visits stop at the same week.
 
-Self-contained by design, matching every other generate_*.py script in
-this repo — duplicates the small bits of shared logic (BQ client,
-vessel-fleet loading, weekly-series helpers) rather than importing from
-generate_report.py.
+Sections:
+  * Season curve: adult female lice per fish by ISO week, this year against the
+    2017+ normal (geometric mean per week), the range, and the last two years,
+    with a forecast to year end (up to 12 weeks ahead). The forecast starts from
+    the log gap between the latest week and its normal: one method keeps the
+    gap, the other lets it fade at the rate seen since 2017 (AR(1) on the gap,
+    plus the sea-temperature anomaly, which also fades). Leave-one-year-out
+    backtest from the same week gives the typical error, added to the band.
+  * Lice treatments per week by type (BarentsWatch; type is only recorded from
+    2024 week 10, earlier non-medicinal treatments are "unspecified").
+  * Late-summer sea temperature (weeks 28-36) against autumn lice (36-44).
+  * Delousing-vessel visits per week (AIS) - descriptive only, catches about a
+    quarter of registered treatments.
+
+Earlier history: split out of generate_report.py 2026-08-19.
 """
 
 import os
 import csv
 import json
+import math
 import datetime
+import statistics
 from collections import defaultdict
 from google.cloud import bigquery
-from google.oauth2 import service_account
 
-PROJECT_ID = "salmofin"
-OUT_PATH   = os.path.join(os.path.dirname(__file__), "docs", "lakselus.html")
-FLEET_CSV  = os.path.join(os.path.dirname(__file__), "vessel_categories.csv")
-WEEKS_HISTORY = 12  # matches the lice chart's "siste 12 uker" lookback, shared by the Avlusningsfartøy chart too
+import generate_kontroll as gk
 
-def get_bq_client():
-    credentials_info = json.loads(os.environ["GOOGLE_CREDENTIALS"])
-    credentials = service_account.Credentials.from_service_account_info(
-        credentials_info,
-        scopes=["https://www.googleapis.com/auth/cloud-platform"]
-    )
-    return bigquery.Client(credentials=credentials, project=PROJECT_ID)
+BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
+OUT_PATH  = os.path.join(BASE_DIR, "docs", "lakselus.html")
+TEMPLATE  = os.path.join(BASE_DIR, "templates", "lakselus_template.html")
+FLEET_CSV = os.path.join(BASE_DIR, "vessel_categories.csv")
+FIRST_YEAR = 2017          # traffic-light era; normal and model fit from here
+TREAT_WEEKS = 52
+VESSEL_WEEKS = 26
+MAX_HORIZON = 12
+COMPLETE_SHARE = 0.9
 
-def load_vessel_fleet(types):
-    """MMSI -> vessel type, restricted to the given vessel_categories.csv
-    Type values — used for the Avlusningsfartøy chart below."""
-    mmsi_to_type = {}
+TREAT_TYPES = [("mekanisk behandling", "Mechanical"), ("termisk behandling", "Thermal"),
+               ("ferskvannsbehandling", "Freshwater"), ("annen behandling", "Other non-medicinal"),
+               (None, "Non-medicinal, unspecified"), ("badebehandling", "Bath"), ("fôrbehandling", "In-feed")]
+
+
+def wkey(y, w):
+    return y * 53 + w
+
+
+def fetch_lice(client):
+    rows = client.query(f"""
+        SELECT Ar y, LEAST(Uke, 52) w, ProduksjonsomraadeId po, COUNT(*) ns,
+          SUM(Voksne_hunnlus) af, SUM(Lus_i_bevegelige_stadier) mob, SUM(Fastsittende_lus) att,
+          COUNTIF(Voksne_hunnlus IS NOT NULL) n, COUNTIF(Over_lusegrense_uke) ov,
+          SUM(Sjotemperatur) ts, COUNTIF(Sjotemperatur IS NOT NULL) tn
+        FROM salmofin.salmofin.lice_bw
+        WHERE Ar >= {FIRST_YEAR} AND Har_telt_lakselus AND NOT IFNULL(Trolig_uten_fisk, false)
+        GROUP BY 1, 2, 3""").result()
+    A = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
+    for r in rows:
+        for a in gk.areas_of(r.po):
+            x = A[a][(r.y, r.w)]
+            for k in ("ns", "af", "mob", "att", "n", "ov", "ts", "tn"):
+                x[k] += getattr(r, k) or 0
+    return A
+
+
+def fetch_treatments(client):
+    rows = client.query(f"""
+        WITH po AS (SELECT Lokalitetsnummer loc, ANY_VALUE(ProduksjonsomraadeId) po
+                    FROM salmofin.salmofin.lice_bw WHERE ProduksjonsomraadeId IS NOT NULL GROUP BY 1)
+        SELECT t.Ar y, LEAST(t.Uke, 52) w, COALESCE(t.ProduksjonsomraadeId, po.po) po, t.Tiltak tiltak,
+          t.Type_behandling typ, COUNT(DISTINCT t.Lokalitetsnummer) n
+        FROM salmofin.salmofin.treatments t LEFT JOIN po ON po.loc = t.Lokalitetsnummer
+        WHERE t.Ar >= {FIRST_YEAR - 1}
+        GROUP BY 1, 2, 3, 4, 5""").result()
+    T = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
+    for r in rows:
+        label = next((l for k, l in TREAT_TYPES if k == r.typ), None)
+        if label is None:
+            label = "Non-medicinal, unspecified" if r.tiltak != "medikamentell" else "Bath"
+        for a in gk.areas_of(r.po):
+            T[a][(r.y, r.w)][label] += r.n
+    return T
+
+
+def fetch_vessels(client):
+    mm = []
     with open(FLEET_CSV, encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            mmsi = (row.get("MMSI") or "").strip()
-            vtype = (row.get("Type") or "").strip()
-            if mmsi.isdigit() and vtype in types:
-                mmsi_to_type[int(mmsi)] = vtype
-    return mmsi_to_type
-
-def fetch_fleet_visits(client, mmsi_list, days_back):
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[bigquery.ArrayQueryParameter("mmsi_list", "INT64", mmsi_list)]
-    )
-    return list(client.query(f"""
-        SELECT DATE(startTime) AS visit_date, mmsi
-        FROM salmofin.salmofin.vessel_visits
-        WHERE DATE(startTime) >= DATE_SUB(CURRENT_DATE(), INTERVAL {days_back} DAY)
-          AND DATE(startTime) < CURRENT_DATE()
-          AND mmsi IN UNNEST(@mmsi_list)
-    """, job_config=job_config).result())
-
-def monday_of(d):
-    return d - datetime.timedelta(days=d.weekday())
-
-def week_total(daily, monday, end_date):
-    total = 0
-    d = monday
-    while d <= end_date:
-        total += daily.get(d, 0)
-        d += datetime.timedelta(days=1)
-    return total
-
-def build_weekly_series(daily, current_monday, weeks_history, yesterday):
-    series = []
-    for i in range(weeks_history - 1, -1, -1):
-        m = current_monday - datetime.timedelta(weeks=i)
-        end = yesterday if m == current_monday else m + datetime.timedelta(days=6)
-        total = week_total(daily, m, end) if end >= m else 0
-        series.append((f"U{m.isocalendar()[1]}", total))
-    return series
-
-def fetch_delousing_chart(client):
-    """Avlusningsfartøy (delousing vessel visits, descriptive only —
-    tested against actual delousing registrations and currently catches
-    ~22-26% of them, not yet a reliable indicator on its own)."""
-    mmsi_to_type = load_vessel_fleet(("Delicing vessel",))
-    days_back = WEEKS_HISTORY * 7 + 7
-    rows = fetch_fleet_visits(client, list(mmsi_to_type.keys()), days_back)
-
-    daily = defaultdict(int)
+            m = (row.get("MMSI") or "").strip()
+            if m.isdigit() and (row.get("Type") or "").strip() == "Delicing vessel":
+                mm.append(int(m))
+    cfg = bigquery.QueryJobConfig(query_parameters=[bigquery.ArrayQueryParameter("m", "INT64", mm)])
+    rows = client.query(f"""
+        SELECT EXTRACT(ISOYEAR FROM v.startTime) y, LEAST(EXTRACT(ISOWEEK FROM v.startTime), 52) w, l.prodAreaCode po, COUNT(*) n
+        FROM salmofin.salmofin.vessel_visits v
+        LEFT JOIN salmofin.salmofin.localities l ON l.siteNr = v.localityNo
+        WHERE v.mmsi IN UNNEST(@m) AND DATE(v.startTime) >= DATE_SUB(CURRENT_DATE(), INTERVAL {VESSEL_WEEKS * 7 + 21} DAY)
+        GROUP BY 1, 2, 3""", job_config=cfg).result()
+    V = defaultdict(lambda: defaultdict(float))
     for r in rows:
-        if r.mmsi in mmsi_to_type:
-            daily[r.visit_date] += 1
+        for a in gk.areas_of(r.po):
+            V[a][(r.y, r.w)] += r.n
+    return V
 
-    today = datetime.date.today()
-    yesterday = today - datetime.timedelta(days=1)
-    current_monday = monday_of(yesterday)
-    weekly = build_weekly_series(daily, current_monday, WEEKS_HISTORY, yesterday)
-    return [w[0] for w in weekly], [w[1] for w in weekly]
 
-def fetch_lice_data(client):
-    """All three BarentsWatch lice life stages, not just adult female
-    lice: Fastsittende_lus (fastsittende/attached — youngest, pre-mobile
-    stage), Lus_i_bevegelige_stadier (bevegelige/mobile — juvenile,
-    free-moving but not yet reproductive), Voksne_hunnlus (voksne
-    hunnlus — adult female, the one the legal limit and every other
-    chart on this page is based on). All three sit in a comparable
-    0.05-0.5 range nationally, so one shared y-axis works fine."""
-    lice_trend = list(client.query("""
-        SELECT Uke,
-          ROUND(AVG(Voksne_hunnlus),4) AS avg_lice,
-          ROUND(AVG(Lus_i_bevegelige_stadier),4) AS avg_mobile,
-          ROUND(AVG(Fastsittende_lus),4) AS avg_attached
-        FROM salmofin.salmofin.lice_bw
-        WHERE Ar = EXTRACT(YEAR FROM CURRENT_DATE())
-          AND Uke BETWEEN EXTRACT(ISOWEEK FROM CURRENT_DATE()) - 11
-                       AND EXTRACT(ISOWEEK FROM CURRENT_DATE())
-          AND Voksne_hunnlus IS NOT NULL
-        GROUP BY Uke ORDER BY Uke
-    """).result())
+# ---------- forecast model ----------
 
-    # last *complete* ISO week — same "don't trust the still-filling-in
-    # current period" pattern used throughout this project (e.g. the
-    # traffic report anchoring on "yesterday", never "today")
-    kpis = list(client.query("""
-        SELECT
-          (SELECT COUNT(*) FROM salmofin.salmofin.treatments
-             WHERE Ar = EXTRACT(YEAR FROM CURRENT_DATE())
-               AND Uke IN (EXTRACT(ISOWEEK FROM CURRENT_DATE()) - 1, EXTRACT(ISOWEEK FROM CURRENT_DATE()))) AS treatments_14d,
-          (SELECT ROUND(COUNTIF(Over_lusegrense_uke) / NULLIF(COUNTIF(Har_telt_lakselus), 0) * 100, 1)
-             FROM salmofin.salmofin.lice_bw
-             WHERE Ar = EXTRACT(YEAR FROM CURRENT_DATE())
-               AND Uke = EXTRACT(ISOWEEK FROM CURRENT_DATE()) - 1
-               AND Trolig_uten_fisk = false) AS over_limit_pct,
-          (SELECT COUNT(DISTINCT Lokalitetsnummer)
-             FROM salmofin.salmofin.lice_bw
-             WHERE Ar = EXTRACT(YEAR FROM CURRENT_DATE())
-               AND Uke = EXTRACT(ISOWEEK FROM CURRENT_DATE()) - 1
-               AND Har_telt_lakselus = true) AS sites_counted
-    """).result())[0]
+def prev(y, w):
+    return (y, w - 1) if w > 1 else (y - 1, 52)
 
-    return lice_trend, kpis
 
-LICE_YOY_FIRST_YEAR = 2020  # matches this project's usual "recent years only" window for
-                             # year-comparison charts (e.g. omraadeoversikt's 5yr avg) —
-                             # lice_bw actually goes back to 2012, but collection/reporting
-                             # has likely shifted enough over 14 years that older years
-                             # aren't a fair comparison to the current regime
+def nxt(y, w):
+    return (y, w + 1) if w < 52 else (y + 1, 1)
 
-def fetch_lice_yoy(client):
-    """Weekly adult-female-lice average by ISO week, one line per year,
-    same current/recent-complete/worst-on-record + muted-rest highlight
-    pattern used for the mortality year-comparison chart on
-    fiskehelse.html — reused here for visual consistency across the
-    site, not just because it's convenient."""
-    rows = list(client.query(f"""
-        SELECT Ar, Uke, ROUND(AVG(Voksne_hunnlus),4) AS avg_lice
-        FROM salmofin.salmofin.lice_bw
-        WHERE Voksne_hunnlus IS NOT NULL AND Ar >= {LICE_YOY_FIRST_YEAR}
-        GROUP BY Ar, Uke ORDER BY Ar, Uke
-    """).result())
 
-    by_year = defaultdict(dict)
-    for r in rows:
-        by_year[r.Ar][r.Uke] = r.avg_lice
+def clim(S, years):
+    al, th = defaultdict(list), defaultdict(list)
+    for (y, w), (l, T) in S.items():
+        if y in years:
+            al[w].append(math.log(l)); th[w].append(T)
+    return {w: sum(v) / len(v) for w, v in al.items()}, {w: sum(v) / len(v) for w, v in th.items()}
 
-    current_year = max(by_year)
-    year_series = []
-    for ar in sorted(by_year):
-        values = [by_year[ar].get(wk) for wk in range(1, 53)]
-        year_series.append({"year": ar, "values": values})
 
-    yearly_avg = {ar: (sum(v for v in s["values"] if v is not None) / max(1, sum(1 for v in s["values"] if v is not None)))
-                  for ar, s in zip(sorted(by_year), year_series)}
-    complete = {ar: avg for ar, avg in yearly_avg.items() if ar != current_year}
-    worst_year = max(complete, key=complete.get) if complete else None
-    recent_complete_year = max(complete) if complete else None
-    if worst_year == recent_complete_year and len(complete) > 1:
-        others = {y: v for y, v in complete.items() if y != recent_complete_year}
-        worst_year = max(others, key=others.get)
-    for s in year_series:
-        s["highlight"] = ("current" if s["year"] == current_year else
-                           "worst" if s["year"] == worst_year else
-                           "recent" if s["year"] == recent_complete_year else None)
+def anom(S, th, y, w, span=4):
+    v = []
+    for _ in range(span):
+        if (y, w) in S and w in th:
+            v.append(S[(y, w)][1] - th[w])
+        y, w = prev(y, w)
+    return sum(v) / len(v) if v else 0.0
 
-    return {"labels": [f"U{w}" for w in range(1, 53)], "series": year_series}
 
-TEMPLATE = """<!doctype html>
-<html lang="no">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lakselus — ukesrapport</title>
-<style>
-  :root {{ --surface-1:#f5f4f0; --surface-2:#ffffff; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781; --border:#e1e0d9; }}
-  @media (prefers-color-scheme: dark) {{
-    :root {{ --surface-1:#242422; --surface-2:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781; --border:#2c2c2a; }}
-  }}
-  body {{ background:var(--surface-1); color:var(--text-primary); font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:0; padding:2rem 1rem; }}
-  .wrap {{ max-width:680px; margin:0 auto; }}
-  a {{ color:var(--text-secondary); }}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.25rem;">
-    <div>
-      <div style="font-size:18px;font-weight:500;">Lakselus — ukesrapport</div>
-      <div style="font-size:13px;color:var(--text-muted)">Uke {week}, {year} · oppdatert {updated}</div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:baseline;">
-      <a href="index.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">hjem →</a>
-      <a href="fiskehelse.html" style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;text-decoration:none;">fiskehelse →</a>
-      <div style="font-size:11px;color:var(--text-muted);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;">kilde: BarentsWatch</div>
-    </div>
-  </div>
+def fit(S, years):
+    al, th = clim(S, years)
+    X, Y = [], []
+    for (y, w), (l, T) in S.items():
+        p = prev(y, w)
+        if y in years and p in S and p[1] in al and w in al:
+            X.append((math.log(S[p][0]) - al[p[1]], anom(S, th, y, w))); Y.append(math.log(l) - al[w])
+    sxx = sum(a * a for a, _ in X); syy = sum(b * b for _, b in X); sxy = sum(a * b for a, b in X)
+    sxz = sum(a * t for (a, _), t in zip(X, Y)); syz = sum(b * t for (_, b), t in zip(X, Y))
+    det = sxx * syy - sxy * sxy
+    rho, beta = (sxz * syy - syz * sxy) / det, (syz * sxx - sxz * sxy) / det
+    num = den = 0.0
+    for (y, w), (l, T) in S.items():
+        p = prev(y, w)
+        if y in years and p in S and w in th and p[1] in th:
+            a0, a1 = S[p][1] - th[p[1]], T - th[w]; num += a0 * a1; den += a0 * a0
+    return rho, beta, num / den if den else 0.0, al, th
 
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;">
-    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Voksne hunnlus, snitt</div>
-      <div style="font-size:24px;font-weight:500;">{avg_lice_latest}</div>
-    </div>
-    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Over lusegrense, siste uke</div>
-      <div style="font-size:24px;font-weight:500;">{over_limit_pct}%</div>
-    </div>
-    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Lokaliteter talt, siste uke</div>
-      <div style="font-size:24px;font-weight:500;">{sites_counted}</div>
-    </div>
-    <div style="background:var(--surface-2);border-radius:8px;padding:1rem;">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Behandlinger siste 14 dager</div>
-      <div style="font-size:24px;font-weight:500;">{treatments_14d}</div>
-    </div>
-  </div>
 
-  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Lusenivå, siste 12 uker</div>
-  <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Snitt per lokalitet, nasjonalt, alle tre stadier — fastsittende (yngst) → bevegelige → voksne hunnlus (eneste stadiet lusegrensen gjelder for).</div>
-  <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;font-size:11px;color:var(--text-secondary);">
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#eda100;"></span>Fastsittende</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#1baf7a;"></span>Bevegelige</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#2a78d6;"></span>Voksne hunnlus</span>
-  </div>
-  <div style="position:relative;width:100%;height:160px;margin-bottom:1.75rem;">
-    <canvas id="liceChart" width="640" height="160"></canvas>
-  </div>
+def forecast(S, rho, beta, phi, al, th, y0, w0, H):
+    Sx = dict(S); g = math.log(S[(y0, w0)][0]) - al[w0]; d = g; a0 = S[(y0, w0)][1] - th[w0]
+    out, y, w = [], y0, w0
+    for h in range(1, H + 1):
+        y, w = nxt(y, w)
+        if w not in al:
+            break
+        Sx[(y, w)] = (None, th[w] + a0 * phi ** h)
+        d = rho * d + beta * anom(Sx, th, y, w)
+        out.append({"w": w, "keep": math.exp(al[w] + g), "fade": math.exp(al[w] + d)})
+    return out
 
-  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Voksne hunnlus, år for år</div>
-  <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Snitt per uke, nasjonalt — viser om {lice_year_current} ligger over eller under tidligere år på samme tidspunkt i sesongen.</div>
-  <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;font-size:11px;color:var(--text-secondary);">
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#c1392b;"></span>{lice_year_current} (så langt)</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#2a78d6;"></span>{lice_year_recent} (siste fulle år)</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#eda100;"></span>{lice_year_worst} (verst på rekord)</span>
-    <span style="display:flex;align-items:center;gap:4px;"><span style="width:16px;height:2px;background:#89878180;"></span>Øvrige år</span>
-  </div>
-  <div style="position:relative;width:100%;height:180px;margin-bottom:1.75rem;">
-    <canvas id="liceYoyChart" width="640" height="180"></canvas>
-  </div>
 
-  <div style="font-size:16px;font-weight:500;margin-bottom:2px;">Avlusningsfartøy</div>
-  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Kun beskrivende — testet mot faktiske avlusningsregistreringer og fanger foreløpig opp ca. 22–26% av dem, så dette er ikke en pålitelig indikator ennå, kun et rått anløpsbilde.</div>
-  <div style="position:relative;width:100%;height:140px;margin-bottom:4px;">
-    <canvas id="delousingWeeklyChart" width="640" height="140"></canvas>
-  </div>
-  <div style="font-size:11px;color:var(--text-muted);margin-bottom:1.75rem;">Siste søyle er inneværende uke (delvis).</div>
+def area_payload(lice, treat, vessels, last):
+    y0, w0 = last
+    fit_years = list(range(FIRST_YEAR, y0))
+    S = {k: (x["af"] / x["n"], x["ts"] / x["tn"]) for k, x in lice.items()
+         if x["n"] and x["tn"] and x["af"] > 0 and wkey(*k) <= wkey(y0, w0)}
+    rho, beta, phi, al, th = fit(S, fit_years)
+    H = min(MAX_HORIZON, 52 - w0)
+    # leave-one-year-out backtest from the same week
+    errs, bt = [], []
+    for yt in fit_years:
+        if (yt, w0) not in S or H < 1:
+            continue
+        yrs = [y for y in fit_years if y != yt]
+        r_, b_, p_, al_, th_ = fit(S, yrs)
+        fc = forecast(S, r_, b_, p_, al_, th_, yt, w0, H)
+        act = [S[(yt, f["w"])][0] for f in fc if (yt, f["w"]) in S]
+        if not act:
+            continue
+        mid = sum((f["keep"] + f["fade"]) / 2 for f in fc) / len(fc)
+        bt.append({"y": yt, "fc": round(mid, 3), "act": round(sum(act) / len(act), 3)})
+        errs.append(abs(mid - sum(act) / len(act)))
+    mae = sum(errs) / len(errs) if errs else 0.03
+    fc = []
+    if H >= 1 and (y0, w0) in S:
+        for f in forecast(S, rho, beta, phi, al, th, y0, w0, H):
+            mid = (f["keep"] + f["fade"]) / 2
+            fc.append({"w": f["w"], "mid": round(mid, 3), "lo": round(max(0, min(f["keep"], f["fade"], mid - mae)), 3),
+                       "hi": round(max(f["keep"], f["fade"], mid + mae), 3)})
+    weeks = defaultdict(dict)
+    for (y, w), x in lice.items():
+        if wkey(y, w) <= wkey(y0, w0) and x["n"]:
+            weeks[y][w] = [round(x["af"] / x["n"], 3), round(x["ts"] / x["tn"], 2) if x["tn"] else None]
+    band = {w: [round(min(S[(y, w)][0] for y in fit_years if (y, w) in S), 3),
+                round(max(S[(y, w)][0] for y in fit_years if (y, w) in S), 3)]
+            for w in al if any((y, w) in S for y in fit_years)}
+    # treatments, last TREAT_WEEKS weeks, plus same week a year earlier
+    tr, k = [], (y0, w0)
+    for _ in range(TREAT_WEEKS):
+        x = lice.get(k)
+        tr.append({"y": k[0], "w": k[1], "by": {l: int(v) for l, v in treat.get(k, {}).items()},
+                   "sw": int(x["ns"]) if x else None})
+        k = prev(*k)
+    tr.reverse()
+    ly = treat.get((y0 - 1, w0), {})
+    # late summer temp vs autumn lice
+    seas = []
+    for y in range(FIRST_YEAR, y0 + 1):
+        T = [S[(y, w)][1] for w in range(28, 37) if (y, w) in S]
+        L = [S[(y, w)][0] for w in range(36, 45) if (y, w) in S]
+        if len(T) >= 6 and L:
+            seas.append({"y": y, "T": round(sum(T) / len(T), 2), "L": round(sum(L) / len(L), 3), "nL": len(L)})
+    # delousing vessels
+    ves, k = [], (y0, w0)
+    for _ in range(VESSEL_WEEKS):
+        ves.append({"y": k[0], "w": k[1], "n": int(vessels.get(k, 0))})
+        k = prev(*k)
+    ves.reverse()
+    cur = lice[(y0, w0)]
+    lyx = lice.get((y0 - 1, w0))
+    return {
+        "weeks": weeks, "norm": {w: round(math.exp(v), 3) for w, v in al.items()},
+        "tnorm": {w: round(v, 2) for w, v in th.items()}, "band": band, "fc": fc,
+        "model": {"mae": round(mae, 3), "n": len(bt), "rho": round(rho, 2)}, "bt": bt,
+        "treat": tr, "treatLY": int(sum(ly.values())),
+        "swLY": int(lyx["ns"]) if lyx else None, "seas": seas, "vessels": ves,
+        "now": {"af": round(cur["af"] / cur["n"], 3), "ov": round(cur["ov"] / cur["n"] * 100, 1), "sites": int(cur["n"]),
+                "temp": round(cur["ts"] / cur["tn"], 1) if cur["tn"] else None,
+                "afLY": round(lyx["af"] / lyx["n"], 3) if lyx and lyx["n"] else None},
+    }
 
-  <div style="font-size:11px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
-    Data: BarentsWatch (lakselus, behandlinger), via salmofin BigQuery-pipeline. Vessel-indikator: BarentsWatch AIS, kun fartøy i vår flåteliste (vessel_categories.csv). "Over lusegrense"/"lokaliteter talt" gjelder siste avsluttede uke (inneværende uke er ikke ferdig rapportert ennå). Generert automatisk hver natt.
-  </div>
-</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script>
-new Chart(document.getElementById('liceChart'), {{
-  type: 'line',
-  data: {{ labels: {lice_labels_json}, datasets: [
-    {{ label: 'Fastsittende', data: {lice_attached_json}, borderColor: '#eda100', backgroundColor: '#eda100', fill: false, tension: 0.3, pointRadius: 0, borderWidth: 2 }},
-    {{ label: 'Bevegelige', data: {lice_mobile_json}, borderColor: '#1baf7a', backgroundColor: '#1baf7a', fill: false, tension: 0.3, pointRadius: 0, borderWidth: 2 }},
-    {{ label: 'Voksne hunnlus', data: {lice_values_json}, borderColor: '#2a78d6', backgroundColor: 'rgba(42,120,214,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }}
-  ] }},
-  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
-    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ display: false }} }} }} }}
-}});
 
-function highlightColor(h) {{ return h === 'current' ? '#c1392b' : h === 'recent' ? '#2a78d6' : h === 'worst' ? '#eda100' : '#89878180'; }}
-const liceYoySeries = {lice_yoy_series_json};
-new Chart(document.getElementById('liceYoyChart'), {{
-  type: 'line',
-  data: {{ labels: {lice_yoy_labels_json}, datasets: liceYoySeries.map(s => ({{
-    label: String(s.year), data: s.values, spanGaps: false,
-    borderColor: highlightColor(s.highlight), backgroundColor: highlightColor(s.highlight),
-    borderWidth: s.highlight ? 2 : 1, borderDash: s.highlight === 'current' ? [4,3] : [],
-    tension: 0.25, pointRadius: 0, order: s.highlight ? 1 : 2
-  }})) }},
-  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
-    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }},
-               x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }}, maxTicksLimit: 13 }}, grid: {{ display: false }} }} }} }}
-}});
+def last_complete_week(lice_norge, treat_norge):
+    keys = sorted(lice_norge, key=lambda k: wkey(*k))
+    last = None
+    for i, k in enumerate(keys):
+        prior = [lice_norge[q]["n"] for q in keys[max(0, i - 4):i]]
+        if prior and lice_norge[k]["n"] >= COMPLETE_SHARE * statistics.median(prior):
+            last = k
+    tmax = max(treat_norge, key=lambda k: wkey(*k))
+    return last if wkey(*last) <= wkey(*tmax) else tmax
 
-function barColors(labels, partialIdx, base) {{
-  return labels.map((_, i) => i === partialIdx ? base + '80' : base);
-}}
-new Chart(document.getElementById('delousingWeeklyChart'), {{
-  type: 'bar',
-  data: {{ labels: {delousing_labels_json}, datasets: [{{ data: {delousing_values_json}, backgroundColor: barColors({delousing_labels_json}, {delousing_partial_idx}, '#52514e'), borderRadius: 4 }}] }},
-  options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ display: false }} }},
-    scales: {{ y: {{ ticks: {{ color: '#898781', font: {{ size: 11 }} }}, grid: {{ color: '#e1e0d9' }} }}, x: {{ ticks: {{ color: '#898781', font: {{ size: 10 }} }}, grid: {{ display: false }} }} }} }}
-}});
-</script>
-</body>
-</html>
-"""
 
-if __name__ == "__main__":
-    print("Fetching data from BigQuery...")
-    client = get_bq_client()
-    lice_trend, kpis = fetch_lice_data(client)
-    lice_yoy = fetch_lice_yoy(client)
-    delousing_labels, delousing_values = fetch_delousing_chart(client)
-    now = datetime.datetime.now(datetime.timezone.utc)
-
-    def find_highlight(series, key, label):
-        return next((s[key] for s in series if s["highlight"] == label), "–")
-
-    html = TEMPLATE.format(
-        week=now.isocalendar()[1],
-        year=now.year,
-        updated=now.strftime("%d.%m.%Y"),
-        avg_lice_latest=lice_trend[-1].avg_lice if lice_trend else "–",
-        over_limit_pct=kpis.over_limit_pct if kpis.over_limit_pct is not None else "–",
-        sites_counted=kpis.sites_counted,
-        treatments_14d=kpis.treatments_14d,
-        lice_labels_json=json.dumps([f"U{r.Uke}" for r in lice_trend]),
-        lice_values_json=json.dumps([r.avg_lice for r in lice_trend]),
-        lice_mobile_json=json.dumps([r.avg_mobile for r in lice_trend]),
-        lice_attached_json=json.dumps([r.avg_attached for r in lice_trend]),
-        lice_yoy_labels_json=json.dumps(lice_yoy["labels"]),
-        lice_yoy_series_json=json.dumps(lice_yoy["series"]),
-        lice_year_current=find_highlight(lice_yoy["series"], "year", "current"),
-        lice_year_recent=find_highlight(lice_yoy["series"], "year", "recent"),
-        lice_year_worst=find_highlight(lice_yoy["series"], "year", "worst"),
-        delousing_labels_json=json.dumps(delousing_labels),
-        delousing_values_json=json.dumps(delousing_values),
-        delousing_partial_idx=len(delousing_labels) - 1,
-    )
-
+def main():
+    client = gk.get_bq_client()
+    print("Fetching lice counts...")
+    L = fetch_lice(client)
+    print("Fetching treatments...")
+    T = fetch_treatments(client)
+    print("Fetching delousing-vessel visits...")
+    V = fetch_vessels(client)
+    last = last_complete_week(L["Norge"], T["Norge"])
+    print(f"Last complete week: {last[0]} week {last[1]}")
+    data = {"last": list(last), "types": [l for _, l in TREAT_TYPES],
+            "updated": datetime.datetime.now(datetime.timezone.utc).strftime("%d %b %Y"),
+            "areas": {a: area_payload(L[a], T[a], V[a], last) for a in gk.AREAS}}
+    with open(TEMPLATE, encoding="utf-8") as f:
+        html = f.read().replace("__DATA__", json.dumps(data, separators=(",", ":"), ensure_ascii=False))
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         f.write(html)
+    for a in gk.AREAS:
+        d = data["areas"][a]
+        f0 = d["fc"][4] if len(d["fc"]) > 4 else None
+        print(a, d["now"], "MAE", d["model"]["mae"], "fc+5", f0)
     print(f"Wrote {OUT_PATH} ({len(html):,} chars)")
+
+
+if __name__ == "__main__":
+    main()
