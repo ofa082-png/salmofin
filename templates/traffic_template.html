@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Harvest Traffic and Exports</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+:root{
+  --ground:#EEF2F3; --surface:#FFFFFF; --surface-2:#F6F9F9;
+  --ink:#0C1417; --ink-2:#55666D; --ink-3:#84969C;
+  --rule:#D3DDE0; --rule-2:#E5ECEE;
+  --accent:#14606B; --accent-soft:#DCEBEC; --accent-2:#7FB3BA;
+  --good:#2A6B54; --bad:#9B3A31; --warn:#8A6310;
+  --c-grow:#14606B; --c-harv:#84969C; --c-dead:#B4473B; --c-in:#C08A1E;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --serif:'IBM Plex Serif',Georgia,serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0A1114; --surface:#101A1E; --surface-2:#152227;
+    --ink:#E4ECEE; --ink-2:#8FA2A9; --ink-3:#6B7E85;
+    --rule:#1E2C32; --rule-2:#182429;
+    --accent:#4FAEB8; --accent-soft:#123034; --accent-2:#2D6B72;
+    --good:#5FB08F; --bad:#D2776C; --warn:#C9A24A;
+    --c-grow:#4FAEB8; --c-harv:#6B7E85; --c-dead:#D2776C; --c-in:#C9A24A;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0A1114; --surface:#101A1E; --surface-2:#152227;
+  --ink:#E4ECEE; --ink-2:#8FA2A9; --ink-3:#6B7E85;
+  --rule:#1E2C32; --rule-2:#182429;
+  --accent:#4FAEB8; --accent-soft:#123034; --accent-2:#2D6B72;
+  --good:#5FB08F; --bad:#D2776C; --warn:#C9A24A;
+  --c-grow:#4FAEB8; --c-harv:#6B7E85; --c-dead:#D2776C; --c-in:#C9A24A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1060px;margin:0 auto;padding:28px 20px 64px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.mast{display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:22px}
+.mast h1{font-family:var(--serif);font-weight:600;font-size:29px;line-height:1.1;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.mast .sub{font-size:13px;color:var(--ink-2);margin-top:5px}
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);font-weight:500}
+.period{margin-left:auto;text-align:right}
+.period .big{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.01em}
+.period .lbl{font-size:11.5px;color:var(--ink-3);letter-spacing:.04em}
+.links{font-size:12.5px;color:var(--ink-2);margin:-8px 0 20px}
+.links a{color:var(--accent)}
+.tabs{display:flex;flex-wrap:wrap;gap:0;margin:0 0 24px;border:1px solid var(--rule);border-radius:3px;overflow:hidden;width:fit-content;max-width:100%;background:var(--surface)}
+.tabs button{font-family:var(--sans);font-size:13px;font-weight:500;border:0;background:transparent;color:var(--ink-2);padding:7px 16px;cursor:pointer;border-right:1px solid var(--rule)}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--surface)}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+h2{font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin:0 0 12px}
+section{margin-bottom:34px}
+.bal{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));background:var(--surface);border:1px solid var(--rule)}
+.bal .cell{padding:14px 15px;border-right:1px solid var(--rule-2);position:relative}
+.bal .cell:last-child{border-right:0}
+.bal .op{font-family:var(--mono);font-size:15px;color:var(--ink-3);position:absolute;top:14px;right:9px}
+.bal .k{font-size:11.5px;color:var(--ink-2);letter-spacing:.03em;margin-bottom:5px}
+.bal .v{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.02em}
+.bal .u{font-size:11px;color:var(--ink-3);margin-top:2px}
+.bal .cell.term{background:var(--surface-2)}
+.bal .cell.term .v{color:var(--accent)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule)}
+@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:430px){.kpis{grid-template-columns:1fr}}
+.kpi{background:var(--surface);padding:14px 16px}
+.kpi .k{font-size:11.5px;color:var(--ink-2);margin-bottom:6px}
+.kpi .v{font-family:var(--mono);font-size:25px;font-weight:500;letter-spacing:-.02em;line-height:1.1}
+.kpi .u{font-size:11px;color:var(--ink-3)}
+.kpi .d{margin-top:7px;font-family:var(--mono);font-size:11.5px;font-weight:500}
+.up{color:var(--good)} .dn{color:var(--bad)} .flat{color:var(--ink-3)}
+table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface)}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--rule-2);white-space:nowrap}
+th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);font-weight:600;border-bottom:1px solid var(--rule)}
+th:first-child,td:first-child{text-align:left}
+tbody tr:last-child td{border-bottom:0}
+tr.tot td{font-weight:600;border-top:1px solid var(--rule);background:var(--surface-2)}
+td .s{display:block;font-size:11px;font-weight:500;margin-top:1px}
+.scroll{overflow-x:auto;border:1px solid var(--rule)}
+.note{font-size:12.5px;color:var(--ink-2);line-height:1.65;margin-top:12px;border-left:2px solid var(--rule);padding-left:13px;max-width:72ch}
+.note b{color:var(--ink);font-weight:600}
+.warnbox{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--warn);padding:12px 15px;font-size:13px;color:var(--ink-2);line-height:1.6}
+.warnbox b{color:var(--ink)}
+.warnbox ul{margin:6px 0 0;padding-left:18px}
+figure{margin:0;background:var(--surface);border:1px solid var(--rule);padding:14px 14px 8px;position:relative}
+.legend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-2);margin:0 0 10px 2px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:1px;margin-right:5px;vertical-align:-1px}
+.legend i.ln{height:3px;width:16px;vertical-align:3px}
+.chart{overflow-x:auto}
+.chart svg{display:block;width:100%;min-width:600px;height:auto}
+.chart text{font-family:var(--mono);font-size:10.5px;fill:var(--ink-3)}
+.chart .lbl{fill:var(--ink-2);font-weight:500}
+.chart .strong{fill:var(--ink);font-weight:600}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:720px){.duo{grid-template-columns:1fr}}
+.duo .chart svg{min-width:0}
+.mt{font-size:12px;color:var(--ink-2);font-weight:600;margin:0 0 6px 2px}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--surface);font:11.5px/1.5 var(--mono);padding:7px 9px;border-radius:3px;white-space:pre;opacity:0;transition:opacity .08s;z-index:4}
+footer{margin-top:34px;padding-top:14px;border-top:1px solid var(--rule);font-size:11.5px;color:var(--ink-3);line-height:1.7}
+footer b{color:var(--ink-2)}
+code{font-family:var(--mono);font-size:.92em}
+@media(max-width:620px){.mast h1{font-size:24px}.period{margin-left:0;text-align:left}}
+@media (prefers-reduced-motion:reduce){.tip{transition:none}}
+</style>
+<style>
+.duo2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:720px){.duo2{grid-template-columns:1fr}}
+.duo2 .chart svg{min-width:0}
+.kpi .d.p{color:var(--good)} .kpi .d.n{color:var(--bad)}
+th.l,td.l{text-align:left}
+td.e{color:var(--ink-3)}
+.spark{display:block}
+.kpi.hero{background:var(--accent-soft)}
+</style>
+</head><body>
+<div class="wrap">
+  <div class="mast">
+    <div>
+      <div class="eyebrow">Harvest logistics &middot; Norwegian salmon farming</div>
+      <h1>Harvest traffic and exports</h1>
+      <div class="sub">Wellboat and processing-vessel visits to farms and harvest plants, and the export volume they point to</div>
+    </div>
+    <div class="period"><div class="big" id="per"></div><div class="lbl">Visits through</div></div>
+  </div>
+  <div class="links"><a href="index.html">← salmofin</a> &middot; <a href="kontroll.html">Control report</a> &middot; <a href="foring.html">Feed</a> &middot; <a href="big_vessels.html">Large vessels</a> &middot; <a href="fiskehelse.html">Fish health</a> &middot; Updated <span id="upd"></span></div>
+
+  <div class="tabs" role="tablist" aria-label="Vessel type">
+    <button role="tab" aria-selected="true" data-s="Alle">All harvest vessels</button>
+    <button role="tab" aria-selected="false" data-s="Wellboat">Wellboats</button>
+    <button role="tab" aria-selected="false" data-s="Processing vessel">Processing vessels</button>
+  </div>
+
+  <section>
+    <h2>Key figures</h2>
+    <div class="kpis" id="kpis"></div>
+    <div class="note" id="yday"></div>
+  </section>
+
+  <section>
+    <h2>Export volume by week: actual vs visit model</h2>
+    <figure>
+      <div class="legend">
+        <span><i style="background:var(--accent)"></i>Exported, tonnes</span>
+        <span><i class="ln" style="background:var(--ink)"></i>Model from site visits</span>
+        <span><i style="background:transparent;border:1px dashed var(--accent)"></i>This week, estimate</span>
+      </div>
+      <div class="chart" id="chE"></div>
+      <div class="tip" id="tipE"></div>
+    </figure>
+    <div class="scroll" style="margin-top:14px"><table id="bt"></table></div>
+    <div class="note" id="noteE"></div>
+  </section>
+
+  <section>
+    <h2>Farm-site visits per week</h2>
+    <figure>
+      <div class="chart" id="chV"></div>
+      <div class="tip" id="tipV"></div>
+    </figure>
+    <div class="note">Visits by our wellboats and processing vessels to farm sites (not harvest plants). The last bar is the current week so far; the dashed outline is the full-week forecast from the usual weekday pace.</div>
+  </section>
+
+  <section>
+    <h2>Weekday pattern</h2>
+    <figure>
+      <div class="legend">
+        <span><i class="ln" style="background:var(--accent)"></i>This week</span>
+        <span><i class="ln" style="background:var(--ink-2)"></i>Last week</span>
+        <span><i class="ln" style="background:repeating-linear-gradient(90deg,var(--ink-3) 0 5px,transparent 5px 9px)"></i>Average, recent weeks</span>
+      </div>
+      <div class="duo2">
+        <div><div class="mt">Farm-site visits</div><div class="chart" id="chW1"></div></div>
+        <div><div class="mt">Harvest-plant visits</div><div class="chart" id="chW2"></div></div>
+      </div>
+      <div class="tip" id="tipW"></div>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Harvest-plant visits per week</h2>
+    <figure>
+      <div class="chart" id="chP"></div>
+      <div class="tip" id="tipP"></div>
+    </figure>
+    <div class="note">Physical calls at harvest plants by the same vessels. The last, lighter bar is the current week so far.</div>
+  </section>
+
+  <section>
+    <h2 id="ptitle">Harvest plants</h2>
+    <div class="scroll"><table id="pt"></table></div>
+    <div class="note">Capacity = summed vessel capacity at each call, not confirmed delivered volume. Bars show calls per week; the last, lighter bar is the current week so far.</div>
+  </section>
+
+  <footer>
+    <b>Site visits:</b> BarentsWatch AIS, vessels in our fleet list (vessel_categories.csv), wellboats and processing vessels only. <b>Full-week forecast</b> scales this week's visits by the average share of a week completed by the same weekday over the last <span id="pw"></span> complete weeks.
+    <b>Export model</b>: weekly export tonnes = a × this week's visits + b × last week's visits + seasonal harmonic + trend, refitted on every run against salmon export statistics; this week's estimate uses the visit forecast for this week. Not official figures.
+    <b>Harvest-plant visits</b> from BarentsWatch fish-health vessel tracks, updated daily.
+  </footer>
+</div>
+<script>
+const D=__DATA__;let scope='Alle';
+const f=(v,d=0)=>v==null?'–':(+v).toLocaleString('en-GB',{minimumFractionDigits:d,maximumFractionDigits:d});
+const DAY=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const pct=s=>{const v=parseFloat(s);return isNaN(v)?0:v};
+function tipper(fig,tip){return{show(h,x,y){tip.innerHTML=h;tip.style.opacity=1;const r=fig.getBoundingClientRect();let l=x-r.left+12;const w=tip.offsetWidth;if(l+w>r.width-6)l=x-r.left-w-12;tip.style.left=Math.max(4,l)+'px';tip.style.top=Math.max(4,y-r.top-10)+'px'},hide(){tip.style.opacity=0}}}
+function nice(lo,hi,n=4){const raw=(hi-lo)/n||1,p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p,st=(m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p;const a=Math.floor(lo/st)*st,o=[+a.toFixed(6)];while(o[o.length-1]<hi-1e-9)o.push(+(o[o.length-1]+st).toFixed(6));return o}
+const grid=(g,tk,y,Lm,R,W,fmt)=>tk.forEach(v=>g.push(`<line x1="${Lm}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule-2)"/><text x="${Lm-8}" y="${y(v)+4}" text-anchor="end">${fmt(v)}</text>`));
+const pl=(pts,c,w=2,ex='')=>`<polyline points="${pts.join(' ')}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round" ${ex}/>`;
+const kf=v=>v>=1000?f(v/1000,0)+'k':f(v);
+function hover(el,n,x0,step,fn,tipEl){const s=el.querySelector('svg');const tp=tipper(el.closest('figure'),tipEl);
+  s.addEventListener('mousemove',e=>{const r=s.getBoundingClientRect(),vb=s.viewBox.baseVal;const i=Math.round(((e.clientX-r.left)/r.width*vb.width-x0)/step);if(i<0||i>=n){tp.hide();return}const h=fn(i);h?tp.show(h,e.clientX,e.clientY):tp.hide()});s.addEventListener('mouseleave',()=>tp.hide())}
+const isoWeek=d=>{const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const n=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-n);const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil(((t-y0)/864e5+1)/7)};
+
+function bars(id,tipId,labels,vals,partial,forecast,unit){const W=900,H=240,Lm=48,R=12,T=12,B=28,n=vals.length,step=(W-Lm-R)/n,bw=step*0.62;
+  const top=nice(0,Math.max(...vals,forecast||0)).slice(-1)[0];const y=v=>T+(1-v/top)*(H-T-B);const g=[];grid(g,nice(0,top),y,Lm,R,W,kf);
+  vals.forEach((v,i)=>{const x=Lm+i*step+(step-bw)/2;const p=i===partial;
+    if(p&&forecast)g.push(`<rect x="${x}" y="${y(forecast)}" width="${bw}" height="${y(0)-y(forecast)}" fill="transparent" stroke="var(--accent)" stroke-dasharray="3 2"/>`);
+    g.push(`<rect x="${x}" y="${y(v)}" width="${bw}" height="${y(0)-y(v)}" fill="var(--accent)" opacity="${p?.45:.9}"/>`);
+    g.push(`<text x="${x+bw/2}" y="${H-9}" text-anchor="middle">${labels[i].replace('U','wk ')}</text>`)});
+  const el=document.getElementById(id);el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img">${g.join('')}</svg>`;
+  hover(el,n,Lm+step/2,step,i=>`<b>${labels[i].replace('U','Week ')}</b>${i===partial?' · so far':''}\n${f(vals[i])} ${unit}${i===partial&&forecast?`\nForecast  ${f(forecast)}`:''}`,document.getElementById(tipId))}
+
+function weekday(id,avg,last,cur){const W=440,H=200,Lm=36,R=10,T=10,B=24,step=(W-Lm-R)/6;
+  const all=[...avg,...last,...cur.filter(v=>v!=null)];const tk=nice(0,Math.max(...all,1));const top=tk[tk.length-1];const y=v=>T+(1-v/top)*(H-T-B);const x=i=>Lm+i*step;
+  const g=[];grid(g,tk,y,Lm,R,W,v=>f(v));DAY.forEach((d,i)=>g.push(`<text x="${x(i)}" y="${H-7}" text-anchor="middle">${d}</text>`));
+  g.push(pl(avg.map((v,i)=>`${x(i)},${y(v)}`),'var(--ink-3)',1.6,'stroke-dasharray="5 3"'));g.push(pl(last.map((v,i)=>`${x(i)},${y(v)}`),'var(--ink-2)',1.6));
+  const c=cur.map((v,i)=>v==null?null:`${x(i)},${y(v)}`).filter(Boolean);if(c.length)g.push(pl(c,'var(--accent)',2.4));cur.forEach((v,i)=>{if(v!=null)g.push(`<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="var(--accent)"/>`)});
+  const el=document.getElementById(id);el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img">${g.join('')}</svg>`;
+  hover(el,7,Lm,step,i=>`<b>${DAY[i]}</b>\nThis week  ${cur[i]==null?'–':f(cur[i])}\nLast week  ${f(last[i])}\nAverage    ${f(avg[i],1)}`,document.getElementById('tipW'))}
+
+function exportChart(){const E=D.export;if(!E){document.getElementById('chE').innerHTML='<div class="note">Export model unavailable.</div>';return}
+  const S=E.series.slice(-52);const W=900,H=280,Lm=52,R=12,T=12,B=28,n=S.length+1,step=(W-Lm-R)/n,bw=step*0.7;
+  const top=nice(0,Math.max(...S.map(s=>Math.max(s.actual,s.fit)),E.forecast||0)).slice(-1)[0];const y=v=>T+(1-v/top)*(H-T-B);const g=[];grid(g,nice(0,top),y,Lm,R,W,kf);
+  S.forEach((s,i)=>{const x=Lm+i*step+(step-bw)/2;g.push(`<rect x="${x}" y="${y(s.actual)}" width="${bw}" height="${y(0)-y(s.actual)}" fill="var(--accent)" opacity=".8"/>`);
+    const d=new Date(s.monday);if(d.getDate()<=7)g.push(`<text x="${x+bw/2}" y="${H-9}" text-anchor="middle">${MO[d.getMonth()]}${d.getMonth()===0?" '"+String(d.getFullYear()).slice(2):''}</text>`)});
+  if(E.forecast){const x=Lm+S.length*step+(step-bw)/2;g.push(`<rect x="${x}" y="${y(E.forecast)}" width="${bw}" height="${y(0)-y(E.forecast)}" fill="transparent" stroke="var(--accent)" stroke-dasharray="3 2"/>`)}
+  const pts=S.map((s,i)=>`${Lm+i*step+step/2},${y(s.fit)}`);if(E.forecast)pts.push(`${Lm+S.length*step+step/2},${y(E.forecast)}`);g.push(pl(pts,'var(--ink)',1.6));
+  const el=document.getElementById('chE');el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Weekly export volume">${g.join('')}</svg>`;
+  hover(el,n,Lm+step/2,step,i=>{if(i===S.length)return `<b>Week ${E.week}</b> · estimate\n${f(E.forecast)} t`;const s=S[i];return `<b>Week ${s.wk} · ${s.monday.slice(0,4)}</b>\nExported  ${f(s.actual)} t\nModel     ${f(s.fit)} t\nVisits    ${f(s.visits)}`},document.getElementById('tipE'));
+  document.getElementById('bt').innerHTML='<thead><tr><th>Week</th><th>Model</th><th>Exported</th><th>Difference</th></tr></thead><tbody>'+
+    E.backtest.slice().reverse().map(r=>`<tr><td>${r.label.replace('U','Week ')}</td><td>${f(r.predicted)} t</td><td>${r.actual==null?'<span style="color:var(--ink-3)">not published yet</span>':f(r.actual)+' t'}</td><td style="color:${r.diff_pct==null?'inherit':Math.abs(r.diff_pct)<=10?'var(--good)':'var(--bad)'}">${r.diff_pct==null?'':(r.diff_pct>0?'+':'')+f(r.diff_pct)+'%'}</td></tr>`).join('')+'</tbody>';
+  document.getElementById('noteE').innerHTML=`The model is refitted on ${E.n_weeks} weeks every run: R² ${f(E.r2,2)}, typical error ±${E.rmse_pct}%. The table uses each week's actual visits, so its differences are model error only. Export statistics are published a few days after the week ends.`}
+
+function plantTable(T){const L=D.sparkLabels,P=D.sparkPartial;const rows=T.plants;const mx=Math.max(1,...rows.flatMap(r=>r.spark));
+  const sp=v=>{const w=6,gp=2,h=22;return `<svg class="spark" width="${v.length*(w+gp)}" height="${h}" viewBox="0 0 ${v.length*(w+gp)} ${h}">${v.map((c,i)=>{const bh=c?Math.max(2,c/mx*h):1;return `<rect x="${i*(w+gp)}" y="${h-bh}" width="${w}" height="${bh}" fill="var(--accent)" opacity="${i===P?.45:1}"><title>${L[i]}: ${c}</title></rect>`}).join('')}</svg>`};
+  document.getElementById('ptitle').textContent=`Harvest plants, ${D.plantWeek.replace('_W',' week ')}`;
+  document.getElementById('pt').innerHTML='<thead><tr><th>Plant</th><th class="l">Company</th><th class="l">Calls, last weeks</th><th>Calls</th><th>Capacity</th><th>Last call</th></tr></thead><tbody>'+
+    (rows.length?rows.map(r=>`<tr><td>${r.name}</td><td class="l e">${r.company}</td><td class="l">${sp(r.spark)}</td><td>${f(r.visits)}</td><td>${f(r.cap)} t</td><td class="e">${r.last}</td></tr>`).join(''):'<tr><td colspan="6" class="e">No harvest-plant calls for this vessel type.</td></tr>')+'</tbody>'}
+
+function render(){const T=D.types[scope],E=D.export;const yd=new Date(D.yesterday);
+  document.getElementById('per').textContent=yd.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});document.getElementById('upd').textContent=D.updated;document.getElementById('pw').textContent=D.pacingWeeks;
+  const dk=(s,txt)=>`<div class="d ${pct(s)>=0?'p':'n'}">${s} ${txt}</div>`;
+  const k=[
+    ['Export estimate · week '+(E?E.week:''),E&&E.forecast?f(E.forecast)+' t':'–',E?`±${E.rmse_pct}% typical error · all vessels`:'','',' hero'],
+    ['Site visits this week so far',f(T.wtd_visits),`through ${DAY[(yd.getDay()+6)%7]}`,dk(T.wtd_diff_label,'vs same point last week'),''],
+    ['Full-week forecast',f(T.forecast),`site visits · ${T.pace_pct}% of a week is usually done by ${DAY[(yd.getDay()+6)%7]}`,'',''],
+    ['Harvest-plant calls · last week',f(T.plant_last_week),D.plantWeek.replace('_W',' week '),dk(T.plant_diff_label,'vs week before'),'']];
+  document.getElementById('kpis').innerHTML=k.map(([a,b,c,d,h])=>`<div class="kpi${h}"><div class="k">${a}</div><div class="v">${b}</div><div class="u">${c}</div>${d}</div>`).join('');
+  document.getElementById('yday').innerHTML=`<b>Yesterday:</b> ${f(T.yesterday_visits)} site visits (${T.y_diff_label} vs the day before) by ${f(T.yesterday_vessels)} vessels at ${f(T.yesterday_localities)} sites.`;
+  exportChart();
+  bars('chV','tipV',T.weekly_labels,T.weekly_values,T.weekly_partial_idx,T.forecast,'site visits');
+  weekday('chW1',T.weekday_avg,T.weekday_last_week,T.weekday_this_week);weekday('chW2',T.plant_weekday_avg,T.plant_weekday_last_week,T.plant_weekday_this_week);
+  bars('chP','tipP',T.plant_weekly_labels.map(l=>'U'+String(l).replace(/^W0?/,'')),T.plant_weekly_values,T.plant_weekly_partial_idx,null,'plant calls');
+  plantTable(T)}
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected','false'));b.setAttribute('aria-selected','true');scope=b.dataset.s;render()}));
+render();
+</script>
+</body></html>
