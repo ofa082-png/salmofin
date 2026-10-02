@@ -1,403 +1,154 @@
 """
 generate_hub.py
 ----------------
-Renders the salmofin frontpage — seven tiles matching the health/
-traffic/feed/export/capacity areas of the project, two trend charts,
-and three "last 5" feeds. Not every section has a live data source
-wired up yet:
+Renders the salmofin front page (docs/index.html): one KPI card per report,
+each with its headline figure, change against a year earlier and a one-line
+highlight, linking to the report.
 
-  - Lakselus, Sykdom, Dødelighet, Trafikk, Slakt og eksport, Fôring
-    tiles: real, BigQuery-backed, refit live every run.
-  - Kapasitetsvekst tile, and the MOM-B / sykdomsoppdateringer /
-    heftelser "last 5" panels: intentionally left as empty placeholders
-    (2026-08-17) — the underlying pipelines (aqua_applications/licenses
-    for capacity, env_reports/mattilsynet_disease/license_liens for the
-    feeds) exist but aren't wired into a generator yet. Fill in one at
-    a time rather than all at once.
+Rebuilt 2026-10-02 in the control-report visual system
+(templates/hub_template.html). No BigQuery queries of its own: every figure
+is read from the data the report pages already embed (`const D=` in
+kontroll/foring/lakselus/fiskehelse/traffic.html), so a card always matches
+its page. The workflow runs after the report generators. A page whose data
+cannot be read gets a card saying so instead of failing the whole hub.
 
-  All navigation lives in the KPI tiles/charts above — deliberately no
-  bottom link-card nav block (removed 2026-08-17, was fully redundant
-  with the tiles; Store fartøy/big_vessels.html is on hold, not linked
-  from the hub for now).
-
-  Lakselus tile points at lakselus.html, Sykdom at fiskehelse.html,
-  Dødelighet at dodelighet.html (2026-08-19, added same session those
-  three pages finished splitting apart — see each generate_*.py's
-  docstring). All six main tiles now live in one 2-col/3-row grid
-  (Fôring moved in from its own standalone card below the grid, so the
-  6 tiles read as one coherent health->business flow instead of 4+1).
-  Trafikk and Slakt og eksport still both point at traffic.html — that
-  redundancy is a separate, not-yet-done item.
-
-Writes docs/index.html.
+Mortality (dodelighet.html, older page without embedded data) is fed from the
+fish health page's mortality series.
 """
 
 import os
 import json
-import math
 import datetime
-from google.cloud import bigquery
-from google.oauth2 import service_account
 
-PROJECT_ID = "salmofin"
-OUT_PATH = os.path.join(os.path.dirname(__file__), "docs", "index.html")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DOCS     = os.path.join(BASE_DIR, "docs")
+OUT_PATH = os.path.join(DOCS, "index.html")
+TEMPLATE = os.path.join(BASE_DIR, "templates", "hub_template.html")
+MO = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-MIN_LICE_ROWS = 400  # a week's Voksne_hunnlus count reliably lands ~560-580
-                      # once reporting is complete; a still-filling-in week
-                      # (the most recent 1-2) sits far below that, so this
-                      # threshold cleanly separates "usable" from "too early".
 
-def get_bq_client():
-    credentials_info = json.loads(os.environ["GOOGLE_CREDENTIALS"])
-    credentials = service_account.Credentials.from_service_account_info(
-        credentials_info,
-        scopes=["https://www.googleapis.com/auth/cloud-platform"]
-    )
-    return bigquery.Client(credentials=credentials, project=PROJECT_ID)
+def load(page):
+    with open(os.path.join(DOCS, page), encoding="utf-8") as f:
+        s = f.read()
+    i = s.index("const D=") + len("const D=")
+    return json.JSONDecoder().raw_decode(s[i:])[0]
 
-def diff_label(val, unit="%", signed_word=None):
-    sign = "+" if val >= 0 else ""
-    return f"{sign}{val:.0f}{unit}"
 
-def diff_color_bad_if_up(val):
-    """Lakselus, Sykdom, Dødelighet: more is worse."""
-    return "var(--text-danger)" if val > 0 else ("var(--text-success)" if val < 0 else "var(--text-muted)")
+def mlabel(t):
+    return f"{MO[t % 12]} {t // 12}"
 
-def diff_color_good_if_up(val):
-    """Trafikk, Slakt og eksport: more activity/volume is a positive
-    signal — matches traffic.html's own diff_color convention
-    (positive=green) rather than treating every increase as bad."""
-    return "var(--text-success)" if val > 0 else ("var(--text-danger)" if val < 0 else "var(--text-muted)")
 
-def fetch_lice(client):
-    """National avg adult female lice, most recent complete week vs the
-    week before, plus a 12-week trend. Skips any week whose non-null
-    Voksne_hunnlus count is below MIN_LICE_ROWS — still filling in, not
-    representative yet (same "don't trust the newest partial week"
-    lesson as the rest of this project)."""
-    rows = list(client.query(f"""
-        SELECT Ar, Uke, AVG(Voksne_hunnlus) AS avg_lice, COUNTIF(Voksne_hunnlus IS NOT NULL) AS n
-        FROM salmofin.salmofin.lice_bw
-        WHERE Ar = EXTRACT(YEAR FROM CURRENT_DATE())
-          AND Uke BETWEEN EXTRACT(ISOWEEK FROM CURRENT_DATE()) - 16
-                       AND EXTRACT(ISOWEEK FROM CURRENT_DATE())
-        GROUP BY Ar, Uke
-        HAVING n >= {MIN_LICE_ROWS}
-        ORDER BY Uke
-    """).result())
-    if len(rows) < 2:
-        return None
-    trend = rows[-12:]
-    current, prior = rows[-1], rows[-2]
-    delta_pct = (current.avg_lice - prior.avg_lice) / prior.avg_lice * 100 if prior.avg_lice else 0
-    return {
-        "value": round(current.avg_lice, 2),
-        "delta_label": diff_label(delta_pct),
-        "delta_color": diff_color_bad_if_up(delta_pct),
-        "trend_labels": [f"U{r.Uke}" for r in trend],
-        "trend_values": [round(r.avg_lice, 3) for r in trend],
-    }
+def pct(a, b):
+    return (a / b - 1) * 100 if a is not None and b else None
 
-def fetch_dodelighet(client):
-    """National monthly mortality risk, current month vs prior month —
-    same Veterinærinstituttet formula (dM=dead/N̄, R=1-e^-dM) as
-    generate_dodelighet.py, duplicated here rather than imported,
-    matching this hub's existing self-contained-per-tile convention
-    (fetch_lice/fetch_sykdom already duplicate their own source logic
-    too)."""
-    rows = list(client.query("""
-        SELECT Ar, Maaned_kode, SUM(Behfisk_stk) AS beh, SUM(Dodfisk_stk) AS dod
-        FROM salmofin.salmofin.biomass
-        WHERE Artsid = 'LAKS'
-        GROUP BY Ar, Maaned_kode ORDER BY Ar, Maaned_kode
-    """).result())
-    if len(rows) < 3:
-        return None
-    monthly = []
-    for i in range(1, len(rows)):
-        n_bar = (rows[i - 1].beh + rows[i].beh) / 2
-        dM = rows[i].dod / n_bar if n_bar else 0
-        monthly.append((1 - math.exp(-dM)) * 100)
-    current, prior = monthly[-1], monthly[-2]
-    return {
-        "value": round(current, 2),
-        "delta_label": f"{'+' if current - prior >= 0 else ''}{current - prior:.2f}pp",
-        "delta_color": diff_color_bad_if_up(current - prior),
-    }
 
-def fetch_sykdom(client):
-    """Active case count (snapshot, matches fiskehelse.html) as the
-    headline, with new-cases-this-week-vs-last-week as the delta — the
-    snapshot table itself has no history to diff against, so the delta
-    uses a different, well-defined comparison instead of faking one."""
-    row = list(client.query("""
-        SELECT
-          (SELECT COUNT(*) FROM salmofin.salmofin.mattilsynet_helsestatus) AS active_cases,
-          COUNTIF(opprettet >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)) AS new_7d,
-          COUNTIF(opprettet >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY)
-                  AND opprettet < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)) AS prev_7d
-        FROM salmofin.salmofin.mattilsynet_disease
-    """).result())[0]
-    delta = row.new_7d - row.prev_7d
-    return {
-        "value": row.active_cases,
-        "delta_label": f"{'+' if delta >= 0 else ''}{delta} nye siste uke",
-        "delta_color": diff_color_bad_if_up(delta),
-    }
+def fmt(v, d=0):
+    return f"{v:,.{d}f}"
 
-def _last_complete_weeks(rows, n):
-    """rows: [(yr, wk, value)], newest first. Drops the current calendar
-    ISO week (often partial/not-yet-published) and returns the next n,
-    oldest -> newest."""
-    today = datetime.date.today()
-    cur_yr, cur_wk = today.isocalendar()[0], today.isocalendar()[1]
-    filtered = [r for r in rows if not (r[0] == cur_yr and r[1] == cur_wk)]
-    return list(reversed(filtered[:n]))
 
-def fetch_trafikk(client):
-    """Wellboat + processing vessel locality visits, last complete week
-    vs the week before — same fleet scope as traffic.html."""
-    rows = list(client.query("""
-        SELECT EXTRACT(ISOYEAR FROM vv.startTime) AS yr, EXTRACT(ISOWEEK FROM vv.startTime) AS wk, COUNT(*) AS visits
-        FROM salmofin.salmofin.vessel_visits vv
-        JOIN salmofin.salmofin.vessel_categories vc ON vv.mmsi = vc.MMSI
-        WHERE TRIM(vc.Type) IN ('Wellboat','Processing vessel')
-        GROUP BY yr, wk ORDER BY yr DESC, wk DESC LIMIT 4
-    """).result())
-    pairs = _last_complete_weeks([(r.yr, r.wk, r.visits) for r in rows], 2)
-    if len(pairs) < 2:
-        return None
-    prior, current = pairs
-    delta_pct = (current[2] - prior[2]) / prior[2] * 100 if prior[2] else 0
-    return {
-        "value": current[2],
-        "delta_label": diff_label(delta_pct),
-        "delta_color": diff_color_good_if_up(delta_pct),
-    }
+def sign(v, d=0, unit="%"):
+    return ("+" if v > 0 else "") + f"{v:,.{d}f}{unit}"
 
-def fetch_foring(client):
-    """Feed carrier locality visits, last complete week vs the week
-    before — same fleet-filter/comparison shape as fetch_trafikk, just
-    scoped to 'Fish feed carrier' instead of wellboat/processing. This
-    promotes foring.html from a link-card to a real KPI tile."""
-    rows = list(client.query("""
-        SELECT EXTRACT(ISOYEAR FROM vv.startTime) AS yr, EXTRACT(ISOWEEK FROM vv.startTime) AS wk, COUNT(*) AS visits
-        FROM salmofin.salmofin.vessel_visits vv
-        JOIN salmofin.salmofin.vessel_categories vc ON vv.mmsi = vc.MMSI
-        WHERE TRIM(vc.Type) = 'Fish feed carrier'
-        GROUP BY yr, wk ORDER BY yr DESC, wk DESC LIMIT 4
-    """).result())
-    pairs = _last_complete_weeks([(r.yr, r.wk, r.visits) for r in rows], 2)
-    if len(pairs) < 2:
-        return None
-    prior, current = pairs
-    delta_pct = (current[2] - prior[2]) / prior[2] * 100 if prior[2] else 0
-    return {
-        "value": current[2],
-        "delta_label": diff_label(delta_pct),
-        "delta_color": diff_color_good_if_up(delta_pct),
-    }
 
-def fetch_export(client):
-    """Actual export tonnage, last complete week vs the week before, plus
-    a 12-week trend. Deliberately the simple real-vs-real comparison, not
-    the seasonality+trend forecast model traffic.html uses — that model
-    answers "what should this week be", this tile answers "what did it
-    actually do last week", a different and simpler question."""
-    rows = list(client.query("""
-        SELECT year AS yr, week AS wk, SUM(vekt_tonn) AS export_tonn
-        FROM salmofin.salmofin.salmon_export_weekly
-        GROUP BY yr, wk ORDER BY yr DESC, wk DESC LIMIT 14
-    """).result())
-    pairs_all = _last_complete_weeks([(r.yr, r.wk, r.export_tonn) for r in rows], 12)
-    if len(pairs_all) < 2:
-        return None
-    prior, current = pairs_all[-2], pairs_all[-1]
-    delta_pct = (current[2] - prior[2]) / prior[2] * 100 if prior[2] else 0
-    return {
-        "value": current[2],
-        "delta_label": diff_label(delta_pct),
-        "delta_color": diff_color_good_if_up(delta_pct),
-        "trend_labels": [f"U{wk}" for _, wk, _ in pairs_all],
-        "trend_values": [round(v) for _, _, v in pairs_all],
-    }
+def card(key, href, area, title, value, unit, delta=None, good=None, highlight="", period=""):
+    return {"key": key, "href": href, "area": area, "title": title, "value": value, "unit": unit,
+            "delta": delta, "good": good, "highlight": highlight, "period": period}
 
-def build_sparkline_svg(chart_id, labels, values, color):
-    return f"""<svg id="{chart_id}" viewBox="0 0 560 90" style="width:100%;height:90px" role="img"><title>Trend, siste {len(values)} uker</title></svg>
-<script>
-(function(){{
-  var svg = document.getElementById('{chart_id}');
-  var data = {json.dumps(values)};
-  var labels = {json.dumps(labels)};
-  var w = 560, h = 90, padL = 20, padR = 10, padT = 10, padB = 16;
-  var min = Math.min.apply(null, data), max = Math.max.apply(null, data);
-  var range = (max - min) || 1;
-  var pts = data.map(function(v,i){{
-    var x = padL + (i/(data.length-1))*(w-padL-padR);
-    var y = h-padB - ((v-min)/range)*(h-padT-padB);
-    return x.toFixed(1)+','+y.toFixed(1);
-  }});
-  var ns = 'http://www.w3.org/2000/svg';
-  var poly = document.createElementNS(ns,'polyline');
-  poly.setAttribute('points', pts.join(' '));
-  poly.setAttribute('fill','none');
-  poly.setAttribute('stroke','{color}');
-  poly.setAttribute('stroke-width','2');
-  svg.appendChild(poly);
-  [0, data.length-1].forEach(function(i){{
-    var coords = pts[i].split(',');
-    var t = document.createElementNS(ns,'text');
-    t.setAttribute('x',coords[0]); t.setAttribute('y', h-2);
-    t.setAttribute('font-size','9'); t.setAttribute('text-anchor', i===0?'start':'end');
-    t.setAttribute('fill','var(--text-muted)');
-    t.textContent = labels[i];
-    svg.appendChild(t);
-  }});
-}})();
-</script>"""
 
-TILES = [
-    {"icon": "🐛", "title": "Lakselus og behandling", "unit": " voksne/fisk", "href": "lakselus.html", "linktext": "Nivå og behandlinger"},
-    {"icon": "🦠", "title": "Sykdom", "unit": "", "suffix": " aktive tilfeller", "href": "fiskehelse.html", "linktext": "Status og sykdomstilfeller"},
-    {"icon": "💀", "title": "Dødelighet", "unit": "%", "href": "dodelighet.html", "linktext": "Dødelighet og utkast"},
-    {"icon": "🚢", "title": "Trafikk", "unit": "", "suffix": " besøk/uke", "href": "traffic.html", "linktext": "Wellbåt og prosesseringsfartøy"},
-    {"icon": "🐟", "title": "Slakt og eksport", "unit": "", "suffix": "", "href": "traffic.html", "linktext": "Volum og sesongmodell"},
-    {"icon": "🌾", "title": "Fôring", "unit": "", "suffix": " besøk/uke", "href": "foring.html", "linktext": "Fôrbåtanløp"},
-]
+def control():
+    d = load("kontroll.html")
+    m = d["m"]["Norge"]; last = m[-1]; ly = next((r for r in m if r["t"] == last["t"] - 12), None)
+    bio_y, ht_y, n_y = (pct(last["bio"], ly["bio"]), pct(last["ht"], ly["ht"]), pct(last["n"], ly["n"])) if ly else (None,) * 3
+    hl = (f"Harvest {fmt(last['ht'] / 1000)} kt in {MO[last['t'] % 12]} ({sign(ht_y)} on a year earlier). "
+          f"{fmt(last['n'])} M fish standing ({sign(n_y)})"
+          + (": more tonnes on fewer fish." if bio_y > 0 > n_y else ".")) if ly else ""
+    return card("control", "kontroll.html", "Biological control", "Standing biomass", fmt(last["bio"] / 1000), "kt",
+                sign(bio_y, 1) + " vs a year ago" if bio_y is not None else None, None, hl, mlabel(last["t"]))
 
-def build_tile(key, data, tile):
-    if not data:
-        return f"""
-    <div class="card placeholder">
-      <div class="tile-header">{tile['icon']} {tile['title']}</div>
-      <div class="tile-placeholder">Kommer snart</div>
-    </div>"""
-    if key == "export":
-        val_str = f"{data['value']/1000:.1f}k t"
-    elif key in ("lakselus", "dodelighet"):
-        val_str = f"{data['value']}{tile['unit']}"
-    else:
-        val_str = f"{data['value']:,.0f}{tile.get('suffix','')}"
-    return f"""
-    <a href="{tile['href']}" class="card">
-      <div class="tile-header">{tile['icon']} {tile['title']}</div>
-      <div class="tile-value">{val_str}</div>
-      <div class="tile-delta" style="color:{data['delta_color']}">{data['delta_label']}</div>
-      <div class="tile-link">{tile['linktext']} →</div>
-    </a>"""
 
-PLACEHOLDER_FEED = """
-    <div class="card placeholder">
-      <div class="feed-header">{title}</div>
-      <div class="tile-placeholder">Kommer snart</div>
-    </div>"""
+def feed():
+    d = load("foring.html")["areas"]["Norge"]; fd = d["fd"]
+    est = fd["estimates"][0] if fd.get("estimates") else None
+    fcr = d["fcr"]["bio"][-1] if d.get("fcr") else None
+    hl = (f"{est['label']} estimate from feed-vessel visits: {fmt(est['value'] / 1000, 1)} kt (±{fmt(est['band'], 0)}%). " if est else "") + \
+         (f"Biological FCR {fmt(fcr, 2)} in {fd['last_label'].split()[0]}." if fcr else "")
+    return card("feed", "foring.html", "Feeding", "Feed consumption", fmt(fd["last_value"] / 1000, 1), "kt",
+                sign(fd["last_yoy"], 1) + " vs a year ago", None, hl, fd["last_label"])
 
-TEMPLATE = """<!doctype html>
-<html lang="no">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>salmofin</title>
-<style>
-  :root {{ --surface-1:#f5f4f0; --surface-2:#ffffff; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781; --border:#e1e0d9; --accent:#2a78d6; --text-danger:#a32d2d; --text-success:#008300; }}
-  @media (prefers-color-scheme: dark) {{
-    :root {{ --surface-1:#242422; --surface-2:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781; --border:#2c2c2a; }}
-  }}
-  body {{ background:var(--surface-1); color:var(--text-primary); font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:0; padding:2rem 1rem; }}
-  .wrap {{ max-width:680px; margin:0 auto; }}
-  a {{ color:var(--text-secondary); text-decoration:none; }}
-  .card {{ display:block; background:var(--surface-2); border-radius:12px; padding:1rem 1.1rem; border:0.5px solid var(--border); margin-bottom:12px; }}
-  .card.placeholder {{ border-style:dashed; }}
-  .grid {{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:12px; }}
-  .grid .card {{ margin-bottom:0; }}
-  .tile-header {{ font-size:13px; color:var(--text-secondary); margin-bottom:6px; }}
-  .tile-value {{ font-size:22px; font-weight:500; margin-bottom:2px; }}
-  .tile-delta {{ font-size:12px; margin-bottom:4px; }}
-  .tile-link {{ font-size:12px; color:var(--text-secondary); }}
-  .tile-placeholder {{ font-size:13px; color:var(--text-muted); }}
-  .feed-header {{ font-size:13px; color:var(--text-secondary); margin-bottom:8px; }}
-  .chart-title {{ font-size:13px; color:var(--text-secondary); margin-bottom:4px; }}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
-    <div style="display:flex;align-items:center;gap:8px;">
-      <div style="width:26px;height:26px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:500;">s</div>
-      <div style="font-size:18px;font-weight:500;">salmofin</div>
-    </div>
-    <div style="font-size:11px;color:var(--text-muted);">oppdatert {updated}</div>
-  </div>
 
-  <div class="grid">
-    {tile_lakselus}
-    {tile_sykdom}
-    {tile_dodelighet}
-    {tile_trafikk}
-    {tile_export}
-    {tile_foring}
-  </div>
-  <a href="kontroll.html" class="card">
-    <div class="tile-header">🔬 Biologisk kontroll</div>
-    <div class="tile-link">Månedsrapport (engelsk): biomassebalanse, fôrfaktor, TGC, utsettsmiks →</div>
-  </a>
-  {tile_kapasitet}
+def lice():
+    d = load("lakselus.html"); y0, w0 = d["last"]; a = d["areas"]["Norge"]; now = a["now"]
+    nm = a["norm"][str(w0)]; gap = pct(now["af"], nm); fe = a["fc"][-1] if a["fc"] else None
+    tl = a["treat"][-1]; tn = sum(tl["by"].values())
+    hl = (f"Outlook week {fe['w']}: {fmt(fe['mid'], 2)} (normal {fmt(a['norm'][str(fe['w'])], 2)}). " if fe else "") + \
+         f"{tn} sites treated in week {w0}, {a['treatLY']} a year ago."
+    return card("lice", "lakselus.html", "Lice and treatments", "Adult female lice per fish", fmt(now["af"], 2), "",
+                f"{sign(gap)} vs normal {fmt(nm, 2)}", gap <= 0, hl, f"Week {w0} {y0}")
 
-  <div class="card">
-    <div class="chart-title">Voksne hunnlus, snitt/uke</div>
-    {lice_chart}
-  </div>
-  <div class="card">
-    <div class="chart-title">Eksport, tonn/uke</div>
-    {export_chart}
-  </div>
 
-  {feed_momb}
-  {feed_sykdom}
-  {feed_liens}
-</div>
-</body>
-</html>
-"""
+def fish_health_and_mortality():
+    d = load("fiskehelse.html"); a = d["areas"]["Norge"]; rows = a["rows"]
+    rep = [r for r in rows if r["deadt"] is not None]; last = rep[-1]
+    ly = next((r for r in rows if r["t"] == last["t"] - 12), None)
+    nxt = next((r for r in rows if r["deadt"] is None and r["est"] is not None), None)
+    nly = next((r for r in rows if nxt and r["t"] == nxt["t"] - 12), None)
+    dis = a["dis"]; dl = dis[-2] if len(dis) > 1 else dis[-1]; dly = next((r for r in dis if r["t"] == dl["t"] - 12), None)
+    sites = d["cases"]["sites"]; ncase = sum(len(s["d"]) for s in sites); new = sum(1 for r in d["cases"]["recent"] if r["new"])
+    isapd, isapd_ly = dl["pd"] + dl["ila"], (dly["pd"] + dly["ila"]) if dly else None
+    health = card("health", "fiskehelse.html", "Fish health", "ISA and PD", fmt(isapd), "sites",
+                  f"{sign(isapd - isapd_ly, 0, '')} vs a year ago" if isapd_ly is not None else None,
+                  isapd <= isapd_ly if isapd_ly is not None else None,
+                  f"PD {dl['pd']}, ISA {dl['ila']}. Mattilsynet: {ncase} active cases at {len(sites)} sites, "
+                  f"{new} new in the last 14 days.", mlabel(dl["t"]))
+    dt = pct(last["deadt"], ly["deadt"]) if ly else None
+    hl = f"{fmt(last['dead'], 2)} M fish, {fmt(last['deadt'] / 1000, 1)} kt ({sign(dt)} on a year earlier). " if dt is not None else ""
+    if nxt:
+        hl += f"Silage-vessel visits point to {fmt(nxt['est'] / 1000, 1)} kt in {MO[nxt['t'] % 12]}" + \
+              (f" ({sign(pct(nxt['est'], nly['deadt']))} on a year earlier)." if nly and nly["deadt"] else ".")
+    rate_ly = ly["rate"] if ly else None
+    mort = card("mortality", "dodelighet.html", "Mortality", "Mortality rate", fmt(last["rate"], 2), "% / month",
+                f"{sign(last['rate'] - rate_ly, 2, ' pp')} vs a year ago" if rate_ly is not None else None,
+                last["rate"] <= rate_ly if rate_ly is not None else None, hl, mlabel(last["t"]))
+    return health, mort
 
-if __name__ == "__main__":
-    client = get_bq_client()
 
-    lice = fetch_lice(client)
-    sykdom = fetch_sykdom(client)
-    dodelighet = fetch_dodelighet(client)
-    trafikk = fetch_trafikk(client)
-    export = fetch_export(client)
-    foring = fetch_foring(client)
+def traffic():
+    d = load("traffic.html"); e = d.get("export"); t = d["types"]["Alle"]
+    bt = [r for r in (e or {}).get("backtest", []) if r.get("actual") is not None]
+    lastw = bt[-1] if bt else None
+    hl = (f"{lastw['label'].replace('U', 'Week ')} exported {fmt(lastw['actual'] / 1000, 1)} kt (model {fmt(lastw['predicted'] / 1000, 1)}). " if lastw else "") + \
+         f"Farm-site visits this week {t['wtd_diff_label']} vs the same point last week."
+    yd = datetime.date.fromisoformat(d["yesterday"])
+    return card("traffic", "traffic.html", "Harvest traffic and exports", f"Export estimate, week {e['week']}" if e else "Export estimate",
+                fmt(e["forecast"] / 1000, 1) if e and e.get("forecast") else "–", "kt",
+                f"±{e['rmse_pct']}% typical error" if e else None, None, hl, f"Visits through {yd.day} {MO[yd.month - 1]}")
 
-    now = datetime.datetime.now(datetime.timezone.utc)
-    html = TEMPLATE.format(
-        updated=now.strftime("%d.%m.%Y %H:%M UTC"),
-        tile_lakselus=build_tile("lakselus", lice, TILES[0]),
-        tile_sykdom=build_tile("sykdom", sykdom, TILES[1]),
-        tile_dodelighet=build_tile("dodelighet", dodelighet, TILES[2]),
-        tile_trafikk=build_tile("trafikk", trafikk, TILES[3]),
-        tile_export=build_tile("export", export, TILES[4]),
-        tile_foring=build_tile("foring", foring, TILES[5]),
-        tile_kapasitet=f"""
-    <div class="card placeholder">
-      <div class="tile-header">📈 Kapasitetsvekst</div>
-      <div class="tile-placeholder">Kommer snart — netto MTB og selskap</div>
-    </div>""",
-        lice_chart=build_sparkline_svg("liceChart", lice["trend_labels"], lice["trend_values"], "#D85A30") if lice else '<div class="tile-placeholder">Kommer snart</div>',
-        export_chart=build_sparkline_svg("exportChart", export["trend_labels"], export["trend_values"], "#2a78d6") if export else '<div class="tile-placeholder">Kommer snart</div>',
-        feed_momb=PLACEHOLDER_FEED.format(title="Siste 5 MOM-B"),
-        feed_sykdom=PLACEHOLDER_FEED.format(title="Siste 5 sykdomsoppdateringer"),
-        feed_liens=PLACEHOLDER_FEED.format(title="Siste 5 heftelser"),
-    )
 
-    os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
+def safe(fn, key, href, area):
+    try:
+        return fn()
+    except Exception as ex:          # one broken page must not take the hub down
+        print(f"  {key}: could not read ({ex!r})")
+        return card(key, href, area, "Not available", "–", "", highlight="The page's data could not be read on this run.")
+
+
+def main():
+    cards = [safe(control, "control", "kontroll.html", "Biological control")]
+    hm = safe(fish_health_and_mortality, "health", "fiskehelse.html", "Fish health")
+    health, mort = hm if isinstance(hm, tuple) else (hm, card("mortality", "dodelighet.html", "Mortality", "Not available", "–", ""))
+    cards += [safe(traffic, "traffic", "traffic.html", "Harvest traffic and exports"),
+              safe(feed, "feed", "foring.html", "Feeding"),
+              safe(lice, "lice", "lakselus.html", "Lice and treatments"),
+              health, mort]
+    data = {"cards": cards, "updated": datetime.datetime.now(datetime.timezone.utc).strftime("%d %b %Y %H:%M UTC")}
+    with open(TEMPLATE, encoding="utf-8") as f:
+        html = f.read().replace("__DATA__", json.dumps(data, separators=(",", ":"), ensure_ascii=False))
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         f.write(html)
+    for c in cards:
+        print(f"{c['area']:30} {c['value']:>8} {c['unit']:8} {c['delta'] or ''} | {c['highlight']}")
     print(f"Wrote {OUT_PATH} ({len(html):,} chars)")
-    print(f"Lakselus: {lice}")
-    print(f"Sykdom: {sykdom}")
-    print(f"Dødelighet: {dodelighet}")
-    print(f"Trafikk: {trafikk}")
-    print(f"Export: {export}")
-    print(f"Foring: {foring}")
+
+
+if __name__ == "__main__":
+    main()
