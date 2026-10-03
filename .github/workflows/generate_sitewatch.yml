@@ -1,0 +1,31 @@
+name: Generate Site Watch
+on:
+  schedule:
+    - cron: '10 7 * * 4'  # weekly, Thursday: the previous week's lice counts are normally complete by then
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: pip install google-cloud-bigquery google-auth
+      - name: Generate site watch
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python generate_sitewatch.py
+      - name: Commit updated report
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Update site watch
+          file_pattern: docs/sitewatch.html
+          # rebase before pushing: the report generators all commit to main and
+          # their 5-minute stagger is shorter than their runtime, so without this
+          # whichever finishes second is rejected as non-fast-forward.
+          pull: '--rebase --autostash'
