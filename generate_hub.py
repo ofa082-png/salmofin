@@ -124,6 +124,25 @@ def traffic():
                 f"±{e['rmse_pct']}% typical error" if e else None, None, hl, f"Visits through {yd.day} {MO[yd.month - 1]}")
 
 
+FLAG_NAMES = {"over": "over the lice limit", "disease": "new ISA or PD", "near": "near the limit", "rising": "lice rising",
+              "treat": "many treatments", "mechtherm": "repeated mechanical or thermal", "silage": "silage-vessel spikes",
+              "harvest": "harvest started", "stocked": "just stocked", "emptied": "just emptied"}
+
+
+def sitewatch():
+    d = load("sitewatch.html"); y0, w0 = d["last"]
+    cnt = {}
+    for _, fl, *_ in d["flags"]:
+        for k in fl:
+            cnt[k] = cnt.get(k, 0) + 1
+    order = ["over", "disease", "silage", "harvest", "rising", "stocked", "emptied"]
+    hl = "; ".join(f"{cnt[k]} {FLAG_NAMES[k]}" for k in order if cnt.get(k)) + "."
+    c = card("sitewatch", "sitewatch.html", "Site watch", "Farm sites flagged this week", fmt(len(d["flags"])), "sites",
+             None, None, hl, f"Week {w0} {y0}")
+    c["wide"] = True
+    return c
+
+
 def safe(fn, key, href, area):
     try:
         return fn()
@@ -139,7 +158,9 @@ def main():
     cards += [safe(traffic, "traffic", "traffic.html", "Harvest traffic and exports"),
               safe(feed, "feed", "foring.html", "Feeding"),
               safe(lice, "lice", "lakselus.html", "Lice and treatments"),
-              health, mort]
+              health, mort,
+              safe(sitewatch, "sitewatch", "sitewatch.html", "Site watch")]
+    cards[-1]["wide"] = True
     data = {"cards": cards, "updated": datetime.datetime.now(datetime.timezone.utc).strftime("%d %b %Y %H:%M UTC")}
     with open(TEMPLATE, encoding="utf-8") as f:
         html = f.read().replace("__DATA__", json.dumps(data, separators=(",", ":"), ensure_ascii=False))

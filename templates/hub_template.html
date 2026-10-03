@@ -111,6 +111,7 @@ code{font-family:var(--mono);font-size:.92em}
 @media(max-width:620px){.grid{grid-template-columns:1fr}}
 a.cardk{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--rule);padding:16px 18px 14px;color:inherit;text-decoration:none;min-width:0;transition:border-color .12s}
 a.cardk:hover{border-color:var(--accent)}
+a.cardk.wide{grid-column:1/-1}
 a.cardk:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .cardk .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .cardk .area{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
@@ -145,7 +146,7 @@ a.cardk:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 const D=__DATA__;
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 document.getElementById('upd').textContent=D.updated.split(' ').slice(0,3).join(' ');
-document.getElementById('grid').innerHTML=D.cards.map(c=>`<a class="cardk" href="${esc(c.href)}">
+document.getElementById('grid').innerHTML=D.cards.map(c=>`<a class="cardk${c.wide?' wide':''}" href="${esc(c.href)}">
   <div class="top"><span class="area">${esc(c.area)}</span><span class="per">${esc(c.period)}</span></div>
   <div class="ttl">${esc(c.title)}</div>
   <div class="val">${esc(c.value)}${c.unit?`<small>${esc(c.unit)}</small>`:''}</div>

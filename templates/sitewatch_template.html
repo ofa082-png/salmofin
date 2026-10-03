@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Site Watch</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+:root{
+  --ground:#EEF2F3; --surface:#FFFFFF; --surface-2:#F6F9F9;
+  --ink:#0C1417; --ink-2:#55666D; --ink-3:#84969C;
+  --rule:#D3DDE0; --rule-2:#E5ECEE;
+  --accent:#14606B; --accent-soft:#DCEBEC; --accent-2:#7FB3BA;
+  --good:#2A6B54; --bad:#9B3A31; --warn:#8A6310;
+  --c-grow:#14606B; --c-harv:#84969C; --c-dead:#B4473B; --c-in:#C08A1E;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --serif:'IBM Plex Serif',Georgia,serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0A1114; --surface:#101A1E; --surface-2:#152227;
+    --ink:#E4ECEE; --ink-2:#8FA2A9; --ink-3:#6B7E85;
+    --rule:#1E2C32; --rule-2:#182429;
+    --accent:#4FAEB8; --accent-soft:#123034; --accent-2:#2D6B72;
+    --good:#5FB08F; --bad:#D2776C; --warn:#C9A24A;
+    --c-grow:#4FAEB8; --c-harv:#6B7E85; --c-dead:#D2776C; --c-in:#C9A24A;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0A1114; --surface:#101A1E; --surface-2:#152227;
+  --ink:#E4ECEE; --ink-2:#8FA2A9; --ink-3:#6B7E85;
+  --rule:#1E2C32; --rule-2:#182429;
+  --accent:#4FAEB8; --accent-soft:#123034; --accent-2:#2D6B72;
+  --good:#5FB08F; --bad:#D2776C; --warn:#C9A24A;
+  --c-grow:#4FAEB8; --c-harv:#6B7E85; --c-dead:#D2776C; --c-in:#C9A24A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1060px;margin:0 auto;padding:28px 20px 64px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.mast{display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:22px}
+.mast h1{font-family:var(--serif);font-weight:600;font-size:29px;line-height:1.1;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.mast .sub{font-size:13px;color:var(--ink-2);margin-top:5px}
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);font-weight:500}
+.period{margin-left:auto;text-align:right}
+.period .big{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.01em}
+.period .lbl{font-size:11.5px;color:var(--ink-3);letter-spacing:.04em}
+.links{font-size:12.5px;color:var(--ink-2);margin:-8px 0 20px}
+.links a{color:var(--accent)}
+.tabs{display:flex;flex-wrap:wrap;gap:0;margin:0 0 24px;border:1px solid var(--rule);border-radius:3px;overflow:hidden;width:fit-content;max-width:100%;background:var(--surface)}
+.tabs button{font-family:var(--sans);font-size:13px;font-weight:500;border:0;background:transparent;color:var(--ink-2);padding:7px 16px;cursor:pointer;border-right:1px solid var(--rule)}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--surface)}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+h2{font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin:0 0 12px}
+section{margin-bottom:34px}
+.bal{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));background:var(--surface);border:1px solid var(--rule)}
+.bal .cell{padding:14px 15px;border-right:1px solid var(--rule-2);position:relative}
+.bal .cell:last-child{border-right:0}
+.bal .op{font-family:var(--mono);font-size:15px;color:var(--ink-3);position:absolute;top:14px;right:9px}
+.bal .k{font-size:11.5px;color:var(--ink-2);letter-spacing:.03em;margin-bottom:5px}
+.bal .v{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.02em}
+.bal .u{font-size:11px;color:var(--ink-3);margin-top:2px}
+.bal .cell.term{background:var(--surface-2)}
+.bal .cell.term .v{color:var(--accent)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule)}
+@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:430px){.kpis{grid-template-columns:1fr}}
+.kpi{background:var(--surface);padding:14px 16px}
+.kpi .k{font-size:11.5px;color:var(--ink-2);margin-bottom:6px}
+.kpi .v{font-family:var(--mono);font-size:25px;font-weight:500;letter-spacing:-.02em;line-height:1.1}
+.kpi .u{font-size:11px;color:var(--ink-3)}
+.kpi .d{margin-top:7px;font-family:var(--mono);font-size:11.5px;font-weight:500}
+.up{color:var(--good)} .dn{color:var(--bad)} .flat{color:var(--ink-3)}
+table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface)}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--rule-2);white-space:nowrap}
+th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);font-weight:600;border-bottom:1px solid var(--rule)}
+th:first-child,td:first-child{text-align:left}
+tbody tr:last-child td{border-bottom:0}
+tr.tot td{font-weight:600;border-top:1px solid var(--rule);background:var(--surface-2)}
+td .s{display:block;font-size:11px;font-weight:500;margin-top:1px}
+.scroll{overflow-x:auto;border:1px solid var(--rule)}
+.note{font-size:12.5px;color:var(--ink-2);line-height:1.65;margin-top:12px;border-left:2px solid var(--rule);padding-left:13px;max-width:72ch}
+.note b{color:var(--ink);font-weight:600}
+.warnbox{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--warn);padding:12px 15px;font-size:13px;color:var(--ink-2);line-height:1.6}
+.warnbox b{color:var(--ink)}
+.warnbox ul{margin:6px 0 0;padding-left:18px}
+figure{margin:0;background:var(--surface);border:1px solid var(--rule);padding:14px 14px 8px;position:relative}
+.legend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-2);margin:0 0 10px 2px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:1px;margin-right:5px;vertical-align:-1px}
+.legend i.ln{height:3px;width:16px;vertical-align:3px}
+.chart{overflow-x:auto}
+.chart svg{display:block;width:100%;min-width:600px;height:auto}
+.chart text{font-family:var(--mono);font-size:10.5px;fill:var(--ink-3)}
+.chart .lbl{fill:var(--ink-2);font-weight:500}
+.chart .strong{fill:var(--ink);font-weight:600}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:720px){.duo{grid-template-columns:1fr}}
+.duo .chart svg{min-width:0}
+.mt{font-size:12px;color:var(--ink-2);font-weight:600;margin:0 0 6px 2px}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--surface);font:11.5px/1.5 var(--mono);padding:7px 9px;border-radius:3px;white-space:pre;opacity:0;transition:opacity .08s;z-index:4}
+footer{margin-top:34px;padding-top:14px;border-top:1px solid var(--rule);font-size:11.5px;color:var(--ink-3);line-height:1.7}
+footer b{color:var(--ink-2)}
+code{font-family:var(--mono);font-size:.92em}
+@media(max-width:620px){.mast h1{font-size:24px}.period{margin-left:0;text-align:left}}
+@media (prefers-reduced-motion:reduce){.tip{transition:none}}
+</style>
+<style>
+.wrap{max-width:1500px}
+:root{--sev-hi:var(--bad);--sev-mid:var(--warn);--sev-info:var(--accent)}
+.ctl{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:flex-end;margin:0 0 12px;background:var(--surface);border:1px solid var(--rule);padding:12px 14px}
+.ctl label,.ctl .lb{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.ctl select,.ctl input{font:500 13px var(--sans);color:var(--ink);background:var(--surface-2);border:1px solid var(--rule);border-radius:3px;padding:6px 8px;min-width:190px}
+.ctl select:focus-visible,.ctl input:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:500 12.5px var(--sans);text-transform:none;letter-spacing:0;border:1px solid var(--rule);background:var(--surface);color:var(--ink-3);padding:5px 11px;border-radius:999px;cursor:pointer;display:inline-flex;gap:7px;align-items:center}
+.chip b{font-family:var(--mono);font-weight:600}
+.chip i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.chip[aria-pressed="true"]{border-color:var(--ink-2);color:var(--ink);background:var(--surface-2)}
+.chip:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.tw{overflow:auto;border:1px solid var(--rule);background:var(--surface)}
+table.wl{border-collapse:collapse;font-size:12.5px;width:100%;min-width:760px}
+table.wl th,table.wl td{padding:7px 10px;border-bottom:1px solid var(--rule-2);text-align:left;white-space:nowrap}
+table.wl th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);font-weight:600;position:sticky;top:0;background:var(--surface);z-index:1}
+table.wl td.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+table.wl tbody tr{cursor:pointer}
+table.wl tbody tr:hover td{background:var(--surface-2)}
+table.wl tbody tr.on td{background:var(--accent-soft)}
+.pill{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:2px;margin-right:4px}
+.pill.hi{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+.pill.mid{background:color-mix(in srgb,var(--warn) 17%,transparent);color:var(--warn)}
+.pill.info{background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent)}
+.wlwrap{max-height:430px}
+.dh{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;margin:30px 0 12px;border-top:1px solid var(--rule);padding-top:18px}
+.dh h2{margin:0 0 4px;font-family:var(--serif);font-size:24px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink)}
+.dh .meta{font-size:13px;color:var(--ink-2)}
+.dh .meta b{color:var(--ink);font-weight:600}
+.cyc{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+table.pv{border-collapse:separate;border-spacing:0;font-size:11.5px}
+table.pv th,table.pv td{padding:5px 7px;border-bottom:1px solid var(--rule-2);text-align:center;white-space:nowrap;font-family:var(--mono);font-variant-numeric:tabular-nums}
+table.pv thead th{font-size:10.5px;color:var(--ink-2);font-weight:500;position:sticky;top:0;background:var(--surface)}
+table.pv th.rl{text-align:left;font-family:var(--sans);font-size:12px;font-weight:500;color:var(--ink-2);position:sticky;left:0;background:var(--surface);z-index:2;min-width:150px;border-right:1px solid var(--rule)}
+table.pv td.z{color:var(--rule)}
+table.pv td.ov{color:var(--bad);font-weight:600}
+table.pv td.dis{color:var(--bad);font-family:var(--sans);font-weight:600;font-size:11px}
+table.pv td.tr{color:var(--warn);font-weight:600}
+table.cs{border-collapse:collapse;font-size:12.5px;width:100%;min-width:900px}
+table.cs th,table.cs td{padding:7px 9px;border-bottom:1px solid var(--rule-2);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+table.cs th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);font-weight:600;background:var(--surface)}
+table.cs td:first-child,table.cs th:first-child{text-align:left}
+table.cs td{font-family:var(--mono)} table.cs td:first-child{font-family:var(--sans);font-weight:500}
+table.cs tr.cur td{background:var(--accent-soft)}
+.empty{padding:18px;color:var(--ink-3);font-size:13px}
+.legend2{font-size:11.5px;color:var(--ink-3);margin:6px 2px 0}
+</style>
+<div class="wrap">
+  <div class="mast">
+    <div>
+      <div class="eyebrow">Fish health &middot; site level</div>
+      <h1>Site watch</h1>
+      <div class="sub">Which farm sites stand out right now, and the week-by-week story of any site</div>
+    </div>
+    <div class="period"><div class="big" id="per"></div><div class="lbl">Latest complete week</div></div>
+  </div>
+  <div class="links"><a href="index.html">← salmofin</a> &middot; <a href="lakselus.html">Lice</a> &middot; <a href="fiskehelse.html">Fish health</a> &middot; <a href="traffic.html">Harvest traffic</a> &middot; Updated weekly</div>
+
+  <div class="ctl">
+    <label for="area">Area<select id="area"></select></label>
+    <label for="co">Company<select id="co"></select></label>
+    <label for="q">Find any site<input id="q" type="search" list="sitelist" placeholder="Name or site number"></label>
+    <datalist id="sitelist"></datalist>
+    <div class="lb" style="flex-basis:100%">Flags<div class="chips" id="flags" role="group" aria-label="Flags"></div></div>
+  </div>
+
+  <div class="tw wlwrap"><table class="wl" id="wl"></table></div>
+  <div class="legend2" id="wlcap"></div>
+
+  <div id="detail"></div>
+
+  <footer>
+    <b>Flags</b> as of the latest complete week. <b>Over lice limit</b>: above the limit in any of the last 4 weeks. <b>Near limit</b>: latest count at 70% of the limit or more. <b>Lice rising</b>: latest count at least 0.25 and twice the average of weeks 5–8 before.
+    <b>New ISA or PD</b>: suspected or confirmed in the last 6 weeks with no case in the 6 months before. <b>Many treatments</b>: treated in at least 3 of the last 4 weeks. <b>Mechanical or thermal</b>: in at least 3 of the last 6 weeks.
+    <b>Silage spike</b>: 3 or more silage-vessel visits in 4 weeks and at least 2.5× the site's usual rate this cycle. <b>Harvest started</b>: a processing-vessel visit in the last 2 weeks after none in the 8 weeks before, on a cycle older than 6 months. <b>Just stocked</b>: cycle started within 8 weeks. <b>Just emptied</b>: fish last counted 2–8 weeks ago.
+    <b>Cycles</b> = runs of weeks with lice counts and fish, allowing gaps up to 6 weeks, labelled by the year and half-year of the first week. <b>Treatments</b>: M mechanical, T thermal, F freshwater, B bath, I in-feed, O other, N non-medicinal (method not recorded). Vessel visits (our AIS fleet list) start in 2024.
+    <b>Company</b> = licence holder with the most capacity on the site today. Source: BarentsWatch lice counts, treatments, disease status and AIS; Fiskeridirektoratet registers.
+  </footer>
+</div>
+<script>
+const D=__DATA__;const LK=D.lastKey;
+const PO={1:'Svenskegrensen–Jæren',2:'Ryfylke',3:'Karmøy–Sotra',4:'Nordhordland–Stadt',5:'Stadt–Hustadvika',6:'Nordmøre–Sør-Trøndelag',7:'Nord-Trøndelag med Bindal',8:'Helgeland–Bodø',9:'Vestfjorden og Vesterålen',10:'Andøya–Senja',11:'Kvaløya–Loppa',12:'Vest-Finnmark',13:'Øst-Finnmark'};
+const AREAS={all:[null,'All of Norway'],W:[[1,2,3,4],'West · PO 1–4'],M:[[5,6,7],'Mid · PO 5–7'],N:[[8,9,10,11,12,13],'North · PO 8–13']};
+const FL=[['over','Over lice limit','hi'],['disease','New ISA or PD','hi'],['near','Near lice limit','mid'],['rising','Lice rising','mid'],['treat','Many treatments','mid'],['mechtherm','Mechanical or thermal','mid'],['silage','Silage spike','mid'],['harvest','Harvest started','info'],['stocked','Just stocked','info'],['emptied','Just emptied','info']];
+const FLN=Object.fromEntries(FL.map(x=>[x[0],x]));const SEV={hi:3,mid:2,info:1};
+const f=(v,d=2)=>v==null||!isFinite(v)?'–':(+v).toLocaleString('en-GB',{minimumFractionDigits:d,maximumFractionDigits:d});
+const yw=k=>[Math.floor((k-1)/52),(k-1)%52+1];
+function monday(k){const [y,w]=yw(k);const d=new Date(Date.UTC(y,0,4));const dow=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()-dow+1+(w-1)*7);return d}
+const dm=k=>{const d=monday(k);return d.getUTCDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()]};
+let area='all',co='',flagSel=new Set(FL.map(x=>x[0])),cur=null,curCyc=null;
+const poOk=p=>area==='all'?true:area.startsWith('P')?p===+area.slice(1):AREAS[area][0].includes(p);
+const S=D.sites;
+function vis4(s){const w=D.weekly[s]||[];let wb=0,pv=0,sil=0;w.forEach(r=>{if(r[0]>LK-4&&r[0]<=LK){wb+=r[7];pv+=r[8];sil+=r[9]}});return [wb,pv,sil]}
+function renderList(){const rows=D.flags.filter(([s,fl])=>{const x=S[s];return x&&poOk(x[1])&&(!co||x[2]===co)&&fl.some(k=>flagSel.has(k))})
+    .map(r=>({r,score:r[1].reduce((a,k)=>a+SEV[FLN[k][2]]*10,0)+(r[2]||0)})).sort((a,b)=>b.score-a.score);
+  const counts={};D.flags.forEach(([s,fl])=>{const x=S[s];if(!x||!poOk(x[1])||(co&&x[2]!==co))return;fl.forEach(k=>counts[k]=(counts[k]||0)+1)});
+  document.getElementById('flags').innerHTML=FL.map(([k,l,sv])=>`<button type="button" class="chip" data-k="${k}" aria-pressed="${flagSel.has(k)}"><i style="background:var(--sev-${sv})"></i>${l}<b>${counts[k]||0}</b></button>`).join('');
+  document.querySelectorAll('#flags .chip').forEach(b=>b.onclick=()=>{const k=b.dataset.k;if(flagSel.size===FL.length){flagSel=new Set([k])}else if(flagSel.has(k)){flagSel.delete(k);if(!flagSel.size)flagSel=new Set(FL.map(x=>x[0]))}else flagSel.add(k);renderList()});
+  document.getElementById('wl').innerHTML='<thead><tr><th>Site</th><th>Company</th><th>PO</th><th style="text-align:right">Site MTB</th><th style="text-align:right">Cycle week</th><th style="text-align:right">Lice now</th><th>Flags</th><th style="text-align:right">Wellboat · processing · silage, last 4 wk</th></tr></thead><tbody>'+
+    (rows.length?rows.map(({r:[s,fl,af,age]})=>{const x=S[s],v=vis4(s);return `<tr data-s="${s}" class="${+s===+cur?'on':''}"><td><b>${x[0]}</b> <span style="color:var(--ink-3);font-family:var(--mono);font-size:11px">${s}</span></td><td>${x[2]||'–'}</td><td>${x[1]||'–'}</td><td class="n">${x[3]?f(x[3],0)+' t':'–'}</td><td class="n">${age??'–'}</td><td class="n">${f(af)}</td><td>${fl.slice().sort((a,b)=>SEV[FLN[b][2]]-SEV[FLN[a][2]]).map(k=>`<span class="pill ${FLN[k][2]}">${FLN[k][1]}</span>`).join('')}</td><td class="n">${v.join(' · ')}</td></tr>`}).join(''):'<tr><td colspan="8" class="empty">No flagged sites for this selection.</td></tr>')+'</tbody>';
+  document.querySelectorAll('#wl tbody tr[data-s]').forEach(tr=>tr.onclick=()=>{openSite(tr.dataset.s);document.getElementById('detail').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})});
+  document.getElementById('wlcap').textContent=`${rows.length} sites shown, most serious first. Click a site for its detail. Click a flag to show only that flag; click more to add them.`}
+function openSite(s){cur=String(s);const cy=D.cycles[cur]||[];curCyc=cy.length-1;renderDetail();document.querySelectorAll('#wl tbody tr').forEach(tr=>tr.classList.toggle('on',tr.dataset.s===cur))}
+function renderDetail(){const el=document.getElementById('detail');if(!cur||!S[cur]){el.innerHTML='<div class="dh"><div><h2>Site detail</h2><div class="meta">Pick a site in the list above, or find one by name.</div></div></div>';return}
+  const x=S[cur],cy=D.cycles[cur]||[],wk=D.weekly[cur]||[];const fl=(D.flags.find(r=>String(r[0])===cur)||[0,[]])[1];
+  let h=`<div class="dh"><div><h2>${x[0]} <span style="font-family:var(--mono);font-size:14px;color:var(--ink-3)">${cur}</span></h2><div class="meta"><b>${x[2]||'Operator unknown'}</b> · PO ${x[1]} ${PO[x[1]]||''} · site MTB ${f(x[3],0)} t</div></div><div>${fl.map(k=>`<span class="pill ${FLN[k][2]}">${FLN[k][1]}</span>`).join('')}</div></div>`;
+  const withWeeks=cy.map((c,i)=>i).filter(i=>wk.some(r=>r[1]===i));
+  h+=`<div class="cyc">${cy.map((c,i)=>`<button type="button" class="chip" data-c="${i}" aria-pressed="${i===curCyc}" ${withWeeks.includes(i)?'':'disabled style="opacity:.45;cursor:default"'}>${c[2]}${c[16]?' · now':''}</button>`).join('')}</div>`;
+  const W=wk.filter(r=>r[1]===curCyc);
+  if(W.length){const rowsDef=[['Age (week)',r=>r[2]??'',''],['Adult female lice',r=>r[3]==null?'':f(r[3]),'lice'],['Disease',r=>r[5],'dis'],['Lice treatments',r=>r[6],'tr'],['Wellboat visits',r=>r[7]||'','n'],['Processing vessel visits',r=>r[8]||'','n'],['Silage vessel visits',r=>r[9]||'','n'],['Feed carrier visits',r=>r[10]||'','n'],['Delousing vessel visits',r=>r[11]||'','n']];
+    h+=`<div class="tw" id="pvw"><table class="pv"><thead><tr><th class="rl">Week starting</th>${W.map(r=>`<th>W${yw(r[0])[1]}<br>${dm(r[0])}${yw(r[0])[1]===1?" '"+String(yw(r[0])[0]).slice(2):''}</th>`).join('')}</tr></thead><tbody>`+
+      rowsDef.map(([l,fn,t])=>`<tr><th class="rl">${l}</th>${W.map(r=>{const v=fn(r);let c=v===''||v===0?'z':'';if(t==='lice'&&r[4])c='ov';if(t==='dis'&&v)c='dis';if(t==='tr'&&v)c='tr';return `<td class="${c}">${v}</td>`}).join('')}</tr>`).join('')+'</tbody></table></div>';
+    h+=`<div class="legend2">Red lice = above the limit that week. Treatments: M mechanical, T thermal, F freshwater, B bath, I in-feed, O other, N non-medicinal unspecified. ? after ISA/PD = suspected.</div>`}
+  else h+='<div class="tw"><div class="empty">Weekly detail is available for cycles from 2024 on. The summary below covers every cycle since 2015.</div></div>';
+  const L=(D.lics&&D.lics[cur])||[];const lt=L.reduce((a,l)=>a+l[2]/(l[5]||1),0);
+  h+=`<div class="sec" style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin:22px 0 8px">Capacity</div><div class="tw"><table class="cs" style="min-width:640px"><thead><tr><th>Licence</th><th>Holder</th><th>Stage</th><th>Purpose</th><th>Licence MTB</th><th>Sites it can use</th></tr></thead><tbody>`+(L.length?L.slice().sort((a,b)=>b[2]-a[2]).map(l=>`<tr><td>${l[0]}</td><td style="font-family:var(--sans);text-align:left">${l[1]}</td><td style="font-family:var(--sans);text-align:left">${l[3]}</td><td style="font-family:var(--sans);text-align:left;color:var(--ink-3)">${l[4]||''}</td><td>${f(l[2],0)} t</td><td>${l[5]}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">No salmon or trout licences connected to this site in the current register.</td></tr>')+`</tbody></table></div><div class="legend2">Site MTB ${f(x[3],0)} t is the most biomass allowed at the site at any time. ${L.length} licence${L.length===1?'':'s'} with ${f(L.reduce((a,l)=>a+l[2],0),0)} t of licence MTB can use it; a licence connected to several sites is shared between them (about ${f(lt,0)} t if split equally).</div>`;
+  h+=`<div class="sec" style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin:22px 0 8px">All cycles at this site</div><div class="tw"><table class="cs"><thead><tr><th>Cycle</th><th>Start</th><th>Weeks in sea</th><th>Lice avg</th><th>Weeks over limit</th><th>Temp avg</th><th>Temp min</th><th>Temp max</th><th>Disease</th><th>Treatment weeks</th><th>Wellboat</th><th>Processing</th><th>Silage</th><th>Feed carrier</th><th>Delousing</th></tr></thead><tbody>`+
+    cy.slice().reverse().map((c,ri)=>{const i=cy.length-1-ri;const v24=c[1]>=52*2024+1;return `<tr class="${i===curCyc?'cur':''}"><td>${c[2]}${c[16]?' · now':''}</td><td>W${yw(c[0])[1]} ${yw(c[0])[0]}</td><td>${c[3]}</td><td>${f(c[4])}</td><td>${c[5]||''}</td><td>${f(c[6],1)}</td><td>${f(c[7],1)}</td><td>${f(c[8],1)}</td><td style="font-family:var(--sans);color:var(--bad);font-weight:600">${c[9]}</td><td>${c[10]||''}</td>${[11,12,13,14,15].map(j=>`<td>${v24?(c[j]||''):'–'}</td>`).join('')}</tr>`}).join('')+'</tbody></table></div><div class="legend2">Vessel visits are counted from 2024; earlier cycles show –.</div>';
+  el.innerHTML=h;
+  el.querySelectorAll('.cyc .chip:not([disabled])').forEach(b=>b.onclick=()=>{curCyc=+b.dataset.c;renderDetail()});
+  const pv=document.getElementById('pvw');if(pv)pv.scrollLeft=pv.scrollWidth}
+// controls
+const [Y,Wk]=D.last;document.getElementById('per').textContent=`Week ${Wk} · ${Y}`;
+const as=document.getElementById('area');as.innerHTML=Object.entries(AREAS).map(([k,v])=>`<option value="${k}">${v[1]}</option>`).join('')+'<optgroup label="Production zone">'+Object.entries(PO).map(([k,v])=>`<option value="P${k}">PO ${k} · ${v}</option>`).join('')+'</optgroup>';
+as.onchange=()=>{area=as.value;renderList()};
+const cos={};D.flags.forEach(([s])=>{const c=S[s]&&S[s][2];if(c)cos[c]=(cos[c]||0)+1});
+const cs=document.getElementById('co');cs.innerHTML='<option value="">All companies</option>'+Object.entries(cos).sort((a,b)=>b[1]-a[1]).map(([c,n])=>`<option value="${c}">${c} (${n})</option>`).join('');
+cs.onchange=()=>{co=cs.value;renderList()};
+document.getElementById('sitelist').innerHTML=Object.entries(S).map(([s,x])=>`<option value="${x[0]} · ${s}"></option>`).join('');
+const q=document.getElementById('q');q.onchange=()=>{const m=q.value.match(/(\d{4,6})\s*$/)||q.value.match(/^(\d{4,6})$/);let s=m?m[1]:null;
+  if(!s){const hit=Object.entries(S).find(([k,x])=>x[0].toLowerCase()===q.value.trim().toLowerCase());s=hit&&hit[0]}
+  if(s&&S[s]){openSite(s);document.getElementById('detail').scrollIntoView({block:'start'})}};
+renderList();
+const first=D.flags.slice().sort((a,b)=>b[1].reduce((x,k)=>x+SEV[FLN[k][2]],0)-a[1].reduce((x,k)=>x+SEV[FLN[k][2]],0))[0];
+openSite(first?first[0]:Object.keys(S)[0]);
+</script>
+
+</body></html>
