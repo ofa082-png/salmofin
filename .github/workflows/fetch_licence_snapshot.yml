@@ -1,0 +1,38 @@
+name: Fetch Licence Snapshot
+on:
+  schedule:
+    # 3rd of each month, 04:00 UTC - one snapshot per calendar month. The
+    # script picks the ISO week containing the 15th and skips anything
+    # BigQuery already has.
+    - cron: '0 4 3 * *'
+  workflow_dispatch:
+    inputs:
+      year:
+        description: 'Snapshot year (optional, forces one specific snapshot)'
+        required: false
+      week:
+        description: 'Snapshot ISO week (optional)'
+        required: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60   # ~6 min per snapshot at 1,800 localities; 2 max per run
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests pandas google-cloud-bigquery db-dtypes
+      - name: Run fetch_licence_snapshot.py
+        env:
+          BW_CLIENT_ID: ${{ secrets.BW_CLIENT_ID }}
+          BW_CLIENT_SECRET: ${{ secrets.BW_CLIENT_SECRET }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: |
+          if [ -n "${{ github.event.inputs.year }}" ]; then
+            python fetch_licence_snapshot.py --year "${{ github.event.inputs.year }}" --week "${{ github.event.inputs.week }}"
+          else
+            python fetch_licence_snapshot.py
+          fi
